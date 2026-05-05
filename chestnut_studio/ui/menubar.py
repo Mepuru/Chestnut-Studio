@@ -21,6 +21,7 @@ class MenuBar(QMenuBar):
     quit_app = Signal()
     toggle_fullscreen = Signal()
     reset_layout = Signal()  # 重置为默认布局
+    dump_layout = Signal()  # 打印当前布局信息
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -99,7 +100,11 @@ class MenuBar(QMenuBar):
         default_layout_action.triggered.connect(self._reset_layout)
         layout_menu.addAction(default_layout_action)
 
-        # TODO: 添加更多布局预设
+        # 打印布局信息（调试用）
+        layout_menu.addSeparator()
+        dump_layout_action = QAction("打印当前布局", self)
+        dump_layout_action.triggered.connect(self.dump_layout.emit)
+        layout_menu.addAction(dump_layout_action)
 
         # 分隔线
         view_menu.addSeparator()

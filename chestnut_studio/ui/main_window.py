@@ -161,6 +161,7 @@ class MainWindow(QMainWindow):
         self.menu_bar.quit_app.connect(self.close)
         self.menu_bar.toggle_fullscreen.connect(self._toggle_fullscreen)
         self.menu_bar.reset_layout.connect(self._setup_default_layout)
+        self.menu_bar.dump_layout.connect(self._dump_layout_info)
 
     def _create_statusbar(self):
         """创建状态栏"""
@@ -202,6 +203,53 @@ class MainWindow(QMainWindow):
         """保存当前布局"""
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.setValue("windowState", self.saveState())
+
+    def _dump_layout_info(self):
+        """打印当前布局信息到控制台（调试用）"""
+        print("\n" + "=" * 60)
+        print("布局调试信息")
+        print("=" * 60)
+
+        # 窗口尺寸
+        geo = self.geometry()
+        print(f"窗口尺寸: {geo.width()} x {geo.height()}")
+        print(f"窗口位置: ({geo.x()}, {geo.y()})")
+        print()
+
+        # 各卡片信息
+        cards = [
+            ("player_card", self.player_card),
+            ("timeline_card", self.timeline_card),
+            ("waveform_card", self.waveform_card),
+            ("translate_card", self.translate_card),
+        ]
+
+        for name, card in cards:
+            area = self.dockWidgetArea(card)
+            area_name = {
+                Qt.LeftDockWidgetArea: "Left",
+                Qt.RightDockWidgetArea: "Right",
+                Qt.TopDockWidgetArea: "Top",
+                Qt.BottomDockWidgetArea: "Bottom",
+                Qt.NoDockWidgetArea: "None (浮动)",
+            }.get(area, str(area))
+
+            size = card.size()
+            pos = card.pos()
+            visible = card.isVisible()
+            floating = card.isFloating()
+
+            print(f"[{name}]")
+            print(f"  区域: {area_name}")
+            print(f"  尺寸: {size.width()} x {size.height()}")
+            print(f"  位置: ({pos.x()}, {pos.y()})")
+            print(f"  可见: {visible}  浮动: {floating}")
+            print()
+
+        # 保存的 state（Base64）
+        state = self.saveState()
+        print(f"QSettings state (Base64): {state.toBase64().data().decode()}")
+        print("=" * 60 + "\n")
 
     def closeEvent(self, event):
         """关闭事件，保存布局"""
