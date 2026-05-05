@@ -1,10 +1,13 @@
 use iced::widget::{
     button, column, container, horizontal_space, pane_grid,
-    responsive, row, text, PaneGrid,
+    row, text, PaneGrid,
 };
 use iced::{Center, Color, Element, Fill, Font, Subscription, Theme};
+use std::path::PathBuf;
+use std::time::Duration;
 
 use crate::message::{Message, Pane};
+use crate::player::{self, VideoPlayer};
 use crate::state::AppState;
 
 // ── 字体 ────────────────────────────────────────────────────────────
@@ -40,7 +43,23 @@ pub struct ChestnutStudio {
 
 impl ChestnutStudio {
     pub fn new() -> (Self, iced::Task<Message>) {
-        (Self { state: AppState::default() }, iced::Task::none())
+        let mut state = AppState::default();
+        
+        // 尝试初始化播放器
+        match VideoPlayer::new() {
+            Ok(player) => {
+                state.player = Some(player);
+                state.status = "播放器已就绪 - 请打开视频文件".into();
+                tracing::info!("播放器初始化成功");
+            }
+            Err(e) => {
+                let err_msg = format!("初始化播放器失败: {:#}", e);
+                tracing::warn!("{}", err_msg);
+                state.status = format!("播放器初始化失败: {}", err_msg);
+            }
+        }
+
+        (Self { state }, iced::Task::none())
     }
 
     pub fn title(&self) -> String {
@@ -49,6 +68,7 @@ impl ChestnutStudio {
 
     pub fn update(&mut self, message: Message) -> iced::Task<Message> {
         match message {
+            // 面板布局
             Message::PaneClicked(pane) => self.state.focus = Some(pane),
             Message::PaneDragged(pane_grid::DragEvent::Dropped { pane, target }) => {
                 self.state.panes.drop(pane, target);
@@ -66,17 +86,175 @@ impl ChestnutStudio {
                 self.state.is_maximized = false;
             }
             Message::TogglePanel(pane) => self.state.toggle_panel(pane),
-            Message::TogglePlayPause => {
-                self.state.is_playing = !self.state.is_playing;
-                self.state.status = if self.state.is_playing { "播放中" } else { "已暂停" }.into();
+
+            // 文件操作
+            Message::ImportVideo => {
+                // 打开文件选择对话框
+                return iced::Task::perform(
+                    async {
+                        rfd::AsyncFileDialog::new()
+                            .add_filter("视频文件", &["mp4", "mkv", "avi", "mov", "webm", "flv", "wmv"])
+                            .add_filter("所有文件", &["*"])
+                            .set_title("选择视频文件")
+                            .pick_file()
+                            .await
+                            .map(|f| PathBuf::from(f.path()))
+                    },
+                    |path| {
+                        if let Some(p) = path {
+                            Message::VideoFileOpened(p)
+                        } else {
+                            Message::ImportVideo // 取消时不做任何事
+                        }
+                    },
+                );
             }
-            Message::SeekForward5s => self.state.status = "前进 5 秒".into(),
-            Message::SeekBackward5s => self.state.status = "后退 5 秒".into(),
-            Message::FrameStep => self.state.current_frame = self.state.current_frame.saturating_add(1),
-            Message::FrameBackStep => self.state.current_frame = self.state.current_frame.saturating_sub(1),
-            Message::ImportVideo => self.state.status = "导入视频...".into(),
+            Message::VideoFileOpened(path) => {
+                if let Some(ref mut player) = self.state.player {
+                    match player.load_file(&path) {
+                        Ok(()) => {
+                            self.state.video_path = path.to_str().map(|s| s.to_string());
+                            self.state.duration_ms = player.get_duration_ms();
+                            self.state.fps = player.get_fps();
+                            self.state.current_frame = 0;
+                            self.state.position_ms = 0;
+                            self.state.is_playing = false;
+                            self.state.status = format!("已加载: {}", path.file_name().unwrap_or_default().to_string_lossy());
+                            tracing::info!("视频已加载: {:?}", path);
+                        }
+                        Err(e) => {
+                            self.state.status = format!("加载失败: {}", e);
+                            tracing::error!("加载视频失败: {}", e);
+                        }
+                    }
+                } else {
+                    self.state.status = "播放器未初始化".into();
+                }
+            }
             Message::ImportSubtitle => self.state.status = "导入字幕 (预留)".into(),
             Message::ExportSubtitle => self.state.status = "导出字幕 (预留)".into(),
+
+            // 播放控制
+            Message::TogglePlayPause => {
+                if let Some(ref mut player) = self.state.player {
+                    if let Err(e) = player.toggle_play_pause() {
+                        self.state.status = format!("播放控制失败: {}", e);
+                    } else {
+                        self.state.is_playing = player.is_playing();
+                        self.state.status = if self.state.is_playing { "播放中" } else { "已暂停" }.into();
+                    }
+                }
+            }
+            Message::Play => {
+                if let Some(ref mut player) = self.state.player {
+                    if let Err(e) = player.play() {
+                        self.state.status = format!("播放失败: {}", e);
+                    } else {
+                        self.state.is_playing = true;
+                        self.state.status = "播放中".into();
+                    }
+                }
+            }
+            Message::Pause => {
+                if let Some(ref mut player) = self.state.player {
+                    if let Err(e) = player.pause() {
+                        self.state.status = format!("暂停失败: {}", e);
+                    } else {
+                        self.state.is_playing = false;
+                        self.state.status = "已暂停".into();
+                    }
+                }
+            }
+            Message::SeekTo(frame) => {
+                if let Some(ref mut player) = self.state.player {
+                    if let Err(e) = player.seek_to_frame(frame) {
+                        self.state.status = format!("跳转失败: {}", e);
+                    } else {
+                        self.state.current_frame = frame;
+                        self.state.position_ms = (frame as f64 / self.state.fps * 1000.0) as u64;
+                    }
+                }
+            }
+            Message::SeekForward5s => {
+                if let Some(ref mut player) = self.state.player {
+                    if let Err(e) = player.seek_forward(5.0) {
+                        self.state.status = format!("跳转失败: {}", e);
+                    } else {
+                        self.state.position_ms = player.get_position_ms();
+                        self.state.current_frame = player.get_current_frame();
+                    }
+                }
+            }
+            Message::SeekBackward5s => {
+                if let Some(ref mut player) = self.state.player {
+                    if let Err(e) = player.seek_backward(5.0) {
+                        self.state.status = format!("跳转失败: {}", e);
+                    } else {
+                        self.state.position_ms = player.get_position_ms();
+                        self.state.current_frame = player.get_current_frame();
+                    }
+                }
+            }
+            Message::FrameStep => {
+                if let Some(ref mut player) = self.state.player {
+                    if let Err(e) = player.frame_step() {
+                        self.state.status = format!("步进失败: {}", e);
+                    } else {
+                        self.state.current_frame = player.get_current_frame();
+                        self.state.position_ms = player.get_position_ms();
+                    }
+                }
+            }
+            Message::FrameBackStep => {
+                if let Some(ref mut player) = self.state.player {
+                    if let Err(e) = player.frame_back_step() {
+                        self.state.status = format!("步进失败: {}", e);
+                    } else {
+                        self.state.current_frame = player.get_current_frame();
+                        self.state.position_ms = player.get_position_ms();
+                    }
+                }
+            }
+            Message::SetVolume(volume) => {
+                if let Some(ref mut player) = self.state.player {
+                    if let Err(e) = player.set_volume(volume) {
+                        tracing::warn!("设置音量失败: {}", e);
+                    } else {
+                        self.state.volume = volume;
+                    }
+                }
+            }
+            Message::ToggleMute => {
+                if let Some(ref mut player) = self.state.player {
+                    let new_muted = !self.state.is_muted;
+                    if let Err(e) = player.set_mute(new_muted) {
+                        tracing::warn!("设置静音失败: {}", e);
+                    } else {
+                        self.state.is_muted = new_muted;
+                    }
+                }
+            }
+            Message::SetSpeed(speed) => {
+                if let Some(ref mut player) = self.state.player {
+                    if let Err(e) = player.set_speed(speed) {
+                        tracing::warn!("设置播放速率失败: {}", e);
+                    } else {
+                        self.state.speed = speed;
+                    }
+                }
+            }
+            Message::Tick => {
+                // 定时同步播放状态
+                if let Some(ref player) = self.state.player {
+                    if player.is_playing() {
+                        self.state.position_ms = player.get_position_ms();
+                        self.state.current_frame = player.get_current_frame();
+                        self.state.is_playing = true;
+                    } else {
+                        self.state.is_playing = false;
+                    }
+                }
+            }
         }
         iced::Task::none()
     }
@@ -94,7 +272,13 @@ impl ChestnutStudio {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::none()
+        // 如果正在播放，每 16ms 同步一次状态 (约 60fps)
+        if self.state.is_playing {
+            iced::time::every(Duration::from_millis(16))
+                .map(|_| Message::Tick)
+        } else {
+            Subscription::none()
+        }
     }
 
     pub fn theme(&self) -> Theme {
@@ -167,21 +351,52 @@ impl ChestnutStudio {
     // ── 工具栏 ──────────────────────────────────────────────────────
 
     fn view_toolbar(&self) -> Element<'_, Message> {
+        let time_str = if self.state.duration_ms > 0 {
+            format!(
+                "{} / {}",
+                player::format_time_hms(self.state.position_ms as f64 / 1000.0),
+                player::format_time_hms(self.state.duration_ms as f64 / 1000.0)
+            )
+        } else {
+            "00:00:00 / 00:00:00".to_string()
+        };
+
+        let frame_str = format!("帧 {}", self.state.current_frame);
+
         let time_display = container(
-            text(format!(
-                "帧 {} | {}",
-                self.state.current_frame,
-                if self.state.is_playing { "播放中" } else { "已暂停" }
-            ))
-            .font(FONT)
-            .size(13)
-            .color(TEXT_PRIMARY),
+            row![
+                text(frame_str).font(FONT).size(13).color(TEXT_SECONDARY),
+                text(" | ").font(FONT).size(13).color(BORDER),
+                text(time_str).font(FONT).size(13).color(TEXT_PRIMARY),
+            ]
+            .align_y(Center)
+            .spacing(4),
         )
         .padding([4, 12])
         .style(|_| container::Style {
             background: Some(BG_SURFACE.into()),
             border: iced::Border { radius: 4.0.into(), ..Default::default() },
             ..Default::default()
+        });
+
+        // 音量按钮
+        let volume_btn = button(
+            text(if self.state.is_muted { "🔇" } else { "🔊" })
+                .font(FONT).size(14).color(TEXT_PRIMARY)
+        )
+        .on_press(Message::ToggleMute)
+        .padding([6, 8])
+        .style(|_, status| {
+            let base = button::Style {
+                background: Some(Color::TRANSPARENT.into()),
+                text_color: TEXT_PRIMARY,
+                border: iced::Border { radius: 4.0.into(), ..Default::default() },
+                ..Default::default()
+            };
+            match status {
+                button::Status::Hovered => button::Style { background: Some(BG_SURFACE.into()), ..base },
+                _ => base,
+            }
         });
 
         container(
@@ -191,7 +406,7 @@ impl ChestnutStudio {
                 tool_btn("|<").on_press(Message::FrameBackStep),
                 tool_btn("<<").on_press(Message::SeekBackward5s),
                 button(
-                    text(if self.state.is_playing { "||" } else { ">" })
+                    text(if self.state.is_playing { "⏸" } else { "▶" })
                         .font(FONT_BOLD).size(16).color(Color::WHITE)
                 )
                 .on_press(Message::TogglePlayPause)
@@ -199,6 +414,7 @@ impl ChestnutStudio {
                 .style(accent_btn),
                 tool_btn(">>").on_press(Message::SeekForward5s),
                 tool_btn(">|").on_press(Message::FrameStep),
+                volume_btn,
             ]
             .align_y(Center)
             .spacing(6)
@@ -321,24 +537,7 @@ impl ChestnutStudio {
 
     fn view_pane_content(&self, pane: Pane) -> Element<'_, Message> {
         match pane {
-            Pane::Video => responsive(move |size| {
-                let h = size.width * 9.0 / 16.0;
-                container(
-                    column![
-                        text("视频播放器").font(FONT_BOLD).size(16).color(TEXT_SECONDARY),
-                        text("mpv 将嵌入此处").font(FONT).size(12).color(TEXT_SECONDARY),
-                        text(format!("{}x{}", size.width as u32, h as u32)).font(FONT).size(11).color(TEXT_SECONDARY),
-                    ]
-                    .align_x(Center).spacing(8),
-                )
-                .width(Fill).height(h).center_x(Fill).center_y(Fill)
-                .style(|_| container::Style {
-                    background: Some(Color::from_rgb(0.08, 0.08, 0.10).into()),
-                    border: iced::Border { width: 1.0, color: BORDER, ..Default::default() },
-                    ..Default::default()
-                })
-                .into()
-            }).into(),
+            Pane::Video => self.view_video_panel(),
             _ => {
                 let (title, sub) = match pane {
                     Pane::Waveform => ("音频波形", "Canvas 绘制波形"),
@@ -363,6 +562,90 @@ impl ChestnutStudio {
         }
     }
 
+    // ── 视频面板 ────────────────────────────────────────────────────
+
+    fn view_video_panel(&self) -> Element<'_, Message> {
+        let has_video = self.state.video_path.is_some();
+
+        if has_video {
+            // 显示视频信息和进度条
+            let video_info = if let Some(ref path) = self.state.video_path {
+                let filename = std::path::Path::new(path)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy();
+                text(format!("正在播放: {}", filename))
+                    .font(FONT).size(12).color(TEXT_SECONDARY)
+            } else {
+                text("").font(FONT).size(12).color(TEXT_SECONDARY)
+            };
+
+            // 进度条
+            let progress = if self.state.duration_ms > 0 {
+                self.state.position_ms as f32 / self.state.duration_ms as f32
+            } else {
+                0.0
+            };
+
+            let progress_bar = container(
+                row![
+                    text(player::format_time_hms(self.state.position_ms as f64 / 1000.0))
+                        .font(FONT).size(11).color(TEXT_SECONDARY),
+                    horizontal_space(),
+                    text(format!("{:.1}x", self.state.speed))
+                        .font(FONT).size(11).color(TEXT_SECONDARY),
+                    text(" | ").font(FONT).size(11).color(BORDER),
+                    text(player::format_time_hms(self.state.duration_ms as f64 / 1000.0))
+                        .font(FONT).size(11).color(TEXT_SECONDARY),
+                ]
+                .align_y(Center)
+                .spacing(8),
+            )
+            .padding([4, 8])
+            .width(Fill)
+            .style(|_| container::Style {
+                background: Some(BG_SURFACE.into()),
+                border: iced::Border { radius: 4.0.into(), ..Default::default() },
+                ..Default::default()
+            });
+
+            container(
+                column![
+                    video_info,
+                    horizontal_space(),
+                    progress_bar,
+                ]
+                .spacing(8)
+                .padding(8),
+            )
+            .width(Fill)
+            .height(Fill)
+            .style(|_| container::Style {
+                background: Some(Color::from_rgb(0.08, 0.08, 0.10).into()),
+                border: iced::Border { width: 1.0, color: BORDER, ..Default::default() },
+                ..Default::default()
+            })
+            .into()
+        } else {
+            // 没有视频时显示提示
+            container(
+                column![
+                    text("视频播放器").font(FONT_BOLD).size(16).color(TEXT_SECONDARY),
+                    text("点击 [导入视频] 按钮打开视频文件").font(FONT).size(12).color(TEXT_SECONDARY),
+                    text("支持格式: MP4, MKV, AVI, MOV, WebM").font(FONT).size(11).color(TEXT_SECONDARY),
+                ]
+                .align_x(Center).spacing(8),
+            )
+            .center_x(Fill).center_y(Fill)
+            .style(|_| container::Style {
+                background: Some(Color::from_rgb(0.08, 0.08, 0.10).into()),
+                border: iced::Border { width: 1.0, color: BORDER, ..Default::default() },
+                ..Default::default()
+            })
+            .into()
+        }
+    }
+
     // ── 状态栏 ──────────────────────────────────────────────────────
 
     fn view_status_bar(&self) -> Element<'_, Message> {
@@ -376,7 +659,7 @@ impl ChestnutStudio {
                     }),
                 text(&self.state.status).font(FONT).size(12).color(TEXT_SECONDARY),
                 horizontal_space(),
-                text("Chestnut Studio v0.1.0").font(FONT).size(11).color(TEXT_SECONDARY),
+                text("Chestnut Studio v0.2.0").font(FONT).size(11).color(TEXT_SECONDARY),
             ]
             .align_y(Center)
             .spacing(6)

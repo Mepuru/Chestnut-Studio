@@ -1,5 +1,6 @@
 mod app;
 mod message;
+mod player;
 mod state;
 
 use app::ChestnutStudio;

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 /// 面板标识
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Pane {
@@ -22,18 +24,33 @@ impl Pane {
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub enum Message {
+    // 面板布局
     PaneClicked(iced::widget::pane_grid::Pane),
     PaneDragged(iced::widget::pane_grid::DragEvent),
     PaneResized(iced::widget::pane_grid::ResizeEvent),
     PaneMaximize(iced::widget::pane_grid::Pane),
     PaneRestore,
     TogglePanel(Pane),
+
+    // 文件操作
+    ImportVideo,
+    ImportSubtitle,
+    ExportSubtitle,
+    VideoFileOpened(PathBuf),
+
+    // 播放控制
     TogglePlayPause,
+    Play,
+    Pause,
+    SeekTo(u64),
     SeekForward5s,
     SeekBackward5s,
     FrameStep,
     FrameBackStep,
-    ImportVideo,
-    ImportSubtitle,
-    ExportSubtitle,
+    SetVolume(u32),
+    ToggleMute,
+    SetSpeed(f64),
+
+    // 定时同步
+    Tick,
 }

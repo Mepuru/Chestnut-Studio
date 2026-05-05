@@ -2,6 +2,7 @@ use iced::widget::pane_grid;
 use serde::{Deserialize, Serialize};
 
 use crate::message::Pane;
+use crate::player::VideoPlayer;
 
 /// 应用状态
 #[derive(Debug)]
@@ -17,9 +18,19 @@ pub struct AppState {
     pub show_translation: bool,
 
     pub project: Option<Project>,
-    pub current_frame: u64,
-    pub is_playing: bool,
     pub status: String,
+
+    // 播放器状态
+    pub player: Option<VideoPlayer>,
+    pub current_frame: u64,
+    pub position_ms: u64,
+    pub duration_ms: u64,
+    pub is_playing: bool,
+    pub volume: u32,
+    pub is_muted: bool,
+    pub speed: f64,
+    pub fps: f64,
+    pub video_path: Option<String>,
 }
 
 impl AppState {
@@ -128,9 +139,19 @@ impl Default for AppState {
             show_axis_cards: true,
             show_translation: true,
             project: None,
-            current_frame: 0,
-            is_playing: false,
             status: String::from("就绪 - 请打开视频文件"),
+
+            // 播放器状态
+            player: None,
+            current_frame: 0,
+            position_ms: 0,
+            duration_ms: 0,
+            is_playing: false,
+            volume: 100,
+            is_muted: false,
+            speed: 1.0,
+            fps: 30.0,
+            video_path: None,
         }
     }
 }
