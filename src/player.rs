@@ -138,17 +138,28 @@ impl VideoPlayer {
 
     /// 前进指定秒数
     pub fn seek_forward(&mut self, secs: f64) -> Result<()> {
-        let current_time = self.position_ms as f64 / 1000.0;
-        let duration = self.get_duration_ms() as f64 / 1000.0;
-        let target = (current_time + secs).min(duration);
-        self.seek_to_time(target)
+        if let Some(ref mut decoder) = self.decoder {
+            let current_frame = decoder.current_frame_number();
+            let fps = decoder.fps();
+            let target_frame = current_frame + (secs * fps) as u64;
+            decoder.seek_to_frame(target_frame)?;
+        }
+        Ok(())
     }
 
     /// 后退指定秒数
     pub fn seek_backward(&mut self, secs: f64) -> Result<()> {
-        let current_time = self.position_ms as f64 / 1000.0;
-        let target = (current_time - secs).max(0.0);
-        self.seek_to_time(target)
+        if let Some(ref mut decoder) = self.decoder {
+            let current_frame = decoder.current_frame_number();
+            let fps = decoder.fps();
+            let target_frame = if current_frame > (secs * fps) as u64 {
+                current_frame - (secs * fps) as u64
+            } else {
+                0
+            };
+            decoder.seek_to_frame(target_frame)?;
+        }
+        Ok(())
     }
 
     /// 前进一帧

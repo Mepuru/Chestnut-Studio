@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Child, Command};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -39,16 +39,16 @@ pub struct VideoDecoder {
     path: PathBuf,
     /// 视频信息
     info: VideoInfo,
-    /// 当前帧号
-    current_frame: u64,
+    /// 当前帧号（共享状态）
+    current_frame: Arc<Mutex<u64>>,
     /// 当前帧数据
     current_frame_data: Arc<Mutex<Option<VideoFrame>>>,
-    /// 是否正在播放
+    /// 是否正在播放（共享状态）
     is_playing: Arc<Mutex<bool>>,
     /// 解码线程句柄
     decode_thread: Option<thread::JoinHandle<()>>,
-    /// 临时目录（用于存储提取的帧）
-    temp_dir: PathBuf,
+    /// 当前 ffmpeg 子进程
+    current_process: Arc<Mutex<Option<Child>>>,
 }
 
 impl std::fmt::Debug for VideoDecoder {
@@ -56,7 +56,6 @@ impl std::fmt::Debug for VideoDecoder {
         f.debug_struct("VideoDecoder")
             .field("path", &self.path)
             .field("info", &self.info)
-            .field("current_frame", &self.current_frame)
             .finish()
     }
 }
@@ -67,19 +66,14 @@ impl VideoDecoder {
         // 获取视频信息
         let info = Self::get_video_info(path)?;
         
-        // 创建临时目录
-        let temp_dir = std::env::temp_dir().join("chestnut_studio_frames");
-        std::fs::create_dir_all(&temp_dir)
-            .context("创建临时目录失败")?;
-        
         Ok(Self {
             path: path.to_path_buf(),
             info,
-            current_frame: 0,
+            current_frame: Arc::new(Mutex::new(0)),
             current_frame_data: Arc::new(Mutex::new(None)),
             is_playing: Arc::new(Mutex::new(false)),
             decode_thread: None,
-            temp_dir,
+            current_process: Arc::new(Mutex::new(None)),
         })
     }
     
@@ -169,7 +163,7 @@ impl VideoDecoder {
     
     /// 获取当前帧号
     pub fn current_frame_number(&self) -> u64 {
-        self.current_frame
+        *self.current_frame.lock().unwrap()
     }
     
     /// 获取当前帧数据
@@ -182,13 +176,56 @@ impl VideoDecoder {
         *self.is_playing.lock().unwrap_or_else(|e| e.into_inner())
     }
     
+    /// 停止当前播放
+    fn stop_playback(&self) {
+        // 设置停止标志
+        *self.is_playing.lock().unwrap() = false;
+        
+        // 杀死当前进程
+        if let Ok(mut process) = self.current_process.lock() {
+            if let Some(mut child) = process.take() {
+                let _ = child.kill();
+            }
+        }
+    }
+    
+    /// 跳转到指定帧
+    pub fn seek_to_frame(&mut self, frame: u64) -> Result<()> {
+        let was_playing = self.is_playing();
+        
+        // 停止当前播放
+        self.stop_playback();
+        
+        // 等待播放线程结束
+        if let Some(handle) = self.decode_thread.take() {
+            let _ = handle.join();
+        }
+        
+        // 更新当前帧号
+        *self.current_frame.lock().unwrap() = frame;
+        
+        // 提取单帧
+        self.extract_frame(frame)?;
+        
+        // 如果之前在播放，重新开始播放
+        if was_playing {
+            self.play()?;
+        }
+        
+        Ok(())
+    }
+    
+    /// 跳转到指定时间（秒）
+    pub fn seek_to_time(&mut self, time: f64) -> Result<()> {
+        let frame = (time * self.info.fps) as u64;
+        self.seek_to_frame(frame)
+    }
+    
     /// 提取指定帧
-    pub fn extract_frame(&mut self, frame_number: u64) -> Result<()> {
+    fn extract_frame(&mut self, frame_number: u64) -> Result<()> {
         let timestamp = frame_number as f64 / self.info.fps;
         
-        // 使用 ffmpeg 提取单帧
-        let output_path = self.temp_dir.join(format!("frame_{}.rgba", frame_number));
-        
+        // 使用 ffmpeg 提取单帧到 stdout
         let output = Command::new("ffmpeg")
             .args([
                 "-ss", &format!("{:.6}", timestamp),
@@ -196,8 +233,7 @@ impl VideoDecoder {
                 "-vframes", "1",
                 "-f", "rawvideo",
                 "-pix_fmt", "rgba",
-                "-y",
-                output_path.to_str().unwrap(),
+                "-",
             ])
             .output()
             .context("执行 ffmpeg 失败")?;
@@ -206,9 +242,13 @@ impl VideoDecoder {
             anyhow::bail!("ffmpeg 执行失败: {}", String::from_utf8_lossy(&output.stderr));
         }
         
-        // 读取帧数据
-        let data = std::fs::read(&output_path)
-            .context("读取帧数据失败")?;
+        let data = output.stdout;
+        
+        // 验证数据大小
+        let expected_size = (self.info.width * self.info.height * 4) as usize;
+        if data.len() != expected_size {
+            anyhow::bail!("帧数据大小不匹配: 期望 {}, 实际 {}", expected_size, data.len());
+        }
         
         let frame = VideoFrame {
             data,
@@ -221,23 +261,7 @@ impl VideoDecoder {
             *current = Some(frame);
         }
         
-        self.current_frame = frame_number;
-        
-        // 删除临时文件
-        let _ = std::fs::remove_file(&output_path);
-        
         Ok(())
-    }
-    
-    /// 跳转到指定帧
-    pub fn seek_to_frame(&mut self, frame: u64) -> Result<()> {
-        self.extract_frame(frame)
-    }
-    
-    /// 跳转到指定时间（秒）
-    pub fn seek_to_time(&mut self, time: f64) -> Result<()> {
-        let frame = (time * self.info.fps) as u64;
-        self.seek_to_frame(frame)
     }
     
     /// 开始播放
@@ -246,21 +270,27 @@ impl VideoDecoder {
             return Ok(());
         }
         
+        // 停止之前的播放（如果有）
+        self.stop_playback();
+        if let Some(handle) = self.decode_thread.take() {
+            let _ = handle.join();
+        }
+        
         *self.is_playing.lock().unwrap() = true;
         
         let path = self.path.clone();
         let fps = self.info.fps;
         let frame_data = self.current_frame_data.clone();
+        let current_frame = self.current_frame.clone();
         let is_playing = self.is_playing.clone();
         let width = self.info.width;
         let height = self.info.height;
-        let temp_dir = self.temp_dir.clone();
-        let start_frame = self.current_frame;
+        let process_handle = self.current_process.clone();
         
         // 启动解码线程
         let handle = thread::spawn(move || {
             if let Err(e) = Self::playback_thread(
-                &path, fps, frame_data, is_playing, width, height, &temp_dir, start_frame
+                &path, fps, frame_data, current_frame, is_playing, width, height, process_handle
             ) {
                 tracing::error!("视频播放线程错误: {}", e);
             }
@@ -273,7 +303,7 @@ impl VideoDecoder {
     
     /// 暂停播放
     pub fn pause(&mut self) {
-        *self.is_playing.lock().unwrap() = false;
+        self.stop_playback();
     }
     
     /// 播放线程函数
@@ -281,14 +311,14 @@ impl VideoDecoder {
         path: &Path,
         fps: f64,
         frame_data: Arc<Mutex<Option<VideoFrame>>>,
+        current_frame: Arc<Mutex<u64>>,
         is_playing: Arc<Mutex<bool>>,
         width: u32,
         height: u32,
-        temp_dir: &Path,
-        start_frame: u64,
+        process_handle: Arc<Mutex<Option<Child>>>,
     ) -> Result<()> {
         let frame_duration = Duration::from_secs_f64(1.0 / fps);
-        let mut current_frame = start_frame;
+        let start_frame = *current_frame.lock().unwrap();
         
         // 使用 ffmpeg 持续输出帧
         let mut child = Command::new("ffmpeg")
@@ -304,12 +334,30 @@ impl VideoDecoder {
             .spawn()
             .context("启动 ffmpeg 播放失败")?;
         
-        let stdout = child.stdout.take().unwrap();
+        // 保存进程句柄
+        if let Ok(mut process) = process_handle.lock() {
+            *process = Some(child);
+        }
+        
+        // 获取 stdout
+        let stdout = if let Ok(mut process) = process_handle.lock() {
+            if let Some(ref mut child) = *process {
+                child.stdout.take()
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        
+        let stdout = stdout.ok_or_else(|| anyhow::anyhow!("无法获取 ffmpeg stdout"))?;
+        
         use std::io::Read;
         let mut reader = std::io::BufReader::new(stdout);
         
         let frame_size = (width * height * 4) as usize;
         let mut buffer = vec![0u8; frame_size];
+        let mut frame_num = start_frame;
         
         while is_playing.lock().unwrap_or_else(|e| e.into_inner()).clone() {
             match reader.read_exact(&mut buffer) {
@@ -318,14 +366,19 @@ impl VideoDecoder {
                         data: buffer.clone(),
                         width,
                         height,
-                        frame_number: current_frame,
+                        frame_number: frame_num,
                     };
                     
                     if let Ok(mut data) = frame_data.lock() {
                         *data = Some(frame);
                     }
                     
-                    current_frame += 1;
+                    // 更新共享的帧号
+                    if let Ok(mut cf) = current_frame.lock() {
+                        *cf = frame_num;
+                    }
+                    
+                    frame_num += 1;
                     
                     // 控制帧率
                     thread::sleep(frame_duration);
@@ -334,7 +387,12 @@ impl VideoDecoder {
             }
         }
         
-        let _ = child.kill();
+        // 清理进程
+        if let Ok(mut process) = process_handle.lock() {
+            if let Some(mut child) = process.take() {
+                let _ = child.kill();
+            }
+        }
         
         Ok(())
     }
@@ -342,12 +400,9 @@ impl VideoDecoder {
 
 impl Drop for VideoDecoder {
     fn drop(&mut self) {
-        *self.is_playing.lock().unwrap() = false;
+        self.stop_playback();
         if let Some(handle) = self.decode_thread.take() {
             let _ = handle.join();
         }
-        
-        // 清理临时目录
-        let _ = std::fs::remove_dir_all(&self.temp_dir);
     }
 }

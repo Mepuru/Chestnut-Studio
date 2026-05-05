@@ -237,12 +237,12 @@ impl ChestnutStudio {
                     if player.is_playing() {
                         self.state.is_playing = true;
                         
+                        // 从decoder获取当前帧号
+                        self.state.current_frame = player.get_current_frame();
+                        self.state.position_ms = (self.state.current_frame as f64 / player.get_fps() * 1000.0) as u64;
+                        
                         // 更新视频帧
                         if let Some(frame) = player.current_frame() {
-                            // 从帧数据中获取帧号和时间
-                            self.state.current_frame = frame.frame_number;
-                            self.state.position_ms = (frame.frame_number as f64 / player.get_fps() * 1000.0) as u64;
-                            
                             let handle = image::Handle::from_rgba(
                                 frame.width,
                                 frame.height,
@@ -501,28 +501,7 @@ impl ChestnutStudio {
                     .style(pane_ctrl_btn)
             };
 
-            // 获取面板标题
-            let pane_title = if *pane == Pane::Video {
-                if let Some(ref path) = self.state.video_path {
-                    // 显示视频文件名（截断到20个字符）
-                    let filename = std::path::Path::new(path)
-                        .file_name()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .to_string();
-                    let chars: Vec<char> = filename.chars().collect();
-                    if chars.len() > 20 {
-                        let truncated: String = chars[..17].iter().collect();
-                        format!("{}...", truncated)
-                    } else {
-                        filename
-                    }
-                } else {
-                    pane.title().to_string()
-                }
-            } else {
-                pane.title().to_string()
-            };
+            let pane_title = pane.title().to_string();
 
             let title_bar = pane_grid::TitleBar::new(
                 row![
