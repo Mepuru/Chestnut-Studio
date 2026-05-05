@@ -27,6 +27,12 @@ Chestnut Studio 是一个基于 Rust + Iced 的视频打轴桌面应用，采用
 │  state.rs                                                    │
 │  ├── AppState — 应用状态                                     │
 │  └── 数据模型 (Project, Axis, Segment)                       │
+├─────────────────────────────────────────────────────────────┤
+│  player.rs                                                   │
+│  └── VideoPlayer — 视频播放器封装                             │
+├─────────────────────────────────────────────────────────────┤
+│  decoder.rs                                                  │
+│  └── VideoDecoder — ffmpeg 解码器，音视频同步                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -56,8 +62,17 @@ pub struct AppState {
     pub show_axis_cards: bool,          // 轴卡片面板可见性
     pub show_translation: bool,         // 翻译面板可见性
     pub project: Option<Project>,       // 项目数据
+    pub player: Option<VideoPlayer>,    // 视频播放器
     pub current_frame: u64,             // 当前帧号
+    pub position_ms: u64,               // 当前位置(毫秒)
+    pub duration_ms: u64,               // 总时长(毫秒)
     pub is_playing: bool,               // 播放状态
+    pub volume: u32,                    // 音量
+    pub is_muted: bool,                 // 静音状态
+    pub speed: f64,                     // 播放速率
+    pub fps: f64,                       // 帧率
+    pub video_path: Option<String>,     // 视频路径
+    pub video_frame_handle: Option<ImageHandle>, // 视频帧
     pub status: String,                 // 状态栏文本
 }
 ```
@@ -74,17 +89,28 @@ pub enum Message {
     PaneRestore,
     TogglePanel(Pane),
     
-    // 播放控制
-    TogglePlayPause,
-    SeekForward5s,
-    SeekBackward5s,
-    FrameStep,
-    FrameBackStep,
-    
     // 文件操作
     ImportVideo,
     ImportSubtitle,
     ExportSubtitle,
+    VideoFileOpened(PathBuf),
+    
+    // 播放控制
+    TogglePlayPause,
+    Play,
+    Pause,
+    SeekTo(u64),
+    SeekForward5s,
+    SeekBackward5s,
+    FrameStep,
+    FrameBackStep,
+    SetVolume(u32),
+    ToggleMute,
+    SetSpeed(f64),
+    
+    // 视频帧更新
+    UpdateVideoFrame,
+    Tick,
 }
 ```
 
@@ -97,7 +123,13 @@ fn update(&mut self, message: Message) -> iced::Task<Message> {
     match message {
         Message::TogglePanel(pane) => self.state.toggle_panel(pane),
         Message::TogglePlayPause => {
-            self.state.is_playing = !self.state.is_playing;
+            if let Some(ref mut player) = self.state.player {
+                player.toggle_play_pause()?;
+                self.state.is_playing = player.is_playing();
+            }
+        },
+        Message::Tick => {
+            // 同步播放状态和视频帧
         },
         // ...
     }
@@ -153,6 +185,47 @@ fn view(&self) -> Element<'_, Message> {
 - **关闭按钮**: 隐藏面板
 - **菜单栏按钮**: 切换面板可见性
 
+## 视频播放架构
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    VideoPlayer                          │
+├─────────────────────────────────────────────────────────┤
+│  player.rs                                              │
+│  ├── load_file() — 加载视频                             │
+│  ├── play() / pause() — 播放控制                        │
+│  ├── seek_*() — 跳转控制                                │
+│  └── current_frame() — 获取当前帧                       │
+├─────────────────────────────────────────────────────────┤
+│  decoder.rs                                             │
+│  ├── VideoDecoder — 视频解码器                          │
+│  ├── video_playback_thread — 视频播放线程               │
+│  ├── audio_playback_thread — 音频播放线程               │
+│  └── extract_frame() — 提取单帧                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 视频解码流程
+
+1. 使用 `ffmpeg` 解码视频为 RGBA 原始数据
+2. 降低分辨率到 640px 宽，提高性能
+3. 通过管道传输到 Rust
+4. 使用 `iced::widget::image` 显示
+
+### 音频播放流程
+
+1. 使用 `ffmpeg` 解码音频为 f32le 格式
+2. 通过管道传输到 Rust
+3. 使用 `cpal` 输出到音频设备
+4. 音频缓冲区限制避免延迟
+
+### 音视频同步
+
+- 使用独立线程处理音频和视频
+- 视频帧率控制使用精确计时
+- 音频缓冲区限制避免延迟
+- Seek 操作时同时更新音频和视频位置
+
 ## 数据模型
 
 ```rust
@@ -205,23 +278,26 @@ const TEXT_SECONDARY: Color = Color::from_rgb(0.55, 0.55, 0.60);
 
 ```toml
 [dependencies]
-iced = { version = "0.13", features = ["canvas", "wgpu", "multi-window", "lazy"] }
+iced = { version = "0.13", features = ["canvas", "wgpu", "multi-window", "lazy", "tokio", "image"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
+rfd = "0.15"
 tracing = "0.1"
 tracing-subscriber = "0.3"
+image = "0.25"
+cpal = "0.17"
 ```
+
+## 环境要求
+
+- Rust 2024 Edition (1.80+)
+- ffmpeg（需要添加到 PATH）
 
 ## 后续集成
 
-### 阶段二：视频播放
-- 集成 `mpv` crate
-- 实现视频加载和播放控制
-- 嵌入视频到 Iced 窗口
-
 ### 阶段三：音频波形
-- 使用 `ffmpeg-next` 提取音频
+- 使用 ffmpeg 提取音频波形数据
 - 实现 Canvas 波形绘制
 - 实现播放位置红线
 

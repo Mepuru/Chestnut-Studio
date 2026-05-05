@@ -7,8 +7,9 @@
 | 层次 | 技术 | 说明 |
 |------|------|------|
 | GUI | Iced 0.13 | Elm 架构原生 GUI |
-| 视频 | libmpv (TODO) | 帧级精确控制 |
-| 音频 | ffmpeg (TODO) | 波形提取 |
+| 视频解码 | ffmpeg | 命令行解码，支持全格式 |
+| 音频播放 | cpal | 跨平台音频输出 |
+| 图像显示 | iced::widget::image | RGBA 帧显示 |
 | 字体 | HarmonyOS Sans SC | 嵌入式中文支持 |
 | 语言 | Rust 2024 Edition | 零开销抽象 |
 
@@ -26,6 +27,11 @@ cargo run
 cargo build --release
 ```
 
+## 环境要求
+
+- Rust 2024 Edition (1.80+)
+- ffmpeg（需要添加到 PATH）
+
 ## 项目结构
 
 ```
@@ -34,7 +40,9 @@ chestnut-studio/
 │   ├── main.rs          # 入口，字体加载
 │   ├── app.rs           # UI 布局与事件处理
 │   ├── message.rs       # 消息枚举
-│   └── state.rs         # 应用状态与数据模型
+│   ├── state.rs         # 应用状态与数据模型
+│   ├── player.rs        # 视频播放器封装
+│   └── decoder.rs       # ffmpeg 解码器
 ├── fonts/               # 嵌入式字体
 ├── prototypes/          # 设计文档
 ├── docs/                # 项目文档
@@ -50,7 +58,7 @@ chestnut-studio/
 | 面板显隐 | ✅ 完成 | 菜单栏切换 |
 | 暗色主题 | ✅ 完成 | 自定义配色 |
 | 中文字体 | ✅ 完成 | HarmonyOS Sans 嵌入 |
-| 视频播放 | ⏳ 待实现 | 阶段二：集成 mpv |
+| 视频播放 | ✅ 完成 | ffmpeg 解码 + cpal 音频 |
 | 音频波形 | ⏳ 待实现 | 阶段三：Canvas 绘制 |
 | 波形打轴 | ⏳ 待实现 | 阶段四：Shift+拖拽 |
 | 轴卡片 | ⏳ 待实现 | 阶段五 |

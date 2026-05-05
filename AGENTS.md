@@ -7,8 +7,9 @@ Chestnut Studio 是一个视频打轴与翻译协作平台，使用 Rust + Iced 
 ## 技术栈
 
 - **GUI**: Iced 0.13 (Elm 架构)
-- **视频**: libmpv (待集成)
-- **音频**: ffmpeg (待集成)
+- **视频解码**: ffmpeg (命令行)
+- **音频播放**: cpal (跨平台)
+- **图像显示**: iced::widget::image
 - **字体**: HarmonyOS Sans SC (嵌入式)
 
 ## 代码结构
@@ -18,7 +19,9 @@ src/
 ├── main.rs      # 入口，字体加载，iced::application 启动
 ├── app.rs       # ChestnutStudio 结构体，UI 布局，样式函数
 ├── message.rs   # Message 枚举，Pane 枚举
-└── state.rs     # AppState 结构体，数据模型 (Project/Axis/Segment)
+├── state.rs     # AppState 结构体，数据模型
+├── player.rs    # VideoPlayer 封装，播放控制
+└── decoder.rs   # VideoDecoder，ffmpeg 解码，音视频同步
 ```
 
 ## 架构模式
@@ -46,30 +49,47 @@ src/
 - [x] 暗色主题 UI
 - [x] 菜单栏按钮布局
 
-## 下一阶段：视频播放 (阶段二)
+## 阶段二完成事项 (2026-05-05)
 
-参考 `prototypes/01_video_player.md` 和 `prototypes/prototype.md` 5.1 节。
+- [x] 视频解码器 (decoder.rs)
+  - 使用 ffmpeg 命令行解码
+  - 支持全格式视频
+  - 降低分辨率到 640px 宽提高性能
+- [x] 视频播放器 (player.rs)
+  - 播放/暂停控制
+  - Seek 跳转（快进/后退 5 秒）
+  - 逐帧步进
+- [x] 音频播放 (cpal)
+  - 使用 ffmpeg 解码音频
+  - 使用 cpal 输出音频
+  - 音视频同步
+- [x] 视频帧显示
+  - 使用 iced::widget::image
+  - RGBA 格式帧数据
+- [x] 文件对话框
+  - 使用 rfd 库
+  - 支持常见视频格式
+
+## 下一阶段：音频波形 (阶段三)
+
+参考 `prototypes/03_waveform.md` 和 `prototypes/prototype.md` 5.2 节。
 
 ### 关键任务
 
-1. 集成 `mpv` crate
-2. 实现视频加载
-3. 嵌入视频到 Iced 窗口
-4. 实现播放/暂停控制
-5. 实现进度条拖拽
-6. 实现时间显示
-7. 实现 seek 功能
+1. 使用 ffmpeg 提取音频波形数据
+2. 实现 Canvas 波形绘制
+3. 实现播放位置红线
+4. 实现波形点击跳转
 
 ### 依赖
 
 ```toml
-mpv = "0.37"
+# 已有依赖，无需新增
 ```
 
-### 参考代码
+### 环境要求
 
-- `DD_KaoRou2/main.py` — 入口结构
-- `DD_KaoRou2/utils/main_ui.py` — 播放器部分
+- ffmpeg 需要添加到 PATH
 
 ## 红线
 

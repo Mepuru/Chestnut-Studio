@@ -4,6 +4,7 @@
 
 - Rust 2024 Edition (1.80+)
 - Cargo
+- ffmpeg（需要添加到 PATH）
 - Windows/macOS/Linux
 
 ## 快速开始
@@ -28,7 +29,9 @@ chestnut-studio/
 │   ├── main.rs          # 入口，字体加载
 │   ├── app.rs           # UI 布局与事件处理
 │   ├── message.rs       # 消息枚举
-│   └── state.rs         # 应用状态与数据模型
+│   ├── state.rs         # 应用状态与数据模型
+│   ├── player.rs        # 视频播放器封装
+│   └── decoder.rs       # ffmpeg 解码器
 ├── fonts/               # 嵌入式字体
 │   ├── HarmonyOS_Sans_SC_Regular.ttf
 │   ├── HarmonyOS_Sans_SC_Bold.ttf
@@ -53,6 +56,8 @@ chestnut-studio/
 - `app.rs` — UI 相关代码
 - `message.rs` — 消息定义
 - `state.rs` — 状态和数据模型
+- `player.rs` — 视频播放器封装
+- `decoder.rs` — ffmpeg 解码器
 
 ### 样式函数
 
@@ -181,10 +186,18 @@ cargo build --release
 
 某些系统字体可能不存在，这是正常的。应用会使用嵌入的字体。
 
+### 视频播放问题
+
+确保 ffmpeg 已安装并添加到 PATH：
+```bash
+ffmpeg -version
+```
+
 ### 性能问题
 
 - 使用 `cargo build --release` 进行优化构建
 - 检查是否有不必要的重绘
+- 视频分辨率已自动降低到 640px 宽
 
 ## 下一步
 
@@ -193,11 +206,9 @@ cargo build --release
 当前阶段：**阶段三 - 音频波形**
 
 阶段二已完成，实现了视频播放功能：
-- 集成了 mpv crate (可选依赖)
-- 实现了视频加载和文件对话框
+- 使用 ffmpeg 命令行解码视频
+- 使用 cpal 播放音频
 - 实现了播放/暂停控制
 - 实现了进度条和时间显示
 - 实现了 seek 功能 (精确跳转、逐帧步进)
-- 实现了音量控制和播放速率调整
-
-要启用 mpv 支持，使用 `cargo build --features mpv` 编译。需要安装 libmpv 库。
+- 实现了音视频同步
