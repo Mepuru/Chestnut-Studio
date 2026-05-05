@@ -105,30 +105,40 @@ class MainWindow(QMainWindow):
         │                  │                               │
         │  Player (16:9)   │  Timeline (打轴)              │
         │                  │                               │
-        ├──────────────────┤                               │
-        │                  ├───────────────────────────────┤
+        ├──────────────────┼───────────────────────────────┤
         │  Waveform        │  Translation (翻译)           │
         │                  │                               │
         └──────────────────┴───────────────────────────────┘
         """
-        # 左列：player + waveform 上下排列
+        # 清除所有卡片的固定尺寸约束（避免重复点击变宽）
+        for card in [self.player_card, self.timeline_card,
+                     self.waveform_card, self.translate_card]:
+            card.setMinimumSize(200, 150)
+            card.setMaximumSize(16777215, 16777215)
+
+        # 先移除所有卡片，从干净状态开始
+        self.removeDockWidget(self.player_card)
+        self.removeDockWidget(self.timeline_card)
+        self.removeDockWidget(self.waveform_card)
+        self.removeDockWidget(self.translate_card)
+
+        # 第一步：构建左列（player 上，waveform 下）
         self.addDockWidget(Qt.LeftDockWidgetArea, self.player_card)
         self.splitDockWidget(self.player_card, self.waveform_card, Qt.Vertical)
 
-        # 右列：timeline + translation 上下排列
+        # 第二步：构建右列（timeline 上，translation 下）
         self.addDockWidget(Qt.RightDockWidgetArea, self.timeline_card)
         self.splitDockWidget(self.timeline_card, self.translate_card, Qt.Vertical)
 
-        # 左右分割：player 和 timeline 水平分割
+        # 第三步：左右分割（player 和 timeline 水平分割）
         self.splitDockWidget(self.player_card, self.timeline_card, Qt.Horizontal)
 
-        # 左右比例 4:6 → 左512 右768（1280窗口）
+        # 第四步：调整比例
+        # 左右比例 4:6
         self.resizeDocks([self.player_card, self.timeline_card], [512, 768], Qt.Horizontal)
-
-        # 左列上下：视频16:9 → 512x288，波形占剩余
+        # 左列上下：视频 16:9 (512x288) + 波形
         self.resizeDocks([self.player_card, self.waveform_card], [288, 432], Qt.Vertical)
-
-        # 右列上下：打轴70% 翻译30%
+        # 右列上下：打轴70% + 翻译30%
         self.resizeDocks([self.timeline_card, self.translate_card], [504, 216], Qt.Vertical)
 
     def _create_toolbar(self):
