@@ -136,13 +136,22 @@ class MainWindow(QMainWindow):
         # 第三步：左右分割（player 和 timeline 水平分割）
         self.splitDockWidget(self.player_card, self.timeline_card, Qt.Horizontal)
 
-        # 第四步：调整比例（基于 1280x720 窗口）
-        # 左右比例 39:61 → 左500 右780
-        self.resizeDocks([self.player_card, self.timeline_card], [500, 780], Qt.Horizontal)
-        # 左列上下 56:44 → 视频313 + 波形407
-        self.resizeDocks([self.player_card, self.waveform_card], [313, 407], Qt.Vertical)
-        # 右列上下 56:44 → 打轴403 + 翻译317
-        self.resizeDocks([self.timeline_card, self.translate_card], [403, 317], Qt.Vertical)
+        # 第四步：调整比例（基于当前窗口实际尺寸动态计算）
+        win_w = self.width()
+        win_h = self.height() - 45  # 减去工具栏+状态栏高度
+
+        left_w = int(win_w * 0.39)
+        right_w = win_w - left_w - 4  # 4px 留给分割线
+
+        top_h = int(win_h * 0.56)
+        bottom_h = win_h - top_h - 4
+
+        # 左右比例
+        self.resizeDocks([self.player_card, self.timeline_card], [left_w, right_w], Qt.Horizontal)
+        # 左列上下
+        self.resizeDocks([self.player_card, self.waveform_card], [top_h, bottom_h], Qt.Vertical)
+        # 右列上下
+        self.resizeDocks([self.timeline_card, self.translate_card], [top_h, bottom_h], Qt.Vertical)
 
     def _create_toolbar(self):
         """创建工具栏"""
