@@ -3,6 +3,7 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QBrush, QColor
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QDockWidget,
     QHeaderView,
     QMenu,
@@ -121,11 +122,13 @@ class TimelineCard(QDockWidget):
 
         # 设置表格属性
         self._table.setSelectionMode(QTableWidget.ExtendedSelection)
-        self._table.setSelectionBehavior(QTableWidget.SelectItems)
+        self._table.setSelectionBehavior(QAbstractItemView.SelectItems)
+        self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # 禁止编辑
+        self._table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
         self._table.verticalHeader().setDefaultSectionSize(15)
+        self._table.verticalHeader().setMinimumSectionSize(15)
         self._table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self._table.setContextMenuPolicy(Qt.CustomContextMenu)
-        self._table.verticalHeader().setMinimumSectionSize(15)
 
         # 设置列头
         for i in range(5):
