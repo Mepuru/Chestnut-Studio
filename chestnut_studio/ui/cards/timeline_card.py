@@ -1,6 +1,6 @@
 """打轴编辑卡片模块"""
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QAction, QBrush, QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -80,7 +80,14 @@ class TimelineCard(QDockWidget):
         self._selected_logical_row = 0  # 选中的逻辑行号
         self._selected_col = 0  # 选中的列号
         self._user_clicked = False  # 用户手动点击标志
+        self._pending_refresh = False  # 待刷新标志
         self._setup_ui()
+
+        # 防抖定时器
+        self._refresh_timer = QTimer(self)
+        self._refresh_timer.setSingleShot(True)
+        self._refresh_timer.setInterval(16)  # 约60fps
+        self._refresh_timer.timeout.connect(self._do_pending_refresh)
 
     def _setup_ui(self):
         """初始化 UI"""
@@ -193,20 +200,35 @@ class TimelineCard(QDockWidget):
     def _scroll_up(self, rows: int):
         """向上滚动"""
         self._scroll_offset = max(0, self._scroll_offset - rows)
+        self._scrollbar.blockSignals(True)
         self._scrollbar.setValue(self._scroll_offset)
-        self._refresh_display()
+        self._scrollbar.blockSignals(False)
+        self._request_refresh()
 
     def _scroll_down(self, rows: int):
         """向下滚动"""
         max_offset = max(0, self._total_logical_rows - VISIBLE_ROWS)
         self._scroll_offset = min(max_offset, self._scroll_offset + rows)
+        self._scrollbar.blockSignals(True)
         self._scrollbar.setValue(self._scroll_offset)
-        self._refresh_display()
+        self._scrollbar.blockSignals(False)
+        self._request_refresh()
+
+    def _request_refresh(self):
+        """请求刷新（防抖）"""
+        self._pending_refresh = True
+        self._refresh_timer.start()
+
+    def _do_pending_refresh(self):
+        """执行待刷新"""
+        if self._pending_refresh:
+            self._pending_refresh = False
+            self._refresh_display()
 
     def _on_scrollbar_changed(self, value):
         """滚动条变化"""
         self._scroll_offset = value
-        self._refresh_display()
+        self._request_refresh()
 
     def _update_scrollbar(self):
         """更新滚动条范围"""
