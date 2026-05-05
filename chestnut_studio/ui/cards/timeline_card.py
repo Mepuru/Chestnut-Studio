@@ -348,7 +348,11 @@ class TimelineCard(QDockWidget):
 
     def _refresh_display(self):
         """刷新表格显示"""
-        # 清空所有单元格
+        # 计算可视行
+        vis_row = self._selected_logical_row - self._scroll_offset
+
+        # 清空所有单元格（不触发信号）
+        self._table.blockSignals(True)
         for row in range(VISIBLE_ROWS):
             for col in range(NUM_COLUMNS):
                 item = self._table.item(row, col)
@@ -356,7 +360,6 @@ class TimelineCard(QDockWidget):
                     item.setText("")
                     item.setBackground(QBrush(QColor("#0f0f14")))
                     item.setData(Qt.UserRole, None)
-                    item.setData(Qt.UserRole + 1, None)
 
         # 更新行头时间戳
         for row in range(VISIBLE_ROWS):
@@ -382,9 +385,9 @@ class TimelineCard(QDockWidget):
                 self._render_subtitle(col, start, delta, text)
 
         # 恢复选中状态
-        vis_row = self._selected_logical_row - self._scroll_offset
         if 0 <= vis_row < VISIBLE_ROWS:
             self._table.setCurrentCell(vis_row, self._selected_col)
+        self._table.blockSignals(False)
 
     def _render_subtitle(self, col: int, start: int, duration: int, text: str):
         """渲染单个字幕条到表格"""
