@@ -1,7 +1,7 @@
 use iced::widget::pane_grid;
 use serde::{Deserialize, Serialize};
 
-use crate::message::{LayoutPreset, Pane};
+use crate::message::Pane;
 
 /// 应用状态
 #[derive(Debug)]
@@ -34,53 +34,6 @@ pub struct AppState {
 }
 
 impl AppState {
-    /// 获取当前布局预设
-    pub fn current_preset(&self) -> LayoutPreset {
-        match (
-            self.show_video,
-            self.show_waveform,
-            self.show_axis_cards,
-            self.show_translation,
-        ) {
-            (true, true, true, true) => LayoutPreset::All,
-            (true, true, true, false) => LayoutPreset::Timing,
-            (true, false, true, true) => LayoutPreset::Translation,
-            (true, false, false, false) => LayoutPreset::VideoOnly,
-            _ => LayoutPreset::All, // 自定义布局
-        }
-    }
-
-    /// 应用预设布局
-    pub fn apply_preset(&mut self, preset: LayoutPreset) {
-        match preset {
-            LayoutPreset::All => {
-                self.show_video = true;
-                self.show_waveform = true;
-                self.show_axis_cards = true;
-                self.show_translation = true;
-            }
-            LayoutPreset::Timing => {
-                self.show_video = true;
-                self.show_waveform = true;
-                self.show_axis_cards = true;
-                self.show_translation = false;
-            }
-            LayoutPreset::Translation => {
-                self.show_video = true;
-                self.show_waveform = false;
-                self.show_axis_cards = true;
-                self.show_translation = true;
-            }
-            LayoutPreset::VideoOnly => {
-                self.show_video = true;
-                self.show_waveform = false;
-                self.show_axis_cards = false;
-                self.show_translation = false;
-            }
-        }
-        self.rebuild_panes();
-    }
-
     /// 切换面板可见性
     pub fn toggle_panel(&mut self, pane: Pane) {
         match pane {
