@@ -141,6 +141,9 @@ class TimelineCard(QDockWidget):
         self._table.setSelectionMode(QAbstractItemView.SingleSelection)
         self._table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self._table.setDragEnabled(False)  # 禁用拖动
+        self._table.setDragDropMode(QAbstractItemView.NoDragDrop)  # 禁用拖放
+        self._table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)  # 像素级滚动
         self._table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
         self._table.verticalHeader().setDefaultSectionSize(15)
         self._table.verticalHeader().setMinimumSectionSize(15)
