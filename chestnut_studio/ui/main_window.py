@@ -56,6 +56,7 @@ class MainWindow(QMainWindow):
 
         # FFmpeg 实例
         self._ffmpeg = FFmpeg()
+        self._layout_initialized = False
 
         # 创建 UI 组件
         self._create_cards()
@@ -116,11 +117,13 @@ class MainWindow(QMainWindow):
             card.setMinimumSize(200, 150)
             card.setMaximumSize(16777215, 16777215)
 
-        # 先移除所有卡片，从干净状态开始
-        self.removeDockWidget(self.player_card)
-        self.removeDockWidget(self.timeline_card)
-        self.removeDockWidget(self.waveform_card)
-        self.removeDockWidget(self.translate_card)
+        # 重置布局时先移除所有卡片（首次调用时卡片还没添加，跳过）
+        if self._layout_initialized:
+            self.removeDockWidget(self.player_card)
+            self.removeDockWidget(self.timeline_card)
+            self.removeDockWidget(self.waveform_card)
+            self.removeDockWidget(self.translate_card)
+        self._layout_initialized = True
 
         # 第一步：构建左列（player 上，waveform 下）
         self.addDockWidget(Qt.LeftDockWidgetArea, self.player_card)
