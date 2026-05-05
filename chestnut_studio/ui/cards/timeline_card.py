@@ -77,6 +77,8 @@ class TimelineCard(QDockWidget):
         self._player_position = 0
         self._scroll_offset = 0  # 滚动偏移（起始行号）
         self._total_logical_rows = 0  # 逻辑总行数（根据视频时长计算）
+        self._selected_logical_row = 0  # 选中的逻辑行号
+        self._selected_col = 0  # 选中的列号
         self._setup_ui()
 
     def _setup_ui(self):
@@ -354,7 +356,7 @@ class TimelineCard(QDockWidget):
                     item.setText("")
                     item.setBackground(QBrush(QColor("#0f0f14")))
                     item.setData(Qt.UserRole, None)
-                    item.setData(Qt.UserRole + 1, None)  # 逻辑行号
+                    item.setData(Qt.UserRole + 1, None)
 
         # 更新行头时间戳
         for row in range(VISIBLE_ROWS):
@@ -373,12 +375,16 @@ class TimelineCard(QDockWidget):
             for start in sorted(sub_data):
                 delta, text = sub_data[start]
                 end = start + delta
-                # 检查是否在可见范围内
                 if end < view_start_ms:
                     continue
                 if start > view_end_ms:
                     break
                 self._render_subtitle(col, start, delta, text)
+
+        # 恢复选中状态
+        vis_row = self._selected_logical_row - self._scroll_offset
+        if 0 <= vis_row < VISIBLE_ROWS:
+            self._table.setCurrentCell(vis_row, self._selected_col)
 
     def _render_subtitle(self, col: int, start: int, duration: int, text: str):
         """渲染单个字幕条到表格"""
@@ -431,6 +437,9 @@ class TimelineCard(QDockWidget):
         elif new_row == VISIBLE_ROWS - 1 and row_delta > 0:
             self._scroll_down(1)
 
+        # 更新逻辑行号
+        self._selected_logical_row = self._scroll_offset + new_row
+        self._selected_col = new_col
         self._table.setCurrentCell(new_row, new_col)
 
     # ========== 字幕条操作 ==========
@@ -630,15 +639,17 @@ class TimelineCard(QDockWidget):
     # ========== 信号处理 ==========
 
     def _on_cell_clicked(self, row: int, col: int):
-        """单击单元格 - 跳转到对应时间并暂停播放"""
-        logical_row = self._scroll_offset + row
-        time_ms = int(logical_row * self._global_interval)
+        """单击单元格 - 记录选中位置并跳转"""
+        self._selected_logical_row = self._scroll_offset + row
+        self._selected_col = col
+        time_ms = int(self._selected_logical_row * self._global_interval)
         self.position_jump_requested.emit(time_ms)
 
     def _on_cell_double_clicked(self, row: int, col: int):
-        """双击单元格 - 发射字幕选中信号"""
-        logical_row = self._scroll_offset + row
-        time_ms = int(logical_row * self._global_interval)
+        """双击单元格 - 记录选中位置并发射字幕选中信号"""
+        self._selected_logical_row = self._scroll_offset + row
+        self._selected_col = col
+        time_ms = int(self._selected_logical_row * self._global_interval)
 
         sub_data = self._subtitle_mgr.get(col, time_ms)
         if sub_data is None:
