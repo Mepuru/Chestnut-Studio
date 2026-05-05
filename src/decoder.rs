@@ -201,11 +201,15 @@ impl VideoDecoder {
             let _ = handle.join();
         }
         
+        // 边界检查
+        let max_frame = self.info.total_frames.saturating_sub(1);
+        let target_frame = frame.min(max_frame);
+        
         // 更新当前帧号
-        *self.current_frame.lock().unwrap() = frame;
+        *self.current_frame.lock().unwrap() = target_frame;
         
         // 提取单帧
-        self.extract_frame(frame)?;
+        self.extract_frame(target_frame)?;
         
         // 如果之前在播放，重新开始播放
         if was_playing {

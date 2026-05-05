@@ -121,6 +121,16 @@ impl ChestnutStudio {
                             self.state.is_playing = false;
                             self.state.status = format!("已加载: {}", path.file_name().unwrap_or_default().to_string_lossy());
                             tracing::info!("视频已加载: {:?}", path);
+                            
+                            // 自动提取第一帧并显示
+                            if let Some(frame) = player.current_frame() {
+                                let handle = image::Handle::from_rgba(
+                                    frame.width,
+                                    frame.height,
+                                    frame.data,
+                                );
+                                self.state.video_frame_handle = Some(handle);
+                            }
                         }
                         Err(e) => {
                             self.state.status = format!("加载失败: {}", e);
