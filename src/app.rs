@@ -146,9 +146,7 @@ impl ChestnutStudio {
                 menu_btn("导入视频").on_press(Message::ImportVideo),
                 menu_btn("导入字幕").on_press(Message::ImportSubtitle),
                 menu_btn("导出字幕").on_press(Message::ExportSubtitle),
-                // 分隔符
-                separator(),
-                text("视图:").font(FONT).size(13).color(TEXT_SECONDARY),
+                horizontal_space(),
                 panel_btn(Pane::Video, self.state.show_video),
                 panel_btn(Pane::Waveform, self.state.show_waveform),
                 panel_btn(Pane::AxisCards, self.state.show_axis_cards),
@@ -395,16 +393,6 @@ impl ChestnutStudio {
 }
 
 // ── 组件工厂 ────────────────────────────────────────────────────────
-
-fn separator() -> container::Container<'static, Message> {
-    container(text(" ").size(1))
-        .width(1)
-        .height(16)
-        .style(|_| container::Style {
-            background: Some(BORDER.into()),
-            ..Default::default()
-        })
-}
 
 fn menu_btn(label: &str) -> button::Button<'_, Message> {
     button(text(label).font(FONT).size(13).color(TEXT_PRIMARY))
