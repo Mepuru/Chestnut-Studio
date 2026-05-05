@@ -93,33 +93,48 @@ impl ChestnutStudio {
 
             // 初始化视频窗口
             Message::InitializeVideoWindow => {
-                // 获取主窗口句柄并创建子窗口
-                // 主窗口ID通常是1（第一个创建的窗口）
-                let main_window_id = window::Id::unique();
+                // 主窗口ID是1（第一个创建的窗口）
+                // 使用 unsafe 创建已知的窗口ID
+                let main_window_id = unsafe { std::mem::transmute::<u64, window::Id>(1) };
+                
+                tracing::info!("尝试获取主窗口句柄，ID: {:?}", main_window_id);
+                
                 return window::run_with_handle(main_window_id, |handle| {
                     use iced::window::raw_window_handle::HasWindowHandle;
                     
                     #[cfg(target_os = "windows")]
                     {
                         // 获取原生窗口句柄
-                        if let Ok(raw_handle) = handle.window_handle() {
-                            use iced::window::raw_window_handle::RawWindowHandle;
-                            
-                            if let RawWindowHandle::Win32(win32_handle) = raw_handle.as_raw() {
-                                let parent_hwnd = win32_handle.hwnd.get() as isize;
-                                tracing::info!("获取到主窗口句柄: {:?}", parent_hwnd);
+                        match handle.window_handle() {
+                            Ok(raw_handle) => {
+                                use iced::window::raw_window_handle::RawWindowHandle;
                                 
-                                // 创建子窗口用于视频渲染
-                                let child_hwnd = unsafe { create_video_child_window(parent_hwnd) };
-                                
-                                if child_hwnd != 0 {
-                                    tracing::info!("创建视频子窗口成功: {:?}", child_hwnd);
-                                    return Message::VideoWindowCreated(child_hwnd as i64);
+                                if let RawWindowHandle::Win32(win32_handle) = raw_handle.as_raw() {
+                                    let parent_hwnd = win32_handle.hwnd.get() as isize;
+                                    tracing::info!("获取到主窗口句柄: {:?}", parent_hwnd);
+                                    
+                                    // 创建子窗口用于视频渲染
+                                    let child_hwnd = unsafe { create_video_child_window(parent_hwnd) };
+                                    
+                                    if child_hwnd != 0 {
+                                        tracing::info!("创建视频子窗口成功: {:?}", child_hwnd);
+                                        return Message::VideoWindowCreated(child_hwnd as i64);
+                                    } else {
+                                        tracing::error!("创建视频子窗口失败");
+                                    }
                                 } else {
-                                    tracing::error!("创建视频子窗口失败");
+                                    tracing::warn!("不是 Win32 窗口句柄");
                                 }
                             }
+                            Err(e) => {
+                                tracing::error!("获取窗口句柄失败: {:?}", e);
+                            }
                         }
+                    }
+                    
+                    #[cfg(not(target_os = "windows"))]
+                    {
+                        tracing::warn!("非 Windows 平台，跳过窗口嵌入");
                     }
                     
                     Message::VideoWindowCreated(0)
@@ -628,6 +643,7 @@ impl ChestnutStudio {
 
     fn view_video_panel(&self) -> Element<'_, Message> {
         let has_video = self.state.video_path.is_some();
+        let has_wid = self.state.video_hwnd.is_some();
 
         if has_video {
             // 显示视频信息
@@ -642,14 +658,21 @@ impl ChestnutStudio {
                 text("").font(FONT).size(12).color(TEXT_SECONDARY)
             };
 
-            // 视频容器（mpv 会渲染到子窗口上）
+            // 视频容器 - mpv 会渲染到子窗口上
+            // 子窗口会自动跟随父窗口的位置
             let video_container = container(
                 column![
-                    text("").font(FONT).size(1),  // 占位符
+                    if has_wid {
+                        text("").font(FONT).size(1)  // 占位符，视频会渲染在子窗口上
+                    } else {
+                        text("视频加载中...").font(FONT).size(14).color(TEXT_SECONDARY)
+                    }
                 ]
             )
             .width(Fill)
             .height(Fill)
+            .center_x(Fill)
+            .center_y(Fill)
             .style(|_| container::Style {
                 background: Some(Color::from_rgb(0.08, 0.08, 0.10).into()),
                 border: iced::Border { width: 1.0, color: BORDER, ..Default::default() },
@@ -661,14 +684,13 @@ impl ChestnutStudio {
                     video_info,
                     video_container,
                 ]
-                .spacing(8)
-                .padding(8),
+                .spacing(4)
+                .padding(4),
             )
             .width(Fill)
             .height(Fill)
             .style(|_| container::Style {
                 background: Some(Color::from_rgb(0.08, 0.08, 0.10).into()),
-                border: iced::Border { width: 1.0, color: BORDER, ..Default::default() },
                 ..Default::default()
             })
             .into()
