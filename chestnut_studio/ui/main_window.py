@@ -101,10 +101,10 @@ class MainWindow(QMainWindow):
     def _setup_default_layout(self):
         """设置默认布局
 
-        布局示意（左40% 右60%）：
+        布局示意（左39% 右61%，上56% 下44%）：
         ┌──────────────────┬───────────────────────────────┐
         │                  │                               │
-        │  Player (16:9)   │  Timeline (打轴)              │
+        │  Player (16:10)  │  Timeline (打轴)              │
         │                  │                               │
         ├──────────────────┼───────────────────────────────┤
         │  Waveform        │  Translation (翻译)           │
@@ -136,13 +136,13 @@ class MainWindow(QMainWindow):
         # 第三步：左右分割（player 和 timeline 水平分割）
         self.splitDockWidget(self.player_card, self.timeline_card, Qt.Horizontal)
 
-        # 第四步：调整比例
-        # 左右比例 4:6
-        self.resizeDocks([self.player_card, self.timeline_card], [512, 768], Qt.Horizontal)
-        # 左列上下：视频 16:9 (512x288) + 波形
-        self.resizeDocks([self.player_card, self.waveform_card], [288, 432], Qt.Vertical)
-        # 右列上下：打轴70% + 翻译30%
-        self.resizeDocks([self.timeline_card, self.translate_card], [504, 216], Qt.Vertical)
+        # 第四步：调整比例（基于 1280x720 窗口）
+        # 左右比例 39:61 → 左500 右780
+        self.resizeDocks([self.player_card, self.timeline_card], [500, 780], Qt.Horizontal)
+        # 左列上下 56:44 → 视频313 + 波形407
+        self.resizeDocks([self.player_card, self.waveform_card], [313, 407], Qt.Vertical)
+        # 右列上下 56:44 → 打轴403 + 翻译317
+        self.resizeDocks([self.timeline_card, self.translate_card], [403, 317], Qt.Vertical)
 
     def _create_toolbar(self):
         """创建工具栏"""
