@@ -104,20 +104,20 @@ class MainWindow(QMainWindow):
         布局示意（左39% 右61%，上56% 下44%）：
         ┌──────────────────┬───────────────────────────────┐
         │                  │                               │
-        │  Player (16:10)  │  Timeline (打轴)              │
+        │  Player          │  Timeline (打轴)              │
         │                  │                               │
         ├──────────────────┼───────────────────────────────┤
         │  Waveform        │  Translation (翻译)           │
         │                  │                               │
         └──────────────────┴───────────────────────────────┘
         """
-        # 清除所有卡片的固定尺寸约束（避免重复点击变宽）
+        # 清除固定尺寸约束
         for card in [self.player_card, self.timeline_card,
                      self.waveform_card, self.translate_card]:
             card.setMinimumSize(200, 150)
             card.setMaximumSize(16777215, 16777215)
 
-        # 重置布局时先移除所有卡片（首次调用时卡片还没添加，跳过）
+        # 重置布局时先移除所有卡片
         if self._layout_initialized:
             self.removeDockWidget(self.player_card)
             self.removeDockWidget(self.timeline_card)
@@ -125,32 +125,40 @@ class MainWindow(QMainWindow):
             self.removeDockWidget(self.translate_card)
         self._layout_initialized = True
 
-        # 第一步：构建左列（player 上，waveform 下）
+        # --- 左列：player + waveform ---
         self.addDockWidget(Qt.LeftDockWidgetArea, self.player_card)
         self.splitDockWidget(self.player_card, self.waveform_card, Qt.Vertical)
 
-        # 第二步：构建右列（timeline 上，translation 下）
-        self.addDockWidget(Qt.RightDockWidgetArea, self.timeline_card)
+        # --- 右列：timeline + translation ---
+        # 先把 timeline 放到 player 右侧，形成左右分栏
+        self.splitDockWidget(self.player_card, self.timeline_card, Qt.Horizontal)
+        # 再把 translation 放到 timeline 下方
         self.splitDockWidget(self.timeline_card, self.translate_card, Qt.Vertical)
 
-        # 第三步：左右分割（player 和 timeline 水平分割）
-        self.splitDockWidget(self.player_card, self.timeline_card, Qt.Horizontal)
-
-        # 第四步：调整比例（基于当前窗口实际尺寸动态计算）
+        # 动态计算尺寸
         win_w = self.width()
-        win_h = self.height() - 45  # 减去工具栏+状态栏高度
-
+        win_h = self.height() - 45
         left_w = int(win_w * 0.39)
         right_w = win_w - left_w - 4
-
         top_h = int(win_h * 0.56)
         bottom_h = win_h - top_h - 4
 
-        self.resizeDocks([self.player_card, self.timeline_card], [left_w, right_w], Qt.Horizontal)
-        self.resizeDocks([self.player_card, self.waveform_card], [top_h, bottom_h], Qt.Vertical)
-        self.resizeDocks([self.timeline_card, self.translate_card], [top_h, bottom_h], Qt.Vertical)
+        # 左列上下
+        self.resizeDocks([self.player_card, self.waveform_card],
+                         [top_h, bottom_h], Qt.Vertical)
+        # 右列上下
+        self.resizeDocks([self.timeline_card, self.translate_card],
+                         [top_h, bottom_h], Qt.Vertical)
+        # 左右
+        self.resizeDocks([self.player_card, self.timeline_card],
+                         [left_w, right_w], Qt.Horizontal)
 
-        # 确保所有卡片可见
+        # 延迟确保卡片可见（窗口显示后生效）
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, self._show_all_cards)
+
+    def _show_all_cards(self):
+        """确保所有卡片可见"""
         for card in [self.player_card, self.timeline_card,
                      self.waveform_card, self.translate_card]:
             card.show()
