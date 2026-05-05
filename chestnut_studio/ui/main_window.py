@@ -257,6 +257,9 @@ class MainWindow(QMainWindow):
         # --- 时间轴卡片 → 播放卡片（位置跳转并暂停） ---
         self.timeline_card.position_jump_requested.connect(self._on_timeline_jump)
 
+        # --- 时间轴卡片 → 播放卡片（滚动边界时移动位置） ---
+        self.timeline_card.position_shift_requested.connect(self._on_timeline_shift)
+
         # --- 时间轴卡片 → 状态栏 ---
         self.timeline_card.subtitle_selected.connect(self._on_subtitle_selected)
 
@@ -487,3 +490,9 @@ class MainWindow(QMainWindow):
         """时间轴点击 → 跳转并暂停播放"""
         self.player_card.pause()
         self.player_card.set_position(ms)
+
+    def _on_timeline_shift(self, ms: int):
+        """时间轴滚动边界 → 移动播放位置"""
+        current = self.player_card.get_position()
+        new_pos = max(0, min(current + ms, self.player_card.get_duration()))
+        self.player_card.set_position(new_pos)

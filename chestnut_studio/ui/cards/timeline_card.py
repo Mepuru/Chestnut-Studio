@@ -77,6 +77,7 @@ class TimelineCard(QDockWidget):
     subtitle_selected = Signal(int, str)  # 字幕被选中 (col, text)
     subtitle_changed = Signal()  # 字幕数据变化
     position_jump_requested = Signal(int)  # 请求跳转并暂停
+    position_shift_requested = Signal(int)  # 请求移动位置（滚动边界时）
 
     # 默认停靠区域
     default_area = Qt.RightDockWidgetArea
@@ -489,12 +490,27 @@ class TimelineCard(QDockWidget):
     # ========== 滚动相关 ==========
 
     def _wheel_event(self, event):
-        """处理滚轮事件"""
+        """处理滚轮事件 - 参考 DD_KaoRou2 边界处理"""
         delta = event.angleDelta().y()
+        scroll_speed = 3  # 每次滚动行数
+
         if delta > 0:
-            self._scroll_up(3)
+            # 向上滚动
+            if self._scroll_offset <= 0:
+                # 已到顶部，移动视频位置
+                shift_ms = int(scroll_speed * self._global_interval)
+                self.position_shift_requested.emit(-shift_ms)
+            else:
+                self._scroll_up(scroll_speed)
         elif delta < 0:
-            self._scroll_down(3)
+            # 向下滚动
+            max_offset = max(0, self._total_logical_rows - VISIBLE_ROWS)
+            if self._scroll_offset >= max_offset:
+                # 已到底部，移动视频位置
+                shift_ms = int(scroll_speed * self._global_interval)
+                self.position_shift_requested.emit(shift_ms)
+            else:
+                self._scroll_down(scroll_speed)
         event.accept()
 
     def _scroll_up(self, rows: int):
