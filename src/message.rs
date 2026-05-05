@@ -33,5 +33,7 @@ pub enum Message {
     SeekBackward5s,
     FrameStep,
     FrameBackStep,
-    OpenFile,
+    ImportVideo,
+    ImportSubtitle,
+    ExportSubtitle,
 }

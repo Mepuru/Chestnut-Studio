@@ -74,7 +74,9 @@ impl ChestnutStudio {
             Message::SeekBackward5s => self.state.status = "后退 5 秒".into(),
             Message::FrameStep => self.state.current_frame = self.state.current_frame.saturating_add(1),
             Message::FrameBackStep => self.state.current_frame = self.state.current_frame.saturating_sub(1),
-            Message::OpenFile => self.state.status = "打开文件对话框...".into(),
+            Message::ImportVideo => self.state.status = "导入视频...".into(),
+            Message::ImportSubtitle => self.state.status = "导入字幕 (预留)".into(),
+            Message::ExportSubtitle => self.state.status = "导出字幕 (预留)".into(),
         }
         iced::Task::none()
     }
@@ -102,7 +104,6 @@ impl ChestnutStudio {
     // ── 菜单栏 ──────────────────────────────────────────────────────
 
     fn view_menu_bar(&self) -> Element<'_, Message> {
-        // 面板切换按钮
         let panel_btn = |pane: Pane, visible: bool| {
             let label = match pane {
                 Pane::Video => "视频",
@@ -132,11 +133,7 @@ impl ChestnutStudio {
                 match status {
                     button::Status::Hovered => button::Style {
                         background: Some(BG_SURFACE.into()),
-                        border: iced::Border {
-                            width: 1.0,
-                            color: ACCENT,
-                            radius: 4.0.into(),
-                        },
+                        border: iced::Border { width: 1.0, color: ACCENT, radius: 4.0.into() },
                         ..base
                     },
                     _ => base,
@@ -146,23 +143,16 @@ impl ChestnutStudio {
 
         container(
             row![
-                menu_btn("文件").on_press(Message::OpenFile),
+                menu_btn("导入视频").on_press(Message::ImportVideo),
+                menu_btn("导入字幕").on_press(Message::ImportSubtitle),
+                menu_btn("导出字幕").on_press(Message::ExportSubtitle),
                 // 分隔符
-                container(text(" ").size(1))
-                    .width(1)
-                    .height(16)
-                    .style(|_| container::Style {
-                        background: Some(BORDER.into()),
-                        ..Default::default()
-                    }),
+                separator(),
                 text("视图:").font(FONT).size(13).color(TEXT_SECONDARY),
                 panel_btn(Pane::Video, self.state.show_video),
                 panel_btn(Pane::Waveform, self.state.show_waveform),
                 panel_btn(Pane::AxisCards, self.state.show_axis_cards),
                 panel_btn(Pane::Translation, self.state.show_translation),
-                horizontal_space(),
-                menu_btn("工具"),
-                menu_btn("帮助"),
             ]
             .align_y(Center)
             .spacing(4)
@@ -227,6 +217,26 @@ impl ChestnutStudio {
     // ── PaneGrid ────────────────────────────────────────────────────
 
     fn view_pane_grid(&self) -> Element<'_, Message> {
+        // 如果没有可见面板，显示占位提示
+        if !self.state.has_visible_panes() {
+            return container(
+                column![
+                    text("请选择要显示的面板").font(FONT_BOLD).size(20).color(TEXT_SECONDARY),
+                    text("点击上方菜单栏的 [视频] [波形] [轴卡片] [翻译] 按钮").font(FONT).size(14).color(TEXT_SECONDARY),
+                    text("来显示对应的面板").font(FONT).size(14).color(TEXT_SECONDARY),
+                ]
+                .align_x(Center)
+                .spacing(12),
+            )
+            .center_x(Fill)
+            .center_y(Fill)
+            .style(|_| container::Style {
+                background: Some(BG_PANEL.into()),
+                ..Default::default()
+            })
+            .into();
+        }
+
         let focus = self.state.focus;
 
         let pane_grid = PaneGrid::new(&self.state.panes, |id, pane, is_maximized| {
@@ -384,7 +394,17 @@ impl ChestnutStudio {
     }
 }
 
-// ── 按钮样式 ────────────────────────────────────────────────────────
+// ── 组件工厂 ────────────────────────────────────────────────────────
+
+fn separator() -> container::Container<'static, Message> {
+    container(text(" ").size(1))
+        .width(1)
+        .height(16)
+        .style(|_| container::Style {
+            background: Some(BORDER.into()),
+            ..Default::default()
+        })
+}
 
 fn menu_btn(label: &str) -> button::Button<'_, Message> {
     button(text(label).font(FONT).size(13).color(TEXT_PRIMARY))

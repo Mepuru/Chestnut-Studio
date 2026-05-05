@@ -23,6 +23,11 @@ pub struct AppState {
 }
 
 impl AppState {
+    /// 是否有任何面板可见
+    pub fn has_visible_panes(&self) -> bool {
+        self.show_video || self.show_waveform || self.show_axis_cards || self.show_translation
+    }
+
     pub fn toggle_panel(&mut self, pane: Pane) {
         match pane {
             Pane::Video => self.show_video = !self.show_video,
@@ -34,33 +39,59 @@ impl AppState {
     }
 
     fn rebuild_panes(&mut self) {
-        let (mut panes, first) = pane_grid::State::new(Pane::Video);
+        let left_panes: Vec<Pane> = [
+            self.show_video.then_some(Pane::Video),
+            self.show_waveform.then_some(Pane::Waveform),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
 
-        let left_panes = [self.show_video.then_some(Pane::Video), self.show_waveform.then_some(Pane::Waveform)]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
+        let right_panes: Vec<Pane> = [
+            self.show_axis_cards.then_some(Pane::AxisCards),
+            self.show_translation.then_some(Pane::Translation),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
 
-        let right_panes = [self.show_axis_cards.then_some(Pane::AxisCards), self.show_translation.then_some(Pane::Translation)]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
+        let all_panes: Vec<Pane> = left_panes.iter().chain(right_panes.iter()).copied().collect();
 
-        if left_panes.len() > 1 {
-            if let Some((_, split)) = panes.split(pane_grid::Axis::Horizontal, first, left_panes[1]) {
-                panes.resize(split, 0.6);
-            }
+        if all_panes.is_empty() {
+            let (panes, _) = pane_grid::State::new(Pane::Video);
+            self.panes = panes;
+            self.focus = None;
+            self.is_maximized = false;
+            return;
         }
 
-        if !right_panes.is_empty() {
-            if let Some((right, split)) = panes.split(pane_grid::Axis::Vertical, first, right_panes[0]) {
+        let (mut panes, first) = pane_grid::State::new(all_panes[0]);
+
+        if !left_panes.is_empty() && !right_panes.is_empty() {
+            if let Some((right, split)) =
+                panes.split(pane_grid::Axis::Vertical, first, right_panes[0])
+            {
                 panes.resize(split, 0.4);
 
-                if right_panes.len() > 1 {
-                    if let Some((_, split_right)) = panes.split(pane_grid::Axis::Horizontal, right, right_panes[1]) {
-                        panes.resize(split_right, 0.55);
+                if left_panes.len() > 1 {
+                    if let Some((_, s)) = panes.split(pane_grid::Axis::Horizontal, first, left_panes[1]) {
+                        panes.resize(s, 0.6);
                     }
                 }
+
+                if right_panes.len() > 1 {
+                    if let Some((_, s)) = panes.split(pane_grid::Axis::Horizontal, right, right_panes[1]) {
+                        panes.resize(s, 0.55);
+                    }
+                }
+            }
+        } else if left_panes.len() > 1 {
+            if let Some((_, s)) = panes.split(pane_grid::Axis::Horizontal, first, left_panes[1]) {
+                panes.resize(s, 0.6);
+            }
+        } else if right_panes.len() > 1 {
+            if let Some((_, s)) = panes.split(pane_grid::Axis::Horizontal, first, right_panes[1]) {
+                panes.resize(s, 0.55);
             }
         }
 
@@ -79,16 +110,12 @@ impl Default for AppState {
         {
             panes.resize(split, 0.4);
 
-            if let Some((_, split_left)) =
-                panes.split(pane_grid::Axis::Horizontal, first, Pane::Waveform)
-            {
-                panes.resize(split_left, 0.6);
+            if let Some((_, s)) = panes.split(pane_grid::Axis::Horizontal, first, Pane::Waveform) {
+                panes.resize(s, 0.6);
             }
 
-            if let Some((_, split_right)) =
-                panes.split(pane_grid::Axis::Horizontal, right, Pane::Translation)
-            {
-                panes.resize(split_right, 0.55);
+            if let Some((_, s)) = panes.split(pane_grid::Axis::Horizontal, right, Pane::Translation) {
+                panes.resize(s, 0.55);
             }
         }
 
