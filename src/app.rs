@@ -510,8 +510,10 @@ impl ChestnutStudio {
                         .unwrap_or_default()
                         .to_string_lossy()
                         .to_string();
-                    if filename.len() > 20 {
-                        format!("{}...", &filename[..17])
+                    let chars: Vec<char> = filename.chars().collect();
+                    if chars.len() > 20 {
+                        let truncated: String = chars[..17].iter().collect();
+                        format!("{}...", truncated)
                     } else {
                         filename
                     }
