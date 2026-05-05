@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QGraphicsScene,
     QGraphicsTextItem,
     QGraphicsView,
+    QLabel,
     QVBoxLayout,
     QWidget,
 )
@@ -103,6 +104,17 @@ class PlayerCard(QDockWidget):
 
         layout.addWidget(self._view)
 
+        # 空状态提示（视频加载后隐藏）
+        self._hint_label = QLabel("拖入视频文件 或 Ctrl+O 打开", content)
+        self._hint_label.setAlignment(Qt.AlignCenter)
+        self._hint_label.setStyleSheet("""
+            QLabel {
+                color: #52525b;
+                font-size: 11pt;
+                background: transparent;
+            }
+        """)
+
         self.setWidget(content)
 
     def _setup_player(self):
@@ -119,6 +131,13 @@ class PlayerCard(QDockWidget):
         self._player.durationChanged.connect(self._on_duration_changed)
         self._player.playbackStateChanged.connect(self._on_playback_state_changed)
 
+    def resizeEvent(self, event):
+        """保持提示标签居中"""
+        super().resizeEvent(event)
+        if self._hint_label.isVisible():
+            parent_size = self.widget().size()
+            self._hint_label.setGeometry(0, 0, parent_size.width(), parent_size.height())
+
     # ========== 公有方法 ==========
 
     def open_video(self, path: str) -> bool:
@@ -129,6 +148,7 @@ class PlayerCard(QDockWidget):
         self._video_path = path
         self._player.setSource(QUrl.fromLocalFile(path))
         self._player.pause()
+        self._hint_label.hide()
         self.video_opened.emit(path)
         return True
 

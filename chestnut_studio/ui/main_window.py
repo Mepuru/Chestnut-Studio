@@ -141,17 +141,20 @@ class MainWindow(QMainWindow):
         win_h = self.height() - 45  # 减去工具栏+状态栏高度
 
         left_w = int(win_w * 0.39)
-        right_w = win_w - left_w - 4  # 4px 留给分割线
+        right_w = win_w - left_w - 4
 
         top_h = int(win_h * 0.56)
         bottom_h = win_h - top_h - 4
 
-        # 左右比例
         self.resizeDocks([self.player_card, self.timeline_card], [left_w, right_w], Qt.Horizontal)
-        # 左列上下
         self.resizeDocks([self.player_card, self.waveform_card], [top_h, bottom_h], Qt.Vertical)
-        # 右列上下
         self.resizeDocks([self.timeline_card, self.translate_card], [top_h, bottom_h], Qt.Vertical)
+
+        # 确保所有卡片可见
+        for card in [self.player_card, self.timeline_card,
+                     self.waveform_card, self.translate_card]:
+            card.show()
+            card.setVisible(True)
 
     def _create_toolbar(self):
         """创建工具栏"""
