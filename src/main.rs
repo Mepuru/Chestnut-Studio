@@ -1,4 +1,5 @@
 mod app;
+mod audio;
 mod decoder;
 mod message;
 mod player;

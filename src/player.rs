@@ -1,11 +1,14 @@
 use anyhow::Result;
 use std::path::Path;
 
+use crate::audio::AudioPlayer;
 use crate::decoder::{VideoDecoder, VideoFrame};
 
 /// 视频播放器封装
 pub struct VideoPlayer {
     decoder: Option<VideoDecoder>,
+    audio_player: AudioPlayer,
+    video_path: Option<String>,
     /// 当前播放位置(毫秒)
     position_ms: u64,
     /// 是否正在播放
@@ -34,6 +37,8 @@ impl VideoPlayer {
     pub fn new() -> Result<Self> {
         Ok(Self {
             decoder: None,
+            audio_player: AudioPlayer::new(),
+            video_path: None,
             position_ms: 0,
             is_playing: false,
             volume: 100,
@@ -44,8 +49,11 @@ impl VideoPlayer {
 
     /// 加载视频文件
     pub fn load_file(&mut self, path: &Path) -> Result<()> {
-        let decoder = VideoDecoder::new(path)?;
+        let mut decoder = VideoDecoder::new(path)?;
+        // 自动提取第一帧
+        decoder.seek_to_frame(0)?;
         self.decoder = Some(decoder);
+        self.video_path = path.to_str().map(|s| s.to_string());
         self.position_ms = 0;
         self.is_playing = false;
         Ok(())
@@ -96,6 +104,12 @@ impl VideoPlayer {
         if let Some(ref mut decoder) = self.decoder {
             decoder.play()?;
             self.is_playing = true;
+            
+            // 开始播放音频
+            if let Some(ref path) = self.video_path {
+                let start_time = decoder.current_frame_number() as f64 / decoder.fps();
+                let _ = self.audio_player.play(Path::new(path), start_time);
+            }
         }
         Ok(())
     }
@@ -105,6 +119,7 @@ impl VideoPlayer {
         if let Some(ref mut decoder) = self.decoder {
             decoder.pause();
             self.is_playing = false;
+            self.audio_player.pause();
         }
     }
 

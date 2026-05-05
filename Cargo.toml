@@ -28,6 +28,9 @@ tracing-subscriber = "0.3"
 # Image processing
 image = "0.25"
 
+# Audio playback
+cpal = "0.17"
+
 # [TODO] Phase 3+: Audio waveform
 # ffmpeg-next = "7.0"
 
