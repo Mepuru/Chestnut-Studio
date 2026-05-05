@@ -1,14 +1,19 @@
 """主窗口模块"""
 
-from PySide6.QtCore import QSettings, Qt
-from PySide6.QtWidgets import QMainWindow
+from pathlib import Path
 
+from PySide6.QtCore import QSettings, Qt
+from PySide6.QtWidgets import QFileDialog, QMainWindow
+
+from chestnut_studio.core.ffmpeg import FFmpeg
 from chestnut_studio.ui.cards.player_card import PlayerCard
 from chestnut_studio.ui.cards.timeline_card import TimelineCard
 from chestnut_studio.ui.cards.translate_card import TranslateCard
 from chestnut_studio.ui.cards.waveform_card import WaveformCard
 from chestnut_studio.ui.menubar import MenuBar
 from chestnut_studio.ui.statusbar import StatusBar
+from chestnut_studio.ui.toolbar import ToolBar
+from chestnut_studio.utils.time_utils import split_time
 
 
 class MainWindow(QMainWindow):
@@ -16,8 +21,9 @@ class MainWindow(QMainWindow):
 
     功能：
     - 管理四个可拖拽的 DockWidget 卡片
-    - 集成菜单栏、状态栏
+    - 集成菜单栏、工具栏、状态栏
     - 支持布局保存与恢复
+    - 连接各卡片间信号
 
     默认布局：
     ┌───────────────────────┬───────────────────────┐
@@ -33,6 +39,9 @@ class MainWindow(QMainWindow):
     └───────────────────────┴───────────────────────┘
     """
 
+    # 视频文件过滤器
+    VIDEO_FILTER = "视频文件 (*.mp4 *.avi *.flv *.mkv *.mov *.wmv *.mp3 *.wav *.aac);;所有文件 (*)"
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Chestnut Studio - 打轴工具")
@@ -45,17 +54,16 @@ class MainWindow(QMainWindow):
         # 初始化设置
         self.settings = QSettings("ChestnutStudio", "KaoRouTool")
 
-        # 创建四个卡片
+        # FFmpeg 实例
+        self._ffmpeg = FFmpeg()
+
+        # 创建 UI 组件
         self._create_cards()
-
-        # 设置默认布局
         self._setup_default_layout()
-
-        # 创建菜单栏
+        self._create_toolbar()
         self._create_menubar()
-
-        # 创建状态栏
         self._create_statusbar()
+        self._connect_signals()
 
         # 开发阶段：不恢复布局，每次都使用默认布局
         # TODO: 发布时取消注释以下代码
@@ -115,6 +123,11 @@ class MainWindow(QMainWindow):
         self.resizeDocks([self.player_card, self.timeline_card], [704, 576], Qt.Horizontal)
         self.resizeDocks([self.waveform_card, self.translate_card], [704, 576], Qt.Horizontal)
 
+    def _create_toolbar(self):
+        """创建工具栏"""
+        self.toolbar = ToolBar(self)
+        self.addToolBar(self.toolbar)
+
     def _create_menubar(self):
         """创建菜单栏"""
         self.menu_bar = MenuBar(self)
@@ -131,6 +144,41 @@ class MainWindow(QMainWindow):
         """创建状态栏"""
         self.status_bar = StatusBar(self)
         self.setStatusBar(self.status_bar)
+
+    def _connect_signals(self):
+        """连接各组件间的信号"""
+        # --- 工具栏 ↔ 播放卡片 ---
+        # 工具栏播放按钮 → 播放卡片
+        self.toolbar.play_clicked.connect(self.player_card.play_pause)
+
+        # 工具栏音量 → 播放卡片
+        self.toolbar.volume_changed.connect(self.player_card.set_volume)
+
+        # 工具栏静音 → 播放卡片
+        self.toolbar.mute_clicked.connect(self._on_mute_toggle)
+
+        # 工具栏进度条 → 播放卡片
+        self.toolbar.position_changed.connect(self.player_card.set_position)
+
+        # 工具栏倍速 → 播放卡片
+        self.toolbar.rate_changed.connect(self.player_card.set_playback_rate)
+
+        # 播放卡片 → 工具栏（位置同步）
+        self.player_card.position_changed.connect(self.toolbar.update_position)
+
+        # 播放卡片 → 工具栏（时长同步）
+        self.player_card.duration_changed.connect(self.toolbar.set_duration)
+
+        # 播放卡片 → 工具栏（播放状态同步）
+        self.player_card.playback_state_changed.connect(self.toolbar.set_playing)
+
+        # --- 播放卡片 → 状态栏 ---
+        self.player_card.duration_changed.connect(self._on_duration_changed)
+
+        # --- 播放卡片 → 状态栏（时间更新） ---
+        self.player_card.position_changed.connect(self._on_position_changed)
+
+    # ========== 布局管理 ==========
 
     def _restore_layout(self):
         """恢复上次保存的布局"""
@@ -152,19 +200,44 @@ class MainWindow(QMainWindow):
         self._save_layout()
         super().closeEvent(event)
 
+    # ========== 菜单事件处理 ==========
+
     def _on_open_video(self):
-        """打开视频文件"""
-        # TODO: 实现打开视频对话框
-        pass
+        """打开视频文件对话框"""
+        path, _ = QFileDialog.getOpenFileName(self, "打开视频文件", "", self.VIDEO_FILTER)
+        if path:
+            self._open_video_file(path)
+
+    def _open_video_file(self, path: str):
+        """打开视频文件并更新状态栏
+
+        Args:
+            path: 视频文件路径
+        """
+        if self.player_card.open_video(path):
+            # 更新状态栏
+            self.status_bar.set_status(f"已打开: {Path(path).name}")
+
+            # 使用 FFmpeg 解析视频信息
+            try:
+                info = self._ffmpeg.get_video_info(path)
+                self.status_bar.set_video_info(
+                    resolution=f"{info.width}×{info.height}" if info.width else "",
+                    fps=f"{info.fps:.0f}fps" if info.fps else "",
+                    bitrate=f"{info.bitrate}kbps" if info.bitrate else "",
+                )
+            except Exception:
+                # FFmpeg 不可用时不报错，只是不显示视频信息
+                self.status_bar.clear_video_info()
 
     def _on_open_subtitle(self):
         """导入字幕文件"""
-        # TODO: 实现导入字幕对话框
+        # TODO: Phase 4 实现
         pass
 
     def _on_save_subtitle(self):
         """导出字幕文件"""
-        # TODO: 实现导出字幕对话框
+        # TODO: Phase 4 实现
         pass
 
     def _toggle_fullscreen(self):
@@ -173,3 +246,21 @@ class MainWindow(QMainWindow):
             self.showNormal()
         else:
             self.showFullScreen()
+
+    def _on_mute_toggle(self):
+        """切换静音"""
+        current = self.player_card._audio_output.isMuted()
+        self.player_card.set_muted(not current)
+        self.toolbar.set_muted(not current)
+
+    # ========== 状态栏更新 ==========
+
+    def _on_position_changed(self, ms: int):
+        """播放位置变化 → 更新状态栏时间"""
+        from chestnut_studio.utils.time_utils import ms_to_time_str
+
+        self.status_bar.set_time(ms_to_time_str(ms))
+
+    def _on_duration_changed(self, ms: int):
+        """视频时长变化 → 更新状态栏"""
+        self.status_bar.set_status(f"视频时长: {split_time(ms)}")

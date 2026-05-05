@@ -1,34 +1,82 @@
 """视频播放卡片模块"""
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QDockWidget, QLabel, QVBoxLayout, QWidget
+import os
+
+from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtGui import QColor, QDragEnterEvent, QDropEvent, QFont, QResizeEvent
+from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+from PySide6.QtMultimediaWidgets import QGraphicsVideoItem
+from PySide6.QtWidgets import (
+    QDockWidget,
+    QGraphicsScene,
+    QGraphicsTextItem,
+    QGraphicsView,
+    QVBoxLayout,
+    QWidget,
+)
+
+VIDEO_EXTENSIONS = {".mp4", ".avi", ".flv", ".mkv", ".mov", ".wmv", ".mp3", ".wav", ".aac", ".flac", ".ogg"}
+SUBTITLE_EXTENSIONS = {".srt", ".ass", ".vtt", ".lrc"}
+
+
+class VideoView(QGraphicsView):
+    """视频视图，自动 fitInView 保持宽高比居中显示"""
+
+    def __init__(self, scene, video_item, parent=None):
+        super().__init__(scene, parent)
+        self._video_item = video_item
+
+    def resizeEvent(self, event: QResizeEvent):
+        super().resizeEvent(event)
+        self._fit_video()
+
+    def _fit_video(self):
+        """视频画面居中铺满，保持宽高比"""
+        bounds = self._video_item.boundingRect()
+        if bounds.width() <= 0 or bounds.height() <= 0:
+            return
+        self.fitInView(self._video_item, Qt.KeepAspectRatio)
 
 
 class PlayerCard(QDockWidget):
     """视频播放卡片
 
     功能：
-    - 视频渲染 + 字幕叠加预览
-    - 播放控制（播放/暂停/停止/音量/倍速）
-    - 进度条拖拽 + 时间显示
-    - 滚轮缩放 + 拖放打开
-
-    TODO: Phase 1 实现完整功能
+    - 视频渲染（QGraphicsVideoItem）+ 字幕叠加预览（QGraphicsTextItem）
+    - 拖放打开文件
+    - 打开视频后锁定卡片宽高比
+    - 播放控制全部由工具栏负责
     """
 
-    # 默认停靠区域
+    # 信号
+    position_changed = Signal(int)
+    duration_changed = Signal(int)
+    video_opened = Signal(str)
+    playback_state_changed = Signal(bool)
+    subtitle_dropped = Signal(str)
+
     default_area = Qt.LeftDockWidgetArea
 
     def __init__(self, parent=None):
         super().__init__("视频预览", parent)
+        self._video_path = ""
+        self._duration = 0
+        self._is_playing = False
+        self._volume = 80
+        self._playback_rate = 1.0
+
         self._setup_ui()
+        self._setup_player()
+        self._connect_signals()
+
+        self.setAcceptDrops(True)
 
     def _setup_ui(self):
         """初始化 UI"""
         content = QWidget()
         content.setStyleSheet("""
             QWidget {
-                background: #0f0f14;
+                background: #000000;
                 border: 1px solid #27272a;
                 border-top: none;
             }
@@ -36,24 +84,133 @@ class PlayerCard(QDockWidget):
         layout = QVBoxLayout(content)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # 内部容器
-        inner = QWidget()
-        inner.setStyleSheet("background: transparent; border: none;")
-        inner_layout = QVBoxLayout(inner)
-        inner_layout.setContentsMargins(24, 24, 24, 24)
+        self._scene = QGraphicsScene(self)
 
-        # 占位提示
-        hint = QLabel("拖入视频文件或使用菜单打开")
-        hint.setAlignment(Qt.AlignCenter)
-        hint.setStyleSheet("""
-            QLabel {
-                color: #52525b;
-                font-size: 10pt;
-                background: transparent;
-                border: none;
-            }
-        """)
-        inner_layout.addWidget(hint)
+        self._video_item = QGraphicsVideoItem()
+        self._scene.addItem(self._video_item)
 
-        layout.addWidget(inner)
+        self._subtitle_item = QGraphicsTextItem()
+        self._subtitle_item.setDefaultTextColor(QColor("#FFFFFF"))
+        self._subtitle_item.setFont(QFont("Microsoft YaHei", 24, QFont.Bold))
+        self._subtitle_item.setZValue(1)
+        self._subtitle_item.setVisible(False)
+        self._scene.addItem(self._subtitle_item)
+
+        self._view = VideoView(self._scene, self._video_item)
+        self._view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self._view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self._view.setStyleSheet("QGraphicsView { background: #000000; border: none; }")
+
+        layout.addWidget(self._view)
         self.setWidget(content)
+
+    def _setup_player(self):
+        """初始化 QMediaPlayer"""
+        self._audio_output = QAudioOutput()
+        self._audio_output.setVolume(self._volume / 100.0)
+
+        self._player = QMediaPlayer()
+        self._player.setAudioOutput(self._audio_output)
+        self._player.setVideoOutput(self._video_item)
+
+    def _connect_signals(self):
+        self._player.positionChanged.connect(self._on_position_changed)
+        self._player.durationChanged.connect(self._on_duration_changed)
+        self._player.playbackStateChanged.connect(self._on_playback_state_changed)
+
+    # ========== 公有方法 ==========
+
+    def open_video(self, path: str) -> bool:
+        """打开视频文件"""
+        if not os.path.exists(path):
+            return False
+
+        self._video_path = path
+        self._player.setSource(QUrl.fromLocalFile(path))
+        self._player.pause()
+        self.video_opened.emit(path)
+        return True
+
+    def play(self):
+        self._player.play()
+
+    def pause(self):
+        self._player.pause()
+
+    def stop(self):
+        self._player.stop()
+        self._player.setPosition(0)
+
+    def play_pause(self):
+        if self._is_playing:
+            self.pause()
+        else:
+            self.play()
+
+    def set_position(self, ms: int):
+        self._player.setPosition(ms)
+
+    def set_volume(self, value: int):
+        self._volume = max(0, min(100, value))
+        self._audio_output.setVolume(self._volume / 100.0)
+
+    def set_playback_rate(self, rate: float):
+        self._playback_rate = max(0.1, min(2.0, rate))
+        self._player.setPlaybackRate(self._playback_rate)
+
+    def set_muted(self, muted: bool):
+        self._audio_output.setMuted(muted)
+
+    def update_subtitle_overlay(self, text: str) -> None:
+        """更新字幕叠加显示"""
+        if not text:
+            self._subtitle_item.setVisible(False)
+            return
+
+        self._subtitle_item.setPlainText(text)
+        self._subtitle_item.setVisible(True)
+
+        view_size = self._view.viewport().size()
+        text_rect = self._subtitle_item.boundingRect()
+        x = (view_size.width() - text_rect.width()) / 2
+        y = view_size.height() - text_rect.height() - 20
+        self._subtitle_item.setPos(x, y)
+
+    def get_position(self) -> int:
+        return self._player.position()
+
+    def get_duration(self) -> int:
+        return self._duration
+
+    def is_playing(self) -> bool:
+        return self._is_playing
+
+    # ========== 内部事件 ==========
+
+    def _on_position_changed(self, position: int):
+        self.position_changed.emit(position)
+
+    def _on_duration_changed(self, duration: int):
+        self._duration = duration
+        self.duration_changed.emit(duration)
+
+    def _on_playback_state_changed(self, state):
+        self._is_playing = state == QMediaPlayer.PlayingState
+        self.playback_state_changed.emit(self._is_playing)
+
+    # ========== 拖放 ==========
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent):
+        for url in event.mimeData().urls():
+            path = url.toLocalFile()
+            ext = os.path.splitext(path)[1].lower()
+            if ext in VIDEO_EXTENSIONS:
+                self.open_video(path)
+                return
+            elif ext in SUBTITLE_EXTENSIONS:
+                self.subtitle_dropped.emit(path)
+                return
