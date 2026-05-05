@@ -27,12 +27,30 @@ BTN_STYLE = """
     }
 """
 
+# AB 循环按钮激活样式
+AB_ACTIVE_STYLE = """
+    QPushButton {
+        background: #3b82f6;
+        border: 1px solid #60a5fa;
+        color: #ffffff;
+        font-size: 9pt;
+        padding: 2px 8px;
+        font-weight: bold;
+    }
+    QPushButton:hover {
+        background: #60a5fa;
+    }
+    QPushButton:pressed {
+        background: #2563eb;
+    }
+"""
+
 
 class ToolBar(QToolBar):
     """主工具栏
 
     布局：
-    [帧号] | [后退5秒] [播放/暂停] [前进5秒] | [倍速]
+    [帧号] | [后退5秒] [播放/暂停] [前进5秒] | [A点] [B点] [清除] | [倍速]
     """
 
     # 信号
@@ -40,6 +58,9 @@ class ToolBar(QToolBar):
     skip_forward = Signal(int)  # 前进 ms
     skip_backward = Signal(int)  # 后退 ms
     rate_changed = Signal(float)  # 倍速变化
+    ab_loop_a_clicked = Signal()  # 设置 A 点
+    ab_loop_b_clicked = Signal()  # 设置 B 点
+    ab_loop_clear_clicked = Signal()  # 清除 AB 循环
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -90,6 +111,26 @@ class ToolBar(QToolBar):
         self._skip_fwd_btn.setStyleSheet(BTN_STYLE)
         self._skip_fwd_btn.clicked.connect(lambda: self.skip_forward.emit(5000))
 
+        # --- AB 循环按钮 ---
+        self._ab_a_btn = QPushButton("A")
+        self._ab_a_btn.setFixedSize(28, 28)
+        self._ab_a_btn.setToolTip("设置 A 点（循环起点）[")
+        self._ab_a_btn.setStyleSheet(BTN_STYLE)
+        self._ab_a_btn.clicked.connect(self.ab_loop_a_clicked.emit)
+
+        self._ab_b_btn = QPushButton("B")
+        self._ab_b_btn.setFixedSize(28, 28)
+        self._ab_b_btn.setToolTip("设置 B 点（循环终点）]")
+        self._ab_b_btn.setStyleSheet(BTN_STYLE)
+        self._ab_b_btn.clicked.connect(self.ab_loop_b_clicked)
+
+        self._ab_clear_btn = QPushButton("×")
+        self._ab_clear_btn.setFixedSize(28, 28)
+        self._ab_clear_btn.setToolTip("清除 AB 循环 (\\)")
+        self._ab_clear_btn.setStyleSheet(BTN_STYLE)
+        self._ab_clear_btn.clicked.connect(self.ab_loop_clear_clicked.emit)
+        self._ab_clear_btn.setEnabled(False)  # 初始禁用
+
         # --- 最右侧：倍速 ---
         self._rate_combo = QComboBox()
         self._rate_combo.setFixedWidth(80)
@@ -111,6 +152,21 @@ class ToolBar(QToolBar):
         self.addWidget(self._play_btn)
         self._add_spacing(6)
         self.addWidget(self._skip_fwd_btn)
+
+        self._add_spacing(12)
+        self._add_separator()
+        self._add_spacing(6)
+
+        # AB 循环按钮组
+        ab_label = QLabel("循环")
+        ab_label.setStyleSheet("color: #52525b; font-size: 9pt;")
+        self.addWidget(ab_label)
+        self._add_spacing(4)
+        self.addWidget(self._ab_a_btn)
+        self._add_spacing(4)
+        self.addWidget(self._ab_b_btn)
+        self._add_spacing(4)
+        self.addWidget(self._ab_clear_btn)
 
         right_spacer = QWidget()
         right_spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
@@ -169,6 +225,33 @@ class ToolBar(QToolBar):
         idx = self._rate_combo.findText(text)
         if idx >= 0:
             self._rate_combo.setCurrentIndex(idx)
+
+    def update_ab_loop_state(self, a_point: int, b_point: int):
+        """更新 AB 循环按钮状态
+
+        Args:
+            a_point: A 点位置（ms），-1 表示未设置
+            b_point: B 点位置（ms），-1 表示未设置
+        """
+        # 更新 A 点按钮样式和提示
+        if a_point >= 0:
+            self._ab_a_btn.setStyleSheet(AB_ACTIVE_STYLE)
+            self._ab_a_btn.setToolTip(f"A 点: {a_point // 1000}s [")
+        else:
+            self._ab_a_btn.setStyleSheet(BTN_STYLE)
+            self._ab_a_btn.setToolTip("设置 A 点（循环起点）[")
+
+        # 更新 B 点按钮样式和提示
+        if b_point >= 0:
+            self._ab_b_btn.setStyleSheet(AB_ACTIVE_STYLE)
+            self._ab_b_btn.setToolTip(f"B 点: {b_point // 1000}s ]")
+        else:
+            self._ab_b_btn.setStyleSheet(BTN_STYLE)
+            self._ab_b_btn.setToolTip("设置 B 点（循环终点）]")
+
+        # 更新清除按钮状态
+        has_loop = a_point >= 0 or b_point >= 0
+        self._ab_clear_btn.setEnabled(has_loop)
 
     # ========== 内部方法 ==========
 

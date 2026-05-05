@@ -4,6 +4,62 @@
 
 ---
 
+## 2026-05-05 — Phase 2 完成 + 功能增强
+
+### Phase 2: 音频波形
+
+- 实现 WaveformCard 音频波形卡片（pyqtgraph）
+- 实现波形显示：包络线 + 原始波形叠加
+- 实现红线跟随播放位置
+- 实现视窗滑动跟随播放位置
+- 实现点击波形跳转到对应时间
+- 实现滚轮缩放（以鼠标位置为中心）
+- 实现 Shift+左键拖动平移视窗
+- 实现时间刻度显示（mm:ss 格式）
+- 实现缩放倍数显示
+- 新增 19 个 Phase 2 测试用例（59 个总计）
+
+### 音频处理增强
+
+- 新增 `compute_envelope()` 包络线计算函数
+- 新增 `compute_envelope_fast()` 快速包络线计算（下采样版本）
+- 新增 `downsample_waveform()` 波形下采样函数
+- `load_waveform()` 新增 `vocal_enhance` 参数，支持人声增强
+  - 立体声：提取中心声道，抑制两侧背景音乐
+  - 单声道：高通滤波去除低频噪音
+
+### AB 循环功能
+
+- PlayerCard 新增 AB 循环功能
+  - `set_ab_loop_a()` 设置 A 点
+  - `set_ab_loop_b()` 设置 B 点
+  - `clear_ab_loop()` 清除循环
+  - 播放时自动在 A-B 区间循环
+- ToolBar 新增 AB 循环按钮（A / B / ×）
+- WaveformCard 新增 AB 循环区域显示（半透明橙色）
+- MainWindow 新增全局快捷键
+  - `[` 设置 A 点
+  - `]` 设置 B 点
+  - `\` 清除 AB 循环
+  - `Space` 播放/暂停（解决焦点问题）
+
+### UI 改进
+
+- 视频加载后自动铺满卡片（nativeSizeChanged 信号）
+- 隐藏波形图左下角 Auto Range 按钮
+- 波形图 Y 轴居中显示
+- 工具栏 AB 循环按钮激活时变蓝色高亮
+
+### 技术决策
+
+1. **包络线 + 波形叠加** - 包络线显示能量轮廓，波形线显示细节
+2. **下采样到 5000 点** - 保留峰值特征的同时提升绘图性能
+3. **PlotCurveItem fillLevel** - 替代 FillBetweenItem，性能更好
+4. **MainWindow.keyPressEvent** - 全局快捷键，解决焦点问题
+5. **AB 循环信号机制** - PlayerCard 发射信号，ToolBar 和 WaveformCard 响应
+
+---
+
 ## 2026-05-05 — Phase 1 完成
 
 ### 完成内容
@@ -27,6 +83,10 @@
 3. **addDockWidget 显式指定区域** - splitDockWidget 会让第二个 widget 进入同一区域，无法创建左右分栏
 4. **QTimer.singleShot 延迟 show()** - 窗口渲染完成后再显示卡片，避免不可见
 5. **resizeEvent 维护比例** - 动态计算卡片尺寸，窗口缩放时比例不变
+
+---
+
+## 2026-05-05 — Phase 0 完成
 
 ### 完成内容
 
@@ -59,6 +119,7 @@
 - 创建 development.md 开发指南（修正原 development-guide.md 中的错误）
 - 创建 changelog.md 变更日志
 - 更新 README.md 项目结构说明
+- 创建 CLAUDE.md AI 开发指南
 
 ### 修正内容
 

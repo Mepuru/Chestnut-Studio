@@ -162,24 +162,57 @@ SubtitleIO.export_srt("output.srt", subs, video_start=0, sub_start=0)
 
 | 函数 | 参数 | 返回 | 说明 |
 |------|------|------|------|
-| `load_waveform(wav_path)` | WAV 文件路径 | `(time_list, amplitude_list)` | 加载波形数据 |
+| `load_waveform(wav_path, vocal_enhance)` | WAV 文件路径, 是否启用人声增强 | `(time_list, amplitude_list)` | 加载波形数据 |
 | `smooth_waveform(amplitude, window)` | 振幅列表, 窗口大小 | `list[float]` | 平滑波形曲线 |
+| `compute_envelope(amplitude, window)` | 振幅列表, 窗口大小 | `(upper, lower)` | 计算音频包络线 |
+| `compute_envelope_fast(amplitude, window, target_points)` | 振幅列表, 窗口大小, 目标点数 | `(upper, lower)` | 快速计算包络线（下采样） |
+| `downsample_waveform(times, amplitudes, target_points)` | 时间列表, 振幅列表, 目标点数 | `(times, amps)` | 下采样波形数据 |
 
 **用法示例：**
 
 ```python
-from chestnut_studio.core.audio import load_waveform, smooth_waveform
+from chestnut_studio.core.audio import (
+    load_waveform,
+    smooth_waveform,
+    compute_envelope,
+    compute_envelope_fast,
+    downsample_waveform,
+)
 
 # 加载波形（配合 FFmpeg extract_audio 使用）
 times, amps = load_waveform("output.wav")
 # times: [0.0, 1.0, 2.0, ...] (ms)
 # amps: [123, -456, 789, ...] (int16 振幅)
 
+# 加载波形并启用人声增强（立体声提取中心声道，单声道高通滤波）
+times, amps = load_waveform("output.wav", vocal_enhance=True)
+
 # 平滑处理
 smoothed = smooth_waveform(amps, window=10)
+
+# 计算包络线（用于波形可视化）
+upper, lower = compute_envelope(amps, window=50)
+# upper: [0.0, 123.5, 456.2, ...] (上包络，正值)
+# lower: [0.0, -123.5, -456.2, ...] (下包络，负值)
+
+# 快速计算包络线（适用于长音频，自动下采样到 5000 点）
+upper, lower = compute_envelope_fast(amps, window=50, target_points=5000)
+
+# 下采样波形（保留峰值特征，减少数据点）
+ds_times, ds_amps = downsample_waveform(times, amps, target_points=5000)
 ```
 
 **数据格式：**
 - `time_list`: 毫秒时间轴，与采样率对应（1kHz → 每 1ms 一个点）
 - `amplitude_list`: int16 振幅值，取第一个声道
 - `smooth_waveform`: 使用滑动平均窗口平滑，默认窗口大小 10
+- `compute_envelope`: 计算音频包络线，返回上下两条包络曲线
+  - 使用滑动窗口最大值 + 峰值保持算法
+  - 窗口大小 50 约对应 50ms（采样率 1kHz 时）
+  - 适合用于波形可视化，能清晰显示音频能量变化
+- `compute_envelope_fast`: 快速版本，先下采样再计算，适用于长音频
+- `downsample_waveform`: 保留峰值特征的同时减少数据点，提升绘图性能
+
+**人声增强算法：**
+- 立体声：提取中心声道 `(L+R)/2`，减去两侧声道 `(L-R)/2 * 0.5`
+- 单声道：高通滤波去除低于 200Hz 的低频噪音

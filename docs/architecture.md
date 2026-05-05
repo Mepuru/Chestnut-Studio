@@ -35,13 +35,13 @@
 
 | 模块 | 职责 |
 |------|------|
-| `main_window.py` | 主窗口，管理四个 DockWidget 卡片的布局，连接各组件信号 |
-| `toolbar.py` | 工具栏，播放控制（播放/暂停、跳转、倍速、帧号显示） |
+| `main_window.py` | 主窗口，管理四个 DockWidget 卡片的布局，连接各组件信号，处理全局快捷键 |
+| `toolbar.py` | 工具栏，播放控制（播放/暂停、跳转、倍速、帧号显示、AB 循环） |
 | `menubar.py` | 菜单栏，文件/视图/帮助菜单 |
 | `statusbar.py` | 状态栏，三段式显示（状态/视频参数/当前时间/总时间） |
-| `cards/player_card.py` | 视频播放卡片，QMediaPlayer + 拖放打开 + 字幕叠加 |
+| `cards/player_card.py` | 视频播放卡片，QMediaPlayer + 拖放打开 + 字幕叠加 + AB 循环 |
 | `cards/timeline_card.py` | 打轴编辑卡片（Phase 3 实现） |
-| `cards/waveform_card.py` | 音频波形卡片（Phase 2 实现） |
+| `cards/waveform_card.py` | 音频波形卡片，波形显示 + 包络线 + AB 循环区域 + 滚轮缩放 + Shift 拖动 |
 | `cards/translate_card.py` | 翻译面板卡片（Phase 4 实现） |
 
 ### 2.2 核心层 (`chestnut_studio/core/`)
@@ -49,7 +49,7 @@
 | 模块 | 职责 |
 |------|------|
 | `ffmpeg.py` | FFmpeg 封装，视频信息解析、音轨提取 |
-| `audio.py` | 音频数据处理，波形加载、平滑 |
+| `audio.py` | 音频数据处理，波形加载、包络计算、人声增强 |
 | `subtitle.py` | 字幕数据结构，SubtitleDict 定义、撤销重做 |
 | `subtitle_io.py` | 字幕导入导出，SRT/ASS/VTT/LRC 格式 |
 
@@ -110,15 +110,31 @@ class VideoInfo:
 ### 4.2 信号流
 
 ```
-PlayerCard                    WaveformCard
-  │ position_changed ──────────→ update_position
-  │                              │
-  ▼                              ▼
-TimelineCard                  TranslateCard
-  │ highlight_row               │ show_subtitle
-  │                              │
-  └──────────────────────────────┘
+ToolBar                          MainWindow                         PlayerCard
+  │ play_clicked ──────────────→ play_pause ───────────────────→ QMediaPlayer
+  │ skip_forward ──────────────→ _on_skip_forward ──────────────→ set_position
+  │ ab_loop_a_clicked ─────────→ _on_ab_loop_set_a ────────────→ set_ab_loop_a
+  │ ab_loop_b_clicked ─────────→ _on_ab_loop_set_b ────────────→ set_ab_loop_b
+  │ ab_loop_clear_clicked ─────→ _on_ab_loop_clear ────────────→ clear_ab_loop
+  │ ←───────────────────────── update_position ←──────────────── position_changed
+  │ ←───────────────────────── set_duration ←─────────────────── duration_changed
+  │ ←───────────────────── update_ab_loop_state ←─────────────── ab_loop_changed
+                              │
+                              ├──→ WaveformCard.update_position
+                              ├──→ WaveformCard.set_ab_loop_region
+                              └──→ StatusBar.set_time
+
+WaveformCard
+  │ position_clicked ──────────→ PlayerCard.set_position
 ```
+
+### 4.3 AB 循环流程
+
+1. 用户按 `[` 或点击 A 按钮 → `PlayerCard.set_ab_loop_a()`
+2. 用户按 `]` 或点击 B 按钮 → `PlayerCard.set_ab_loop_b()`
+3. `PlayerCard.ab_loop_changed` 发射 → 更新工具栏按钮样式 + 波形图循环区域
+4. 播放时 `_on_position_changed` 检测位置 → 超过 B 点自动跳回 A 点
+5. 用户按 `\` 或点击 × 按钮 → `PlayerCard.clear_ab_loop()` 清除循环
 
 ---
 
@@ -188,5 +204,6 @@ tests/
 ├── conftest.py           # 测试配置，共享 fixtures
 ├── test_phase0.py        # Phase 0 基础设施测试
 ├── test_phase1.py        # Phase 1 视频播放测试（FFmpeg/PlayerCard/ToolBar）
+├── test_phase2.py        # Phase 2 音频波形测试（WaveformCard/WaveformPlotWidget）
 └── test_subtitle.py      # 字幕数据结构测试
 ```

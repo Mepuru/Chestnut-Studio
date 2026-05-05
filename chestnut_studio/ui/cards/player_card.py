@@ -31,6 +31,10 @@ class VideoView(QGraphicsView):
         super().resizeEvent(event)
         self._fit_video()
 
+    def fit_video(self):
+        """公开方法：视频画面居中铺满，保持宽高比"""
+        self._fit_video()
+
     def _fit_video(self):
         """视频画面居中铺满，保持宽高比"""
         bounds = self._video_item.boundingRect()
@@ -55,6 +59,7 @@ class PlayerCard(QDockWidget):
     video_opened = Signal(str)
     playback_state_changed = Signal(bool)
     subtitle_dropped = Signal(str)
+    ab_loop_changed = Signal(int, int)  # AB 循环状态变化 (a_point, b_point)，-1 表示未设置
 
     default_area = Qt.LeftDockWidgetArea
 
@@ -65,6 +70,11 @@ class PlayerCard(QDockWidget):
         self._is_playing = False
         self._volume = 80
         self._playback_rate = 1.0
+
+        # AB 循环状态
+        self._ab_loop_a = -1  # A 点位置（ms），-1 表示未设置
+        self._ab_loop_b = -1  # B 点位置（ms），-1 表示未设置
+        self._ab_loop_enabled = False  # AB 循环是否激活
 
         self._setup_ui()
         self._setup_player()
@@ -130,6 +140,8 @@ class PlayerCard(QDockWidget):
         self._player.positionChanged.connect(self._on_position_changed)
         self._player.durationChanged.connect(self._on_duration_changed)
         self._player.playbackStateChanged.connect(self._on_playback_state_changed)
+        # 监听视频尺寸变化，自动适配画面
+        self._video_item.nativeSizeChanged.connect(self._on_video_size_changed)
 
     def resizeEvent(self, event):
         """保持提示标签居中"""
@@ -149,6 +161,10 @@ class PlayerCard(QDockWidget):
         self._player.setSource(QUrl.fromLocalFile(path))
         self._player.pause()
         self._hint_label.hide()
+
+        # 清除 AB 循环
+        self.clear_ab_loop()
+
         self.video_opened.emit(path)
         return True
 
@@ -206,9 +222,55 @@ class PlayerCard(QDockWidget):
     def is_playing(self) -> bool:
         return self._is_playing
 
+    # ========== AB 循环 ==========
+
+    def set_ab_loop_a(self):
+        """设置 A 点为当前播放位置"""
+        self._ab_loop_a = self._player.position()
+        self._check_ab_loop()
+        self.ab_loop_changed.emit(self._ab_loop_a, self._ab_loop_b)
+
+    def set_ab_loop_b(self):
+        """设置 B 点为当前播放位置"""
+        self._ab_loop_b = self._player.position()
+        self._check_ab_loop()
+        self.ab_loop_changed.emit(self._ab_loop_a, self._ab_loop_b)
+
+    def clear_ab_loop(self):
+        """清除 AB 循环"""
+        self._ab_loop_a = -1
+        self._ab_loop_b = -1
+        self._ab_loop_enabled = False
+        self.ab_loop_changed.emit(-1, -1)
+
+    def get_ab_loop_points(self) -> tuple[int, int]:
+        """获取 AB 循环点"""
+        return self._ab_loop_a, self._ab_loop_b
+
+    def is_ab_loop_enabled(self) -> bool:
+        """AB 循环是否激活"""
+        return self._ab_loop_enabled
+
+    def _check_ab_loop(self):
+        """检查 AB 循环是否可以激活"""
+        if self._ab_loop_a >= 0 and self._ab_loop_b >= 0:
+            # 确保 A < B
+            if self._ab_loop_a > self._ab_loop_b:
+                self._ab_loop_a, self._ab_loop_b = self._ab_loop_b, self._ab_loop_a
+            # 如果 A == B，不激活循环
+            if self._ab_loop_a == self._ab_loop_b:
+                self._ab_loop_enabled = False
+            else:
+                self._ab_loop_enabled = True
+
     # ========== 内部事件 ==========
 
     def _on_position_changed(self, position: int):
+        # AB 循环：如果播放位置超过 B 点，跳回 A 点
+        if self._ab_loop_enabled and position >= self._ab_loop_b:
+            self._player.setPosition(self._ab_loop_a)
+            return  # 不发射 position_changed，等待下一帧
+
         self.position_changed.emit(position)
 
     def _on_duration_changed(self, duration: int):
@@ -218,6 +280,12 @@ class PlayerCard(QDockWidget):
     def _on_playback_state_changed(self, state):
         self._is_playing = state == QMediaPlayer.PlayingState
         self.playback_state_changed.emit(self._is_playing)
+
+    def _on_video_size_changed(self, size):
+        """视频尺寸变化时自动适配画面"""
+        # 延迟一帧调用 fitInView，确保布局已完成
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, self._view.fit_video)
 
     # ========== 拖放 ==========
 

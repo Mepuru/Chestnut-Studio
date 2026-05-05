@@ -215,6 +215,11 @@ class MainWindow(QMainWindow):
         self.toolbar.skip_forward.connect(self._on_skip_forward)
         self.toolbar.skip_backward.connect(self._on_skip_backward)
 
+        # AB 循环信号
+        self.toolbar.ab_loop_a_clicked.connect(self._on_ab_loop_set_a)
+        self.toolbar.ab_loop_b_clicked.connect(self._on_ab_loop_set_b)
+        self.toolbar.ab_loop_clear_clicked.connect(self._on_ab_loop_clear)
+
         # --- 播放卡片 → 工具栏 ---
         self.player_card.position_changed.connect(self.toolbar.update_position)
         self.player_card.duration_changed.connect(self.toolbar.set_duration)
@@ -223,6 +228,17 @@ class MainWindow(QMainWindow):
         # --- 播放卡片 → 状态栏 ---
         self.player_card.duration_changed.connect(self._on_duration_changed)
         self.player_card.position_changed.connect(self._on_position_changed)
+
+        # --- 播放卡片 → 波形卡片 ---
+        self.player_card.position_changed.connect(self.waveform_card.update_position)
+        self.player_card.duration_changed.connect(self.waveform_card.set_duration)
+
+        # --- 播放卡片 AB 循环 → 工具栏和波形卡片 ---
+        self.player_card.ab_loop_changed.connect(self.toolbar.update_ab_loop_state)
+        self.player_card.ab_loop_changed.connect(self.waveform_card.set_ab_loop_region)
+
+        # --- 波形卡片 → 播放卡片（点击跳转） ---
+        self.waveform_card.position_clicked.connect(self.player_card.set_position)
 
     # ========== 布局管理 ==========
 
@@ -293,6 +309,36 @@ class MainWindow(QMainWindow):
         self._save_layout()
         super().closeEvent(event)
 
+    def keyPressEvent(self, event):
+        """全局快捷键处理"""
+        key = event.key()
+
+        # 空格：播放/暂停
+        if key == Qt.Key_Space:
+            self.player_card.play_pause()
+            event.accept()
+            return
+
+        # [：设置 A 点
+        if key == Qt.Key_BracketLeft:
+            self._on_ab_loop_set_a()
+            event.accept()
+            return
+
+        # ]：设置 B 点
+        if key == Qt.Key_BracketRight:
+            self._on_ab_loop_set_b()
+            event.accept()
+            return
+
+        # \：清除 AB 循环
+        if key == Qt.Key_Backslash:
+            self._on_ab_loop_clear()
+            event.accept()
+            return
+
+        super().keyPressEvent(event)
+
     # ========== 菜单事件处理 ==========
 
     def _on_open_video(self):
@@ -325,6 +371,10 @@ class MainWindow(QMainWindow):
                 # FFmpeg 不可用时不报错，只是不显示视频信息
                 self.status_bar.clear_video_info()
 
+            # 加载波形（异步处理，避免阻塞 UI）
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(100, lambda: self._load_waveform(path))
+
     def _on_open_subtitle(self):
         """导入字幕文件"""
         # TODO: Phase 4 实现
@@ -353,6 +403,44 @@ class MainWindow(QMainWindow):
         """后退指定毫秒"""
         pos = self.player_card.get_position() - ms
         self.player_card.set_position(max(pos, 0))
+
+    # ========== AB 循环 ==========
+
+    def _on_ab_loop_set_a(self):
+        """设置 A 点"""
+        self.player_card.set_ab_loop_a()
+        a, b = self.player_card.get_ab_loop_points()
+        if a >= 0:
+            self.status_bar.set_status(f"AB 循环：A 点已设置 ({split_time(a)})")
+
+    def _on_ab_loop_set_b(self):
+        """设置 B 点"""
+        self.player_card.set_ab_loop_b()
+        a, b = self.player_card.get_ab_loop_points()
+        if b >= 0:
+            if a >= 0:
+                self.status_bar.set_status(f"AB 循环：{split_time(a)} - {split_time(b)}")
+            else:
+                self.status_bar.set_status(f"AB 循环：B 点已设置 ({split_time(b)})")
+
+    def _on_ab_loop_clear(self):
+        """清除 AB 循环"""
+        self.player_card.clear_ab_loop()
+        self.status_bar.set_status("AB 循环已清除")
+
+    # ========== 波形加载 ==========
+
+    def _load_waveform(self, video_path: str):
+        """加载视频的音频波形
+
+        Args:
+            video_path: 视频文件路径
+        """
+        success = self.waveform_card.load_waveform(video_path)
+        if success:
+            self.status_bar.set_status("波形加载完成")
+        else:
+            self.status_bar.set_status("波形加载失败")
 
     # ========== 状态栏更新 ==========
 
