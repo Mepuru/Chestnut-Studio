@@ -96,12 +96,22 @@ ChestnutStudio/
 │   │   └── subtitle_io.py   # 字幕导入/导出
 │   ├── ui/                  # UI 层
 │   │   ├── __init__.py
+│   │   ├── main_window.py   # 主窗口
+│   │   ├── menubar.py       # 菜单栏
+│   │   ├── statusbar.py     # 状态栏
 │   │   ├── cards/           # 卡片组件
+│   │   │   ├── __init__.py
+│   │   │   ├── player_card.py    # 视频播放卡片
+│   │   │   ├── timeline_card.py  # 打轴编辑卡片
+│   │   │   ├── waveform_card.py  # 音频波形卡片
+│   │   │   └── translate_card.py # 翻译面板卡片
 │   │   └── dialogs/         # 弹窗
+│   │       └── __init__.py
 │   ├── utils/               # 工具函数
 │   │   ├── __init__.py
 │   │   └── time_utils.py    # 时间格式转换
 │   └── resources/           # 资源文件
+│       └── style.qss        # 暗色主题样式表
 ├── tests/                   # 测试
 ├── prototypes/              # 设计文档
 ├── pyproject.toml           # 项目配置
