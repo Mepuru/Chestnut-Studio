@@ -157,14 +157,20 @@ impl VideoPlayer {
             let current_frame = decoder.current_frame_number();
             let fps = decoder.fps();
             let target_frame = current_frame + (secs * fps) as u64;
+            let was_playing = self.is_playing;
             
-            // 先暂停音频
-            self.audio_player.pause();
+            // 如果正在播放，先暂停
+            if was_playing {
+                decoder.pause();
+                self.audio_player.pause();
+            }
             
+            // seek到新位置
             decoder.seek_to_frame(target_frame)?;
             
-            // 如果正在播放，重新开始音频播放
-            if self.is_playing {
+            // 如果之前在播放，从新位置继续播放
+            if was_playing {
+                decoder.play()?;
                 if let Some(ref path) = self.video_path {
                     let position = target_frame as f64 / fps;
                     let _ = self.audio_player.play(Path::new(path), position);
@@ -184,14 +190,20 @@ impl VideoPlayer {
             } else {
                 0
             };
+            let was_playing = self.is_playing;
             
-            // 先暂停音频
-            self.audio_player.pause();
+            // 如果正在播放，先暂停
+            if was_playing {
+                decoder.pause();
+                self.audio_player.pause();
+            }
             
+            // seek到新位置
             decoder.seek_to_frame(target_frame)?;
             
-            // 如果正在播放，重新开始音频播放
-            if self.is_playing {
+            // 如果之前在播放，从新位置继续播放
+            if was_playing {
+                decoder.play()?;
                 if let Some(ref path) = self.video_path {
                     let position = target_frame as f64 / fps;
                     let _ = self.audio_player.play(Path::new(path), position);
@@ -206,14 +218,20 @@ impl VideoPlayer {
         if let Some(ref mut decoder) = self.decoder {
             let current_frame = decoder.current_frame_number();
             let fps = decoder.fps();
+            let was_playing = self.is_playing;
             
-            // 先暂停音频
-            self.audio_player.pause();
+            // 如果正在播放，先暂停
+            if was_playing {
+                decoder.pause();
+                self.audio_player.pause();
+            }
             
+            // seek到新位置
             decoder.seek_to_frame(current_frame + 1)?;
             
-            // 如果正在播放，重新开始音频播放
-            if self.is_playing {
+            // 如果之前在播放，从新位置继续播放
+            if was_playing {
+                decoder.play()?;
                 if let Some(ref path) = self.video_path {
                     let position = (current_frame + 1) as f64 / fps;
                     let _ = self.audio_player.play(Path::new(path), position);
@@ -230,13 +248,20 @@ impl VideoPlayer {
             let fps = decoder.fps();
             
             if current_frame > 0 {
-                // 先暂停音频
-                self.audio_player.pause();
+                let was_playing = self.is_playing;
                 
+                // 如果正在播放，先暂停
+                if was_playing {
+                    decoder.pause();
+                    self.audio_player.pause();
+                }
+                
+                // seek到新位置
                 decoder.seek_to_frame(current_frame - 1)?;
                 
-                // 如果正在播放，重新开始音频播放
-                if self.is_playing {
+                // 如果之前在播放，从新位置继续播放
+                if was_playing {
+                    decoder.play()?;
                     if let Some(ref path) = self.video_path {
                         let position = (current_frame - 1) as f64 / fps;
                         let _ = self.audio_player.play(Path::new(path), position);
