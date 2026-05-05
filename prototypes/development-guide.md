@@ -383,7 +383,9 @@ config
 
 ---
 
-## 七、依赖管理
+## 七、依赖管理（uv）
+
+本项目使用 [uv](https://github.com/astral-sh/uv) 进行包管理。
 
 ### 7.1 核心依赖
 
@@ -392,22 +394,21 @@ config
 [project]
 name = "chestnut-studio"
 version = "0.1.0"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
-    "PySide6>=6.5",
-    "pyqtgraph>=0.13",
-    "numpy",
+    "PySide6>=6.11.0",
+    "pyqtgraph>=0.14.0",
+    "numpy>=2.4.4",
 ]
 ```
 
 ### 7.2 开发依赖
 
 ```toml
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "pytest",
-    "pytest-qt",
-    "ruff",           # Linter + Formatter
+    "pytest>=9.0.3",
+    "ruff>=0.15.12",
 ]
 ```
 
@@ -416,6 +417,7 @@ dev = [
 | 工具 | 用途 | 安装方式 |
 |------|------|---------|
 | FFmpeg | 视频/音频处理 | 用户自行安装或打包时附带 |
+| uv | 包管理 | `pip install uv` 或 `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 
 ---
 
@@ -449,9 +451,10 @@ for start in sorted(sub_data):
 
 | 工具 | 用途 | 命令 |
 |------|------|------|
-| **ruff** | 代码检查 + 格式化 | `ruff check src/` / `ruff format src/` |
-| **pytest** | 测试框架 | `pytest tests/` |
-| **PyInstaller** | 打包 | `pyinstaller chestnut.spec` |
+| **uv** | 包管理 | `uv sync` / `uv add <pkg>` / `uv run <cmd>` |
+| **ruff** | 代码检查 + 格式化 | `uv run ruff check src/` / `uv run ruff format src/` |
+| **pytest** | 测试框架 | `uv run pytest tests/` |
+| **PyInstaller** | 打包 | `uv run pyinstaller chestnut.spec` |
 
 ### 9.1 开发环境搭建
 
@@ -460,19 +463,24 @@ for start in sorted(sub_data):
 git clone https://gitee.com/kurikana/chestnut-studio.git
 cd chestnut-studio
 
-# 创建虚拟环境
-python -m venv .venv
+# 安装依赖（自动创建 .venv）
+uv sync
+
+# 激活虚拟环境
 .venv\Scripts\activate
 
-# 安装依赖
-pip install -e ".[dev]"
-
 # 运行
-python src/main.py
+uv run python src/chestnut_studio/main.py
 
 # 测试
-pytest tests/
+uv run pytest tests/
 
 # 代码检查
-ruff check src/
+uv run ruff check src/
+
+# 添加新依赖
+uv add <package>
+
+# 添加开发依赖
+uv add --dev <package>
 ```

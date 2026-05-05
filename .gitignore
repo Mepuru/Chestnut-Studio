@@ -11,6 +11,9 @@ build/
 venv/
 env/
 
+# uv
+.python-version
+
 # IDE
 .idea/
 .vscode/
@@ -25,3 +28,9 @@ Thumbs.db
 temp_audio/
 *.tmp
 config
+
+# pytest
+.pytest_cache/
+
+# ruff
+.ruff_cache/
