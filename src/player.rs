@@ -157,13 +157,17 @@ impl VideoPlayer {
             let current_frame = decoder.current_frame_number();
             let fps = decoder.fps();
             let target_frame = current_frame + (secs * fps) as u64;
+            
+            // 先暂停音频
+            self.audio_player.pause();
+            
             decoder.seek_to_frame(target_frame)?;
             
-            // 同步音频位置
+            // 如果正在播放，重新开始音频播放
             if self.is_playing {
                 if let Some(ref path) = self.video_path {
                     let position = target_frame as f64 / fps;
-                    let _ = self.audio_player.sync_position(Path::new(path), position);
+                    let _ = self.audio_player.play(Path::new(path), position);
                 }
             }
         }
@@ -180,13 +184,17 @@ impl VideoPlayer {
             } else {
                 0
             };
+            
+            // 先暂停音频
+            self.audio_player.pause();
+            
             decoder.seek_to_frame(target_frame)?;
             
-            // 同步音频位置
+            // 如果正在播放，重新开始音频播放
             if self.is_playing {
                 if let Some(ref path) = self.video_path {
                     let position = target_frame as f64 / fps;
-                    let _ = self.audio_player.sync_position(Path::new(path), position);
+                    let _ = self.audio_player.play(Path::new(path), position);
                 }
             }
         }
@@ -198,13 +206,17 @@ impl VideoPlayer {
         if let Some(ref mut decoder) = self.decoder {
             let current_frame = decoder.current_frame_number();
             let fps = decoder.fps();
+            
+            // 先暂停音频
+            self.audio_player.pause();
+            
             decoder.seek_to_frame(current_frame + 1)?;
             
-            // 同步音频位置
+            // 如果正在播放，重新开始音频播放
             if self.is_playing {
                 if let Some(ref path) = self.video_path {
                     let position = (current_frame + 1) as f64 / fps;
-                    let _ = self.audio_player.sync_position(Path::new(path), position);
+                    let _ = self.audio_player.play(Path::new(path), position);
                 }
             }
         }
@@ -216,14 +228,18 @@ impl VideoPlayer {
         if let Some(ref mut decoder) = self.decoder {
             let current_frame = decoder.current_frame_number();
             let fps = decoder.fps();
+            
             if current_frame > 0 {
+                // 先暂停音频
+                self.audio_player.pause();
+                
                 decoder.seek_to_frame(current_frame - 1)?;
                 
-                // 同步音频位置
+                // 如果正在播放，重新开始音频播放
                 if self.is_playing {
                     if let Some(ref path) = self.video_path {
                         let position = (current_frame - 1) as f64 / fps;
-                        let _ = self.audio_player.sync_position(Path::new(path), position);
+                        let _ = self.audio_player.play(Path::new(path), position);
                     }
                 }
             }
