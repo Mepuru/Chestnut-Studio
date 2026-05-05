@@ -31,6 +31,7 @@ pub struct AppState {
     pub speed: f64,
     pub fps: f64,
     pub video_path: Option<String>,
+    pub video_hwnd: Option<i64>,
 }
 
 impl AppState {
@@ -152,6 +153,7 @@ impl Default for AppState {
             speed: 1.0,
             fps: 30.0,
             video_path: None,
+            video_hwnd: None,
         }
     }
 }

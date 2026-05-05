@@ -2,7 +2,7 @@ use iced::widget::{
     button, column, container, horizontal_space, pane_grid,
     row, text, PaneGrid,
 };
-use iced::{Center, Color, Element, Fill, Font, Subscription, Theme};
+use iced::{Center, Color, Element, Fill, Font, Subscription, Theme, window};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -59,7 +59,11 @@ impl ChestnutStudio {
             }
         }
 
-        (Self { state }, iced::Task::none())
+        // 启动时获取窗口句柄并创建视频子窗口
+        // 延迟执行，等待窗口完全初始化
+        let task = iced::Task::done(Message::InitializeVideoWindow);
+
+        (Self { state }, task)
     }
 
     pub fn title(&self) -> String {
@@ -86,6 +90,64 @@ impl ChestnutStudio {
                 self.state.is_maximized = false;
             }
             Message::TogglePanel(pane) => self.state.toggle_panel(pane),
+
+            // 初始化视频窗口
+            Message::InitializeVideoWindow => {
+                // 获取主窗口句柄并创建子窗口
+                // 主窗口ID通常是1（第一个创建的窗口）
+                let main_window_id = window::Id::unique();
+                return window::run_with_handle(main_window_id, |handle| {
+                    use iced::window::raw_window_handle::HasWindowHandle;
+                    
+                    #[cfg(target_os = "windows")]
+                    {
+                        // 获取原生窗口句柄
+                        if let Ok(raw_handle) = handle.window_handle() {
+                            use iced::window::raw_window_handle::RawWindowHandle;
+                            
+                            if let RawWindowHandle::Win32(win32_handle) = raw_handle.as_raw() {
+                                let parent_hwnd = win32_handle.hwnd.get() as isize;
+                                tracing::info!("获取到主窗口句柄: {:?}", parent_hwnd);
+                                
+                                // 创建子窗口用于视频渲染
+                                let child_hwnd = unsafe { create_video_child_window(parent_hwnd) };
+                                
+                                if child_hwnd != 0 {
+                                    tracing::info!("创建视频子窗口成功: {:?}", child_hwnd);
+                                    return Message::VideoWindowCreated(child_hwnd as i64);
+                                } else {
+                                    tracing::error!("创建视频子窗口失败");
+                                }
+                            }
+                        }
+                    }
+                    
+                    Message::VideoWindowCreated(0)
+                });
+            }
+
+            Message::VideoWindowCreated(hwnd) => {
+                if hwnd != 0 {
+                    tracing::info!("视频窗口已创建，设置 mpv wid: {}", hwnd);
+                    
+                    // 将子窗口句柄传递给播放器
+                    if let Some(ref mut player) = self.state.player {
+                        #[cfg(target_os = "windows")]
+                        unsafe {
+                            if let Err(e) = player.set_wid(hwnd) {
+                                tracing::error!("设置 mpv wid 失败: {}", e);
+                                self.state.status = format!("设置视频渲染失败: {}", e);
+                            } else {
+                                self.state.video_hwnd = Some(hwnd);
+                                self.state.status = "视频渲染已初始化".into();
+                            }
+                        }
+                    }
+                } else {
+                    tracing::warn!("视频窗口创建失败，使用独立窗口模式");
+                    self.state.status = "播放器就绪（独立窗口模式）".into();
+                }
+            }
 
             // 文件操作
             Message::ImportVideo => {
@@ -568,7 +630,7 @@ impl ChestnutStudio {
         let has_video = self.state.video_path.is_some();
 
         if has_video {
-            // 显示视频信息和进度条
+            // 显示视频信息
             let video_info = if let Some(ref path) = self.state.video_path {
                 let filename = std::path::Path::new(path)
                     .file_name()
@@ -580,40 +642,24 @@ impl ChestnutStudio {
                 text("").font(FONT).size(12).color(TEXT_SECONDARY)
             };
 
-            // 进度条
-            let progress = if self.state.duration_ms > 0 {
-                self.state.position_ms as f32 / self.state.duration_ms as f32
-            } else {
-                0.0
-            };
-
-            let progress_bar = container(
-                row![
-                    text(player::format_time_hms(self.state.position_ms as f64 / 1000.0))
-                        .font(FONT).size(11).color(TEXT_SECONDARY),
-                    horizontal_space(),
-                    text(format!("{:.1}x", self.state.speed))
-                        .font(FONT).size(11).color(TEXT_SECONDARY),
-                    text(" | ").font(FONT).size(11).color(BORDER),
-                    text(player::format_time_hms(self.state.duration_ms as f64 / 1000.0))
-                        .font(FONT).size(11).color(TEXT_SECONDARY),
+            // 视频容器（mpv 会渲染到子窗口上）
+            let video_container = container(
+                column![
+                    text("").font(FONT).size(1),  // 占位符
                 ]
-                .align_y(Center)
-                .spacing(8),
             )
-            .padding([4, 8])
             .width(Fill)
+            .height(Fill)
             .style(|_| container::Style {
-                background: Some(BG_SURFACE.into()),
-                border: iced::Border { radius: 4.0.into(), ..Default::default() },
+                background: Some(Color::from_rgb(0.08, 0.08, 0.10).into()),
+                border: iced::Border { width: 1.0, color: BORDER, ..Default::default() },
                 ..Default::default()
             });
 
             container(
                 column![
                     video_info,
-                    horizontal_space(),
-                    progress_bar,
+                    video_container,
                 ]
                 .spacing(8)
                 .padding(8),
@@ -744,4 +790,48 @@ fn pane_ctrl_btn(_theme: &Theme, status: button::Status) -> button::Style {
         button::Status::Hovered => button::Style { background: Some(BG_SURFACE.into()), text_color: TEXT_PRIMARY, ..base },
         _ => base,
     }
+}
+
+// ── Windows 子窗口创建 ─────────────────────────────────────────────
+
+#[cfg(target_os = "windows")]
+unsafe fn create_video_child_window(parent_hwnd: isize) -> isize {
+    use winapi::um::winuser::{CreateWindowExW, WS_CHILD, WS_VISIBLE, WS_CLIPCHILDREN};
+    use winapi::um::libloaderapi::GetModuleHandleW;
+    use std::ptr::null_mut;
+    
+    // 注册窗口类
+    let class_name: Vec<u16> = "MpvVideoChild\0".encode_utf16().collect();
+    
+    let wnd_class = winapi::um::winuser::WNDCLASSEXW {
+        cbSize: std::mem::size_of::<winapi::um::winuser::WNDCLASSEXW>() as u32,
+        style: 0,
+        lpfnWndProc: Some(winapi::um::winuser::DefWindowProcW),
+        cbClsExtra: 0,
+        cbWndExtra: 0,
+        hInstance: GetModuleHandleW(null_mut()),
+        hIcon: null_mut(),
+        hCursor: null_mut(),
+        hbrBackground: null_mut(),
+        lpszMenuName: null_mut(),
+        lpszClassName: class_name.as_ptr(),
+        hIconSm: null_mut(),
+    };
+    
+    winapi::um::winuser::RegisterClassExW(&wnd_class);
+    
+    // 创建子窗口
+    let hwnd = CreateWindowExW(
+        0,
+        class_name.as_ptr(),
+        null_mut(),
+        WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
+        0, 0, 640, 360,  // 默认大小
+        parent_hwnd as *mut _,
+        null_mut(),
+        GetModuleHandleW(null_mut()),
+        null_mut(),
+    );
+    
+    hwnd as isize
 }

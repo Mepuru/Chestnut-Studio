@@ -16,6 +16,8 @@ pub struct VideoPlayer {
     width: u32,
     /// 视频高度
     height: u32,
+    /// 是否已设置渲染窗口
+    has_wid: bool,
 }
 
 impl std::fmt::Debug for VideoPlayer {
@@ -25,6 +27,7 @@ impl std::fmt::Debug for VideoPlayer {
             .field("fps", &self.fps)
             .field("width", &self.width)
             .field("height", &self.height)
+            .field("has_wid", &self.has_wid)
             .finish()
     }
 }
@@ -49,7 +52,27 @@ impl VideoPlayer {
             fps: 30.0,
             width: 0,
             height: 0,
+            has_wid: false,
         })
+    }
+
+    /// 设置渲染窗口句柄（用于嵌入式播放）
+    /// 
+    /// # Safety
+    /// 
+    /// 传入的窗口句柄必须是有效的
+    #[cfg(target_os = "windows")]
+    pub unsafe fn set_wid(&mut self, wid: i64) -> Result<()> {
+        self.mpv.set_property("wid", wid)
+            .map_err(|e| anyhow::anyhow!("设置渲染窗口失败: {}", e))?;
+        self.has_wid = true;
+        tracing::info!("mpv 渲染窗口已设置: wid={}", wid);
+        Ok(())
+    }
+
+    /// 获取是否已设置渲染窗口
+    pub fn has_wid(&self) -> bool {
+        self.has_wid
     }
 
     /// 加载视频文件
@@ -233,6 +256,17 @@ impl VideoPlayer {
     /// 创建新的播放器实例 (无 mpv 支持)
     pub fn new() -> Result<Self> {
         anyhow::bail!("mpv 功能未启用。请使用 --features mpv 编译以启用视频播放支持。")
+    }
+
+    /// 设置渲染窗口句柄（用于嵌入式播放）
+    #[cfg(target_os = "windows")]
+    pub unsafe fn set_wid(&mut self, _wid: i64) -> Result<()> {
+        anyhow::bail!("mpv 功能未启用")
+    }
+
+    /// 获取是否已设置渲染窗口
+    pub fn has_wid(&self) -> bool {
+        false
     }
 
     /// 加载视频文件 (无 mpv 支持)
