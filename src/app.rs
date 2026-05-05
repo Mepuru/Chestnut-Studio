@@ -177,8 +177,18 @@ impl ChestnutStudio {
                     if let Err(e) = player.seek_forward(5.0) {
                         self.state.status = format!("跳转失败: {}", e);
                     } else {
-                        self.state.position_ms = player.get_position_ms();
                         self.state.current_frame = player.get_current_frame();
+                        self.state.position_ms = (self.state.current_frame as f64 / player.get_fps() * 1000.0) as u64;
+                        
+                        // 更新视频帧
+                        if let Some(frame) = player.current_frame() {
+                            let handle = image::Handle::from_rgba(
+                                frame.width,
+                                frame.height,
+                                frame.data,
+                            );
+                            self.state.video_frame_handle = Some(handle);
+                        }
                     }
                 }
             }
@@ -187,8 +197,18 @@ impl ChestnutStudio {
                     if let Err(e) = player.seek_backward(5.0) {
                         self.state.status = format!("跳转失败: {}", e);
                     } else {
-                        self.state.position_ms = player.get_position_ms();
                         self.state.current_frame = player.get_current_frame();
+                        self.state.position_ms = (self.state.current_frame as f64 / player.get_fps() * 1000.0) as u64;
+                        
+                        // 更新视频帧
+                        if let Some(frame) = player.current_frame() {
+                            let handle = image::Handle::from_rgba(
+                                frame.width,
+                                frame.height,
+                                frame.data,
+                            );
+                            self.state.video_frame_handle = Some(handle);
+                        }
                     }
                 }
             }
@@ -198,7 +218,17 @@ impl ChestnutStudio {
                         self.state.status = format!("步进失败: {}", e);
                     } else {
                         self.state.current_frame = player.get_current_frame();
-                        self.state.position_ms = player.get_position_ms();
+                        self.state.position_ms = (self.state.current_frame as f64 / player.get_fps() * 1000.0) as u64;
+                        
+                        // 更新视频帧
+                        if let Some(frame) = player.current_frame() {
+                            let handle = image::Handle::from_rgba(
+                                frame.width,
+                                frame.height,
+                                frame.data,
+                            );
+                            self.state.video_frame_handle = Some(handle);
+                        }
                     }
                 }
             }
@@ -208,7 +238,17 @@ impl ChestnutStudio {
                         self.state.status = format!("步进失败: {}", e);
                     } else {
                         self.state.current_frame = player.get_current_frame();
-                        self.state.position_ms = player.get_position_ms();
+                        self.state.position_ms = (self.state.current_frame as f64 / player.get_fps() * 1000.0) as u64;
+                        
+                        // 更新视频帧
+                        if let Some(frame) = player.current_frame() {
+                            let handle = image::Handle::from_rgba(
+                                frame.width,
+                                frame.height,
+                                frame.data,
+                            );
+                            self.state.video_frame_handle = Some(handle);
+                        }
                     }
                 }
             }
