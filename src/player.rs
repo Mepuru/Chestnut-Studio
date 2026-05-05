@@ -158,6 +158,14 @@ impl VideoPlayer {
             let fps = decoder.fps();
             let target_frame = current_frame + (secs * fps) as u64;
             decoder.seek_to_frame(target_frame)?;
+            
+            // 同步音频位置
+            if self.is_playing {
+                if let Some(ref path) = self.video_path {
+                    let position = target_frame as f64 / fps;
+                    let _ = self.audio_player.sync_position(Path::new(path), position);
+                }
+            }
         }
         Ok(())
     }
@@ -173,24 +181,54 @@ impl VideoPlayer {
                 0
             };
             decoder.seek_to_frame(target_frame)?;
+            
+            // 同步音频位置
+            if self.is_playing {
+                if let Some(ref path) = self.video_path {
+                    let position = target_frame as f64 / fps;
+                    let _ = self.audio_player.sync_position(Path::new(path), position);
+                }
+            }
         }
         Ok(())
     }
 
     /// 前进一帧
     pub fn frame_step(&mut self) -> Result<()> {
-        let current = self.get_current_frame();
-        self.seek_to_frame(current + 1)
+        if let Some(ref mut decoder) = self.decoder {
+            let current_frame = decoder.current_frame_number();
+            let fps = decoder.fps();
+            decoder.seek_to_frame(current_frame + 1)?;
+            
+            // 同步音频位置
+            if self.is_playing {
+                if let Some(ref path) = self.video_path {
+                    let position = (current_frame + 1) as f64 / fps;
+                    let _ = self.audio_player.sync_position(Path::new(path), position);
+                }
+            }
+        }
+        Ok(())
     }
 
     /// 后退一帧
     pub fn frame_back_step(&mut self) -> Result<()> {
-        let current = self.get_current_frame();
-        if current > 0 {
-            self.seek_to_frame(current - 1)
-        } else {
-            Ok(())
+        if let Some(ref mut decoder) = self.decoder {
+            let current_frame = decoder.current_frame_number();
+            let fps = decoder.fps();
+            if current_frame > 0 {
+                decoder.seek_to_frame(current_frame - 1)?;
+                
+                // 同步音频位置
+                if self.is_playing {
+                    if let Some(ref path) = self.video_path {
+                        let position = (current_frame - 1) as f64 / fps;
+                        let _ = self.audio_player.sync_position(Path::new(path), position);
+                    }
+                }
+            }
         }
+        Ok(())
     }
 
     /// 设置音量 (0-100)
