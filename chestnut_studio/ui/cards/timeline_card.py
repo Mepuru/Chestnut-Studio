@@ -24,6 +24,9 @@ SUBTITLE_COLORS = {
     "abnormal": QColor(178, 34, 34),  # 持续时间异常
 }
 
+# 轨道数量
+NUM_COLUMNS = 4
+
 # 快捷键映射
 KEY_MAP = {
     Qt.Key_Q: "shift_start_left",  # 轴左端左移
@@ -43,8 +46,8 @@ class TimelineCard(QDockWidget):
     """打轴编辑卡片
 
     功能：
-    - 可滚动的动态表格，5列字幕轨道
-    - 直接点击任意轨道操作，无需切换
+    - 可滚动的动态表格，4列字幕轨道
+    - 点击跳转到视频对应位置并暂停
     - 完整的快捷键支持
     - 右键上下文菜单
     - 双击编辑字幕文本
@@ -56,7 +59,7 @@ class TimelineCard(QDockWidget):
     # 信号
     subtitle_selected = Signal(int, str)  # 字幕被选中 (col, text)
     subtitle_changed = Signal()  # 字幕数据变化（用于刷新波形覆盖）
-    position_jump_requested = Signal(int)  # 请求跳转到指定位置
+    position_jump_requested = Signal(int)  # 请求跳转到指定位置并暂停
 
     # 默认停靠区域
     default_area = Qt.RightDockWidgetArea
@@ -65,7 +68,7 @@ class TimelineCard(QDockWidget):
         super().__init__("时间轴", parent)
         self._subtitle_mgr = SubtitleManager()
         self._global_interval = 33.33  # 间隔 (ms)
-        self._style_names = ["1", "2", "3", "4", "5"]
+        self._style_names = ["1", "2", "3", "4"]
         self._clipboard = []  # 剪贴板
         self._follow_player = True  # 跟随播放位置模式
         self._player_position = 0  # 播放器当前位置
@@ -86,7 +89,7 @@ class TimelineCard(QDockWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         # 创建表格
-        self._table = QTableWidget(self._total_rows, 5, self)
+        self._table = QTableWidget(self._total_rows, NUM_COLUMNS, self)
         self._table.setStyleSheet("""
             QTableWidget {
                 background: #0f0f14;
@@ -121,9 +124,9 @@ class TimelineCard(QDockWidget):
         """)
 
         # 设置表格属性
-        self._table.setSelectionMode(QTableWidget.ExtendedSelection)
+        self._table.setSelectionMode(QAbstractItemView.SingleSelection)
         self._table.setSelectionBehavior(QAbstractItemView.SelectItems)
-        self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)  # 禁止编辑
+        self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
         self._table.verticalHeader().setDefaultSectionSize(15)
         self._table.verticalHeader().setMinimumSectionSize(15)
@@ -131,17 +134,16 @@ class TimelineCard(QDockWidget):
         self._table.setContextMenuPolicy(Qt.CustomContextMenu)
 
         # 设置列头
-        for i in range(5):
+        for i in range(NUM_COLUMNS):
             self._table.setHorizontalHeaderItem(i, QTableWidgetItem(self._style_names[i]))
 
         # 初始化行头时间戳
         self._update_row_headers()
 
         # 连接信号
+        self._table.cellClicked.connect(self._on_cell_clicked)
         self._table.cellDoubleClicked.connect(self._on_cell_double_clicked)
-        self._table.cellEntered.connect(self._on_cell_entered)
         self._table.customContextMenuRequested.connect(self._show_context_menu)
-        self._table.currentCellChanged.connect(self._on_current_cell_changed)
 
         # 滚动条变化时刷新可见区域
         self._table.verticalScrollBar().valueChanged.connect(self._on_scroll)
@@ -236,10 +238,6 @@ class TimelineCard(QDockWidget):
                 self._cut()
                 event.accept()
                 return
-            elif key == Qt.Key_A:
-                self._table.selectAll()
-                event.accept()
-                return
 
         # 单键操作
         if key in KEY_MAP:
@@ -266,9 +264,8 @@ class TimelineCard(QDockWidget):
             event.accept()
             return
 
-        # 空格键播放/暂停
+        # 空格键播放/暂停 - 传递给父窗口
         if key == Qt.Key_Space:
-            # 传递给父窗口处理
             event.ignore()
             return
 
@@ -299,7 +296,7 @@ class TimelineCard(QDockWidget):
         """刷新可见行的字幕显示"""
         # 清空所有单元格
         for row in range(self._total_rows):
-            for col in range(5):
+            for col in range(NUM_COLUMNS):
                 item = self._table.item(row, col)
                 if item:
                     item.setText("")
@@ -365,7 +362,7 @@ class TimelineCard(QDockWidget):
         current_col = self._table.currentColumn()
 
         new_row = max(0, min(self._total_rows - 1, current_row + row_delta))
-        new_col = max(0, min(4, current_col + col_delta))
+        new_col = max(0, min(NUM_COLUMNS - 1, current_col + col_delta))
 
         self._table.setCurrentCell(new_row, new_col)
 
@@ -374,7 +371,7 @@ class TimelineCard(QDockWidget):
     def _get_selected_col(self) -> int:
         """获取当前选中的列"""
         current_col = self._table.currentColumn()
-        return max(0, min(4, current_col))
+        return max(0, min(NUM_COLUMNS - 1, current_col))
 
     def _shift_start(self, direction: int):
         """调整轴左端
@@ -580,8 +577,13 @@ class TimelineCard(QDockWidget):
 
     # ========== 信号处理 ==========
 
+    def _on_cell_clicked(self, row: int, col: int):
+        """单击单元格 - 跳转到对应时间并暂停播放"""
+        time_ms = int(row * self._global_interval)
+        self.position_jump_requested.emit(time_ms)
+
     def _on_cell_double_clicked(self, row: int, col: int):
-        """双击单元格编辑字幕文本"""
+        """双击单元格 - 发射字幕选中信号"""
         time_ms = int(row * self._global_interval)
 
         # 查找此时间点的字幕条
@@ -596,22 +598,7 @@ class TimelineCard(QDockWidget):
                     break
 
         if sub_data:
-            # 发射选中信号
             self.subtitle_selected.emit(col, sub_data[1])
-
-    def _on_cell_entered(self, row: int, col: int):
-        """鼠标进入单元格（用于拖动跟随）"""
-        time_ms = int(row * self._global_interval)
-        self.position_jump_requested.emit(time_ms)
-
-    def _on_current_cell_changed(self, current_row: int, current_col: int,
-                                  previous_row: int, previous_col: int):
-        """当前单元格变化"""
-        # 检查是否有字幕条
-        time_ms = int(current_row * self._global_interval)
-        sub_data = self._subtitle_mgr.get(current_col, time_ms)
-        if sub_data:
-            self.subtitle_selected.emit(current_col, sub_data[1])
 
     def _show_context_menu(self, pos):
         """显示右键上下文菜单"""

@@ -251,8 +251,8 @@ class MainWindow(QMainWindow):
         # --- 波形卡片 → 播放卡片（点击跳转） ---
         self.waveform_card.position_clicked.connect(self.player_card.set_position)
 
-        # --- 时间轴卡片 → 播放卡片（位置跳转） ---
-        self.timeline_card.position_jump_requested.connect(self.player_card.set_position)
+        # --- 时间轴卡片 → 播放卡片（位置跳转并暂停） ---
+        self.timeline_card.position_jump_requested.connect(self._on_timeline_jump)
 
         # --- 时间轴卡片 → 状态栏 ---
         self.timeline_card.subtitle_selected.connect(self._on_subtitle_selected)
@@ -479,3 +479,8 @@ class MainWindow(QMainWindow):
             self.status_bar.set_status(f"轨道 {col + 1}: {text}")
         else:
             self.status_bar.set_status(f"轨道 {col + 1}: (空)")
+
+    def _on_timeline_jump(self, ms: int):
+        """时间轴点击 → 跳转并暂停播放"""
+        self.player_card.pause()
+        self.player_card.set_position(ms)
