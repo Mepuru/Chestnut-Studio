@@ -55,16 +55,14 @@ pub struct VideoDecoder {
     current_frame_data: Arc<Mutex<Option<VideoFrame>>>,
     /// 播放状态
     state: Arc<Mutex<PlaybackState>>,
-    /// 当前 ffmpeg 子进程
-    process: Arc<Mutex<Option<Child>>>,
-    /// 播放线程句柄
-    play_thread: Option<thread::JoinHandle<()>>,
+    /// 视频播放线程句柄
+    video_thread: Option<thread::JoinHandle<()>>,
+    /// 音频播放线程句柄
+    audio_thread: Option<thread::JoinHandle<()>>,
     /// 音频流
     audio_stream: Option<cpal::Stream>,
     /// 音频缓冲区
     audio_buffer: Arc<Mutex<Vec<f32>>>,
-    /// 播放开始时间
-    start_time: Arc<Mutex<Option<Instant>>>,
     /// 暂停时的帧号
     pause_frame: Arc<Mutex<u64>>,
 }
@@ -89,11 +87,10 @@ impl VideoDecoder {
             current_frame: Arc::new(Mutex::new(0)),
             current_frame_data: Arc::new(Mutex::new(None)),
             state: Arc::new(Mutex::new(PlaybackState::Stopped)),
-            process: Arc::new(Mutex::new(None)),
-            play_thread: None,
+            video_thread: None,
+            audio_thread: None,
             audio_stream: None,
             audio_buffer: Arc::new(Mutex::new(Vec::new())),
-            start_time: Arc::new(Mutex::new(None)),
             pause_frame: Arc::new(Mutex::new(0)),
         })
     }
@@ -197,13 +194,6 @@ impl VideoDecoder {
     /// 停止当前播放
     fn stop_playback(&self) {
         *self.state.lock().unwrap() = PlaybackState::Stopped;
-        
-        if let Ok(mut process) = self.process.lock() {
-            if let Some(mut child) = process.take() {
-                let _ = child.kill();
-                let _ = child.wait();
-            }
-        }
     }
     
     /// 提取指定帧（用于seek操作）
@@ -230,7 +220,25 @@ impl VideoDecoder {
         let expected_size = (self.info.width * self.info.height * 4) as usize;
         
         if data.len() != expected_size {
-            anyhow::bail!("帧数据大小不匹配: 期望 {}, 实际 {}", expected_size, data.len());
+            // 如果帧数据大小不匹配，可能是视频结束，填充黑色帧
+            let mut black_frame = vec![0u8; expected_size];
+            // 设置alpha通道为255
+            for i in (3..expected_size).step_by(4) {
+                black_frame[i] = 255;
+            }
+            
+            let frame = VideoFrame {
+                data: black_frame,
+                width: self.info.width,
+                height: self.info.height,
+                frame_number,
+            };
+            
+            if let Ok(mut current) = self.current_frame_data.lock() {
+                *current = Some(frame);
+            }
+            
+            return Ok(());
         }
         
         let frame = VideoFrame {
@@ -254,7 +262,10 @@ impl VideoDecoder {
         // 停止当前播放
         if was_playing {
             self.stop_playback();
-            if let Some(handle) = self.play_thread.take() {
+            if let Some(handle) = self.video_thread.take() {
+                let _ = handle.join();
+            }
+            if let Some(handle) = self.audio_thread.take() {
                 let _ = handle.join();
             }
         }
@@ -292,7 +303,10 @@ impl VideoDecoder {
         
         // 停止之前的播放
         self.stop_playback();
-        if let Some(handle) = self.play_thread.take() {
+        if let Some(handle) = self.video_thread.take() {
+            let _ = handle.join();
+        }
+        if let Some(handle) = self.audio_thread.take() {
             let _ = handle.join();
         }
         
@@ -305,25 +319,38 @@ impl VideoDecoder {
         let frame_data = self.current_frame_data.clone();
         let current_frame = self.current_frame.clone();
         let state = self.state.clone();
-        let process_handle = self.process.clone();
         let audio_buffer = self.audio_buffer.clone();
-        let start_time = self.start_time.clone();
-        let pause_frame = self.pause_frame.clone();
+        let start_frame = self.current_frame_number();
         
         // 初始化音频
         self.init_audio()?;
         
-        // 启动播放线程
-        let handle = thread::spawn(move || {
-            if let Err(e) = Self::playback_thread(
+        // 启动视频播放线程
+        let video_handle = thread::spawn(move || {
+            if let Err(e) = Self::video_playback_thread(
                 &path, fps, width, height, frame_data, current_frame, 
-                state, process_handle, audio_buffer, start_time, pause_frame
+                state.clone(), start_frame
             ) {
-                tracing::error!("播放线程错误: {}", e);
+                tracing::error!("视频播放线程错误: {}", e);
             }
         });
         
-        self.play_thread = Some(handle);
+        // 启动音频播放线程
+        let path = self.path.clone();
+        let state = self.state.clone();
+        let audio_buffer = self.audio_buffer.clone();
+        let start_time = start_frame as f64 / fps;
+        
+        let audio_handle = thread::spawn(move || {
+            if let Err(e) = Self::audio_playback_thread(
+                &path, state, audio_buffer, start_time
+            ) {
+                tracing::error!("音频播放线程错误: {}", e);
+            }
+        });
+        
+        self.video_thread = Some(video_handle);
+        self.audio_thread = Some(audio_handle);
         
         Ok(())
     }
@@ -375,8 +402,8 @@ impl VideoDecoder {
         }
     }
     
-    /// 播放线程函数
-    fn playback_thread(
+    /// 视频播放线程
+    fn video_playback_thread(
         path: &Path,
         fps: f64,
         width: u32,
@@ -384,58 +411,31 @@ impl VideoDecoder {
         frame_data: Arc<Mutex<Option<VideoFrame>>>,
         current_frame: Arc<Mutex<u64>>,
         state: Arc<Mutex<PlaybackState>>,
-        process_handle: Arc<Mutex<Option<Child>>>,
-        audio_buffer: Arc<Mutex<Vec<f32>>>,
-        start_time: Arc<Mutex<Option<Instant>>>,
-        pause_frame: Arc<Mutex<u64>>,
+        start_frame: u64,
     ) -> Result<()> {
-        let start_frame = *current_frame.lock().unwrap();
         let frame_duration = Duration::from_secs_f64(1.0 / fps);
+        let video_frame_size = (width * height * 4) as usize;
         
-        // 使用 ffmpeg 同时解码音频和视频
+        // 使用 ffmpeg 解码视频
         let mut child = Command::new("ffmpeg")
             .args([
                 "-ss", &format!("{:.6}", start_frame as f64 / fps),
                 "-i", path.to_str().unwrap(),
                 "-f", "rawvideo",
                 "-pix_fmt", "rgba",
+                "-r", &format!("{}", fps),
                 "-",
-                "-f", "f32le",
-                "-acodec", "pcm_f32le",
-                "-ar", "44100",
-                "-ac", "2",
-                "pipe:1",
             ])
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()
-            .context("启动 ffmpeg 播放失败")?;
+            .context("启动 ffmpeg 视频解码失败")?;
         
-        // 保存进程句柄
-        if let Ok(mut process) = process_handle.lock() {
-            *process = Some(child);
-        }
-        
-        // 获取 stdout
-        let stdout = if let Ok(mut process) = process_handle.lock() {
-            if let Some(ref mut child) = *process {
-                child.stdout.take()
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-        
-        let mut stdout = stdout.ok_or_else(|| anyhow::anyhow!("无法获取 ffmpeg stdout"))?;
-        
-        let video_frame_size = (width * height * 4) as usize;
-        let audio_frame_size = 44100 * 4 * 2 / fps as usize; // 每帧的音频样本数
+        let stdout = child.stdout.take().unwrap();
+        let mut reader = std::io::BufReader::new(stdout);
         let mut video_buffer = vec![0u8; video_frame_size];
-        let mut audio_buffer_temp = vec![0u8; audio_frame_size];
         
         let mut frame_num = start_frame;
-        *start_time.lock().unwrap() = Some(Instant::now());
         
         loop {
             // 检查播放状态
@@ -444,7 +444,7 @@ impl VideoDecoder {
             }
             
             // 读取视频帧
-            match stdout.read_exact(&mut video_buffer) {
+            match reader.read_exact(&mut video_buffer) {
                 Ok(_) => {
                     let frame = VideoFrame {
                         data: video_buffer.clone(),
@@ -462,15 +462,58 @@ impl VideoDecoder {
                     }
                     
                     frame_num += 1;
+                    
+                    // 控制帧率
+                    thread::sleep(frame_duration);
                 }
                 Err(_) => break,
             }
+        }
+        
+        let _ = child.kill();
+        
+        Ok(())
+    }
+    
+    /// 音频播放线程
+    fn audio_playback_thread(
+        path: &Path,
+        state: Arc<Mutex<PlaybackState>>,
+        audio_buffer: Arc<Mutex<Vec<f32>>>,
+        start_time: f64,
+    ) -> Result<()> {
+        // 使用 ffmpeg 解码音频
+        let mut child = Command::new("ffmpeg")
+            .args([
+                "-ss", &format!("{:.6}", start_time),
+                "-i", path.to_str().unwrap(),
+                "-f", "f32le",
+                "-acodec", "pcm_f32le",
+                "-ar", "44100",
+                "-ac", "2",
+                "-",
+            ])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .context("启动 ffmpeg 音频解码失败")?;
+        
+        let stdout = child.stdout.take().unwrap();
+        let mut reader = std::io::BufReader::new(stdout);
+        let mut audio_buffer_temp = vec![0u8; 4096];
+        
+        loop {
+            // 检查播放状态
+            if *state.lock().unwrap() != PlaybackState::Playing {
+                break;
+            }
             
             // 读取音频数据
-            match stdout.read_exact(&mut audio_buffer_temp) {
-                Ok(_) => {
+            match reader.read(&mut audio_buffer_temp) {
+                Ok(0) => break,
+                Ok(n) => {
                     // 将音频数据转换为f32并添加到缓冲区
-                    let samples: Vec<f32> = audio_buffer_temp
+                    let samples: Vec<f32> = audio_buffer_temp[..n]
                         .chunks_exact(4)
                         .map(|chunk| {
                             let bytes = [chunk[0], chunk[1], chunk[2], chunk[3]];
@@ -484,18 +527,9 @@ impl VideoDecoder {
                 }
                 Err(_) => break,
             }
-            
-            // 控制帧率
-            thread::sleep(frame_duration);
         }
         
-        // 清理进程
-        if let Ok(mut process) = process_handle.lock() {
-            if let Some(mut child) = process.take() {
-                let _ = child.kill();
-                let _ = child.wait();
-            }
-        }
+        let _ = child.kill();
         
         Ok(())
     }
@@ -504,7 +538,10 @@ impl VideoDecoder {
 impl Drop for VideoDecoder {
     fn drop(&mut self) {
         self.stop_playback();
-        if let Some(handle) = self.play_thread.take() {
+        if let Some(handle) = self.video_thread.take() {
+            let _ = handle.join();
+        }
+        if let Some(handle) = self.audio_thread.take() {
             let _ = handle.join();
         }
     }
