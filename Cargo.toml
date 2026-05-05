@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 # GUI
-iced = { version = "0.13", features = ["canvas", "wgpu", "multi-window"] }
+iced = { version = "0.13", features = ["canvas", "wgpu", "multi-window", "lazy"] }
 
 # State & serialization
 serde = { version = "1", features = ["derive"] }

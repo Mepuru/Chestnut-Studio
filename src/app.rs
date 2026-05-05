@@ -1,6 +1,6 @@
 use iced::widget::{
     button, column, container, horizontal_space, pane_grid,
-    row, text, PaneGrid,
+    responsive, row, text, PaneGrid,
 };
 use iced::{Center, Color, Element, Fill, Font, Subscription, Theme};
 
@@ -279,28 +279,67 @@ impl ChestnutStudio {
     }
 
     fn view_pane_content(&self, pane: Pane) -> Element<'_, Message> {
-        let (title, subtitle) = match pane {
-            Pane::Video => ("视频播放器", "mpv 将嵌入此处"),
-            Pane::Waveform => ("音频波形", "Canvas 绘制波形"),
-            Pane::AxisCards => ("轴卡片列表", "水平滚动卡片容器"),
-            Pane::Translation => ("翻译区 / 术语库", "双轴并排编辑"),
-        };
+        match pane {
+            Pane::Video => {
+                // 视频面板: 强制 16:9 比例
+                responsive(move |size| {
+                    let width = size.width;
+                    let height = width * 9.0 / 16.0;
 
-        container(
-            column![
-                text(title).font(FONT_BOLD).size(16).color(TEXT_SECONDARY),
-                text(subtitle).font(FONT).size(12).color(TEXT_SECONDARY),
-            ]
-            .align_x(Center)
-            .spacing(8),
-        )
-        .center_x(Fill)
-        .center_y(Fill)
-        .style(|_| container::Style {
-            background: Some(Color::from_rgb(0.08, 0.08, 0.10).into()),
-            ..Default::default()
-        })
-        .into()
+                    container(
+                        column![
+                            text("视频播放器").font(FONT_BOLD).size(16).color(TEXT_SECONDARY),
+                            text("mpv 将嵌入此处").font(FONT).size(12).color(TEXT_SECONDARY),
+                            text(format!("{}x{}", width as u32, height as u32))
+                                .font(FONT)
+                                .size(11)
+                                .color(TEXT_SECONDARY),
+                        ]
+                        .align_x(Center)
+                        .spacing(8),
+                    )
+                    .width(Fill)
+                    .height(height)
+                    .center_x(Fill)
+                    .center_y(Fill)
+                    .style(|_| container::Style {
+                        background: Some(Color::from_rgb(0.08, 0.08, 0.10).into()),
+                        border: iced::Border {
+                            width: 1.0,
+                            color: BORDER,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    })
+                    .into()
+                })
+                .into()
+            }
+            _ => {
+                let (title, subtitle) = match pane {
+                    Pane::Waveform => ("音频波形", "Canvas 绘制波形"),
+                    Pane::AxisCards => ("轴卡片列表", "水平滚动卡片容器"),
+                    Pane::Translation => ("翻译区 / 术语库", "双轴并排编辑"),
+                    Pane::Video => unreachable!(),
+                };
+
+                container(
+                    column![
+                        text(title).font(FONT_BOLD).size(16).color(TEXT_SECONDARY),
+                        text(subtitle).font(FONT).size(12).color(TEXT_SECONDARY),
+                    ]
+                    .align_x(Center)
+                    .spacing(8),
+                )
+                .center_x(Fill)
+                .center_y(Fill)
+                .style(|_| container::Style {
+                    background: Some(Color::from_rgb(0.08, 0.08, 0.10).into()),
+                    ..Default::default()
+                })
+                .into()
+            }
+        }
     }
 
     // ── 状态栏 ──────────────────────────────────────────────────────

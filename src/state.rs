@@ -29,14 +29,26 @@ impl Default for AppState {
         // 创建初始面板: 视频
         let (mut panes, first) = pane_grid::State::new(Pane::Video);
 
-        // 在右侧分割出轴卡片
-        if let Some((right, _split)) =
+        // 在右侧分割出轴卡片 (4:6 比例，左侧40%，右侧60%)
+        if let Some((right, split)) =
             panes.split(pane_grid::Axis::Vertical, first, Pane::AxisCards)
         {
-            // 左侧下方分割出波形
-            panes.split(pane_grid::Axis::Horizontal, first, Pane::Waveform);
-            // 右侧下方分割出翻译区
-            panes.split(pane_grid::Axis::Horizontal, right, Pane::Translation);
+            // 设置左右比例为 4:6
+            panes.resize(split, 0.4);
+
+            // 左侧下方分割出波形 (视频占60%，波形占40%)
+            if let Some((_, split_left)) =
+                panes.split(pane_grid::Axis::Horizontal, first, Pane::Waveform)
+            {
+                panes.resize(split_left, 0.6);
+            }
+
+            // 右侧下方分割出翻译区 (轴卡片占55%，翻译区占45%)
+            if let Some((_, split_right)) =
+                panes.split(pane_grid::Axis::Horizontal, right, Pane::Translation)
+            {
+                panes.resize(split_right, 0.55);
+            }
         }
 
         Self {
