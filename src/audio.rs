@@ -1,18 +1,15 @@
 use anyhow::{Context, Result};
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::path::Path;
-use std::process::Command;
+use std::process::{Child, Command};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-/// 音频播放器
+/// 音频播放器 - 使用 ffplay 播放音频
 pub struct AudioPlayer {
+    /// 当前播放进程
+    process: Arc<Mutex<Option<Child>>>,
     /// 是否正在播放
     is_playing: Arc<Mutex<bool>>,
-    /// 音频线程句柄
-    audio_thread: Option<thread::JoinHandle<()>>,
-    /// 当前播放位置（秒）
-    position: Arc<Mutex<f64>>,
 }
 
 impl std::fmt::Debug for AudioPlayer {
@@ -27,9 +24,8 @@ impl AudioPlayer {
     /// 创建新的音频播放器
     pub fn new() -> Self {
         Self {
+            process: Arc::new(Mutex::new(None)),
             is_playing: Arc::new(Mutex::new(false)),
-            audio_thread: None,
-            position: Arc::new(Mutex::new(0.0)),
         }
     }
 
@@ -38,125 +34,103 @@ impl AudioPlayer {
         *self.is_playing.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    /// 获取当前播放位置（秒）
-    pub fn position(&self) -> f64 {
-        *self.position.lock().unwrap()
-    }
-
     /// 开始播放音频
     pub fn play(&mut self, path: &Path, start_time: f64) -> Result<()> {
         if self.is_playing() {
             return Ok(());
         }
 
+        // 停止之前的播放
+        self.stop();
+
         *self.is_playing.lock().unwrap() = true;
 
         let path = path.to_path_buf();
+        let process_handle = self.process.clone();
         let is_playing = self.is_playing.clone();
-        let position = self.position.clone();
 
-        let handle = thread::spawn(move || {
-            if let Err(e) = Self::audio_thread(&path, start_time, is_playing, position) {
-                tracing::error!("音频播放线程错误: {}", e);
+        // 使用 ffplay 播放音频（无窗口模式）
+        let child = Command::new("ffplay")
+            .args([
+                "-nodisp",           // 不显示视频窗口
+                "-autoexit",         // 播放完成后自动退出
+                "-ss", &format!("{:.6}", start_time),
+                "-i", path.to_str().unwrap(),
+            ])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .context("启动 ffplay 播放失败，请确保已安装 ffmpeg")?;
+
+        if let Ok(mut process) = process_handle.lock() {
+            *process = Some(child);
+        }
+
+        // 启动监控线程
+        let process_handle = self.process.clone();
+        let is_playing = self.is_playing.clone();
+        
+        thread::spawn(move || {
+            // 等待进程结束
+            loop {
+                let should_continue = is_playing.lock().unwrap_or_else(|e| e.into_inner()).clone();
+                if !should_continue {
+                    break;
+                }
+
+                let mut process = process_handle.lock().unwrap();
+                if let Some(ref mut child) = *process {
+                    match child.try_wait() {
+                        Ok(Some(_)) => {
+                            // 进程已结束
+                            *process = None;
+                            *is_playing.lock().unwrap() = false;
+                            break;
+                        }
+                        Ok(None) => {
+                            // 进程仍在运行
+                            drop(process);
+                            thread::sleep(std::time::Duration::from_millis(100));
+                        }
+                        Err(_) => break,
+                    }
+                } else {
+                    break;
+                }
             }
         });
-
-        self.audio_thread = Some(handle);
 
         Ok(())
     }
 
     /// 暂停播放
     pub fn pause(&mut self) {
-        *self.is_playing.lock().unwrap() = false;
+        self.stop();
     }
 
-    /// 音频播放线程
-    fn audio_thread(
-        path: &Path,
-        start_time: f64,
-        is_playing: Arc<Mutex<bool>>,
-        position: Arc<Mutex<f64>>,
-    ) -> Result<()> {
-        // 使用 ffmpeg 解码音频并输出到 stdout
-        let mut child = Command::new("ffmpeg")
-            .args([
-                "-ss", &format!("{:.6}", start_time),
-                "-i", path.to_str().unwrap(),
-                "-f", "f32le",
-                "-acodec", "pcm_f32le",
-                "-ar", "44100",
-                "-ac", "2",
-                "-",
-            ])
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::null())
-            .spawn()
-            .context("启动 ffmpeg 音频解码失败")?;
-
-        let stdout = child.stdout.take().unwrap();
-
-        // 初始化音频输出
-        let host = cpal::default_host();
-        let device = host.default_output_device()
-            .ok_or_else(|| anyhow::anyhow!("找不到音频输出设备"))?;
-
-        let config = cpal::StreamConfig {
-            channels: 2,
-            sample_rate: 44100,
-            buffer_size: cpal::BufferSize::Default,
-        };
-
-        let is_playing_clone = is_playing.clone();
-        let position_clone = position.clone();
-
-        // 创建音频流
-        let stream = device.build_output_stream(
-            &config,
-            move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                // 这里需要从ffmpeg读取数据填充到data中
-                // 简单实现：填充静音
-                for sample in data.iter_mut() {
-                    *sample = 0.0;
-                }
-            },
-            |err| {
-                tracing::error!("音频流错误: {}", err);
-            },
-            None,
-        )?;
-
-        stream.play()?;
-
-        // 读取ffmpeg输出并播放
-        use std::io::Read;
-        let mut reader = std::io::BufReader::new(stdout);
-        let mut buffer = vec![0u8; 4096];
-
-        while is_playing.lock().unwrap_or_else(|e| e.into_inner()).clone() {
-            match reader.read(&mut buffer) {
-                Ok(0) => break,
-                Ok(_) => {
-                    // 更新位置
-                    // 这里简化处理，实际需要根据读取的样本数计算
-                    let mut pos = position.lock().unwrap();
-                    *pos += 4096.0 / (44100.0 * 4.0); // 假设16位立体声
-                }
-                Err(_) => break,
+    /// 停止播放
+    fn stop(&self) {
+        *self.is_playing.lock().unwrap() = false;
+        
+        if let Ok(mut process) = self.process.lock() {
+            if let Some(mut child) = process.take() {
+                let _ = child.kill();
+                let _ = child.wait();
             }
         }
+    }
 
-        let _ = child.kill();
-
+    /// 同步播放位置（用于seek操作后）
+    pub fn sync_position(&mut self, path: &Path, position: f64) -> Result<()> {
+        if self.is_playing() {
+            self.play(path, position)?;
+        }
         Ok(())
     }
 }
 
 impl Drop for AudioPlayer {
     fn drop(&mut self) {
-        *self.is_playing.lock().unwrap() = false;
-        if let Some(handle) = self.audio_thread.take() {
-            let _ = handle.join();
-        }
+        self.stop();
     }
 }
