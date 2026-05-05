@@ -223,7 +223,6 @@ class MainWindow(QMainWindow):
         # --- 打轴工具栏信号 ---
         self.toolbar.interval_changed.connect(self.timeline_card.set_interval)
         self.toolbar.create_subtitle_clicked.connect(self.timeline_card.create_subtitle_at_cursor)
-        self.toolbar.merge_clicked.connect(self.timeline_card._merge_selected)
         self.toolbar.split_clicked.connect(self.timeline_card._split_at_cursor)
         self.toolbar.undo_clicked.connect(self.timeline_card._undo)
         self.toolbar.redo_clicked.connect(self.timeline_card._redo)
