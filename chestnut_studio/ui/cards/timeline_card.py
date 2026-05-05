@@ -27,18 +27,21 @@ SUBTITLE_COLORS = {
 # 轨道数量
 NUM_COLUMNS = 4
 
+# 可视区域行数（固定）
+VISIBLE_ROWS = 200
+
 # 快捷键映射
 KEY_MAP = {
-    Qt.Key_Q: "shift_start_left",  # 轴左端左移
+    Qt.Key_Q: "shift_start_left",
     Qt.Key_1: "shift_start_left",
-    Qt.Key_W: "shift_start_right",  # 轴左端右移
+    Qt.Key_W: "shift_start_right",
     Qt.Key_2: "shift_start_right",
-    Qt.Key_E: "shift_end_left",  # 轴右端左移
+    Qt.Key_E: "shift_end_left",
     Qt.Key_3: "shift_end_left",
-    Qt.Key_R: "shift_end_right",  # 轴右端右移
+    Qt.Key_R: "shift_end_right",
     Qt.Key_4: "shift_end_right",
-    Qt.Key_5: "split_at_cursor",  # 切割
-    Qt.Key_Delete: "delete_selected",  # 删除
+    Qt.Key_5: "split_at_cursor",
+    Qt.Key_Delete: "delete_selected",
 }
 
 
@@ -46,20 +49,20 @@ class TimelineCard(QDockWidget):
     """打轴编辑卡片
 
     功能：
-    - 可滚动的动态表格，4列字幕轨道
+    - 虚拟滚动：只渲染可视区域，支持任意长度视频
+    - 4列字幕轨道
     - 点击跳转到视频对应位置并暂停
     - 完整的快捷键支持
     - 右键上下文菜单
     - 双击编辑字幕文本
     - 叠轴检测
     - 撤销/重做
-    - 跟随播放位置模式
     """
 
     # 信号
     subtitle_selected = Signal(int, str)  # 字幕被选中 (col, text)
-    subtitle_changed = Signal()  # 字幕数据变化（用于刷新波形覆盖）
-    position_jump_requested = Signal(int)  # 请求跳转到指定位置并暂停
+    subtitle_changed = Signal()  # 字幕数据变化
+    position_jump_requested = Signal(int)  # 请求跳转并暂停
 
     # 默认停靠区域
     default_area = Qt.RightDockWidgetArea
@@ -69,10 +72,11 @@ class TimelineCard(QDockWidget):
         self._subtitle_mgr = SubtitleManager()
         self._global_interval = 33.33  # 间隔 (ms)
         self._style_names = ["1", "2", "3", "4"]
-        self._clipboard = []  # 剪贴板
-        self._follow_player = True  # 跟随播放位置模式
-        self._player_position = 0  # 播放器当前位置
-        self._total_rows = 10000  # 默认总行数（约5分钟 @33ms间隔）
+        self._clipboard = []
+        self._follow_player = True
+        self._player_position = 0
+        self._scroll_offset = 0  # 滚动偏移（起始行号）
+        self._total_logical_rows = 0  # 逻辑总行数（根据视频时长计算）
         self._setup_ui()
 
     def _setup_ui(self):
@@ -88,8 +92,8 @@ class TimelineCard(QDockWidget):
         layout = QVBoxLayout(content)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # 创建表格
-        self._table = QTableWidget(self._total_rows, NUM_COLUMNS, self)
+        # 创建表格 - 固定行数
+        self._table = QTableWidget(VISIBLE_ROWS, NUM_COLUMNS, self)
         self._table.setStyleSheet("""
             QTableWidget {
                 background: #0f0f14;
@@ -133,34 +137,79 @@ class TimelineCard(QDockWidget):
         self._table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self._table.setContextMenuPolicy(Qt.CustomContextMenu)
 
+        # 隐藏原生滚动条（我们自己控制）
+        self._table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
         # 设置列头
         for i in range(NUM_COLUMNS):
             self._table.setHorizontalHeaderItem(i, QTableWidgetItem(self._style_names[i]))
 
-        # 初始化行头时间戳
-        self._update_row_headers()
+        # 创建自定义滚动条
+        from PySide6.QtWidgets import QScrollBar
+        self._scrollbar = QScrollBar(Qt.Vertical, self)
+        self._scrollbar.setRange(0, 0)
+        self._scrollbar.valueChanged.connect(self._on_scrollbar_changed)
 
         # 连接信号
         self._table.cellClicked.connect(self._on_cell_clicked)
         self._table.cellDoubleClicked.connect(self._on_cell_double_clicked)
         self._table.customContextMenuRequested.connect(self._show_context_menu)
 
-        # 滚动条变化时刷新可见区域
-        self._table.verticalScrollBar().valueChanged.connect(self._on_scroll)
+        # 滚轮事件
+        self._table.wheelEvent = self._wheel_event
 
-        layout.addWidget(self._table)
+        # 表格和滚动条布局
+        table_layout = QVBoxLayout()
+        table_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 使用水平布局包含表格和滚动条
+        from PySide6.QtWidgets import QHBoxLayout
+        h_layout = QHBoxLayout()
+        h_layout.setContentsMargins(0, 0, 0, 0)
+        h_layout.setSpacing(0)
+        h_layout.addWidget(self._table)
+        h_layout.addWidget(self._scrollbar)
+
+        layout.addLayout(h_layout)
         self.setWidget(content)
 
         # 初始刷新
-        self._refresh_visible_rows()
+        self._refresh_display()
 
-    def _update_row_headers(self):
-        """更新所有行头时间戳"""
-        for row in range(self._total_rows):
-            time_ms = int(row * self._global_interval)
-            header_item = QTableWidgetItem(ms_to_time_str(time_ms))
-            header_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self._table.setVerticalHeaderItem(row, header_item)
+    def _wheel_event(self, event):
+        """处理滚轮事件"""
+        delta = event.angleDelta().y()
+        if delta > 0:
+            # 向上滚动
+            self._scroll_up(3)
+        elif delta < 0:
+            # 向下滚动
+            self._scroll_down(3)
+        event.accept()
+
+    def _scroll_up(self, rows: int):
+        """向上滚动"""
+        self._scroll_offset = max(0, self._scroll_offset - rows)
+        self._scrollbar.setValue(self._scroll_offset)
+        self._refresh_display()
+
+    def _scroll_down(self, rows: int):
+        """向下滚动"""
+        max_offset = max(0, self._total_logical_rows - VISIBLE_ROWS)
+        self._scroll_offset = min(max_offset, self._scroll_offset + rows)
+        self._scrollbar.setValue(self._scroll_offset)
+        self._refresh_display()
+
+    def _on_scrollbar_changed(self, value):
+        """滚动条变化"""
+        self._scroll_offset = value
+        self._refresh_display()
+
+    def _update_scrollbar(self):
+        """更新滚动条范围"""
+        max_offset = max(0, self._total_logical_rows - VISIBLE_ROWS)
+        self._scrollbar.setRange(0, max_offset)
+        self._scrollbar.setPageStep(VISIBLE_ROWS)
 
     # ========== 公有方法 ==========
 
@@ -168,22 +217,28 @@ class TimelineCard(QDockWidget):
         """设置播放器位置，可选跟随滚动"""
         self._player_position = ms
         if self._follow_player:
-            row = int(ms / self._global_interval)
-            self._table.scrollToItem(self._table.item(row, 0))
-        self._refresh_visible_rows()
+            target_row = int(ms / self._global_interval)
+            # 确保播放位置在可视区域中间
+            self._scroll_offset = max(0, target_row - VISIBLE_ROWS // 2)
+            max_offset = max(0, self._total_logical_rows - VISIBLE_ROWS)
+            self._scroll_offset = min(self._scroll_offset, max_offset)
+            self._scrollbar.setValue(self._scroll_offset)
+        self._refresh_display()
 
     def set_interval(self, interval_ms: float):
         """设置间隔"""
         self._global_interval = interval_ms
-        # 重新计算总行数（默认支持到10分钟）
-        self._total_rows = int(600000 / interval_ms)
-        self._table.setRowCount(self._total_rows)
-        self._update_row_headers()
-        self._refresh_visible_rows()
+        self._refresh_display()
 
     def get_interval(self) -> float:
         """获取当前间隔"""
         return self._global_interval
+
+    def set_duration(self, duration_ms: int):
+        """设置视频时长，更新逻辑行数"""
+        self._total_logical_rows = int(duration_ms / self._global_interval) + 1
+        self._update_scrollbar()
+        self._refresh_display()
 
     def get_subtitle_data(self) -> dict:
         """获取字幕数据"""
@@ -203,11 +258,12 @@ class TimelineCard(QDockWidget):
 
     def jump_to_position(self, ms: int):
         """跳转到指定时间位置"""
-        row = int(ms / self._global_interval)
-        row = max(0, min(self._total_rows - 1, row))
-        self._table.scrollToItem(self._table.item(row, 0))
-        self._table.setCurrentCell(row, 0)
-        self._refresh_visible_rows()
+        target_row = int(ms / self._global_interval)
+        self._scroll_offset = max(0, target_row - VISIBLE_ROWS // 2)
+        max_offset = max(0, self._total_logical_rows - VISIBLE_ROWS)
+        self._scroll_offset = min(self._scroll_offset, max_offset)
+        self._scrollbar.setValue(self._scroll_offset)
+        self._refresh_display()
 
     # ========== 快捷键操作 ==========
 
@@ -264,7 +320,7 @@ class TimelineCard(QDockWidget):
             event.accept()
             return
 
-        # 空格键播放/暂停 - 传递给父窗口
+        # 空格键 - 传递给父窗口
         if key == Qt.Key_Space:
             event.ignore()
             return
@@ -288,34 +344,31 @@ class TimelineCard(QDockWidget):
 
     # ========== 表格操作 ==========
 
-    def _on_scroll(self, value):
-        """滚动时刷新可见区域"""
-        self._refresh_visible_rows()
-
-    def _refresh_visible_rows(self):
-        """刷新可见行的字幕显示"""
+    def _refresh_display(self):
+        """刷新表格显示"""
         # 清空所有单元格
-        for row in range(self._total_rows):
+        for row in range(VISIBLE_ROWS):
             for col in range(NUM_COLUMNS):
                 item = self._table.item(row, col)
                 if item:
                     item.setText("")
                     item.setBackground(QBrush(QColor("#0f0f14")))
                     item.setData(Qt.UserRole, None)
+                    item.setData(Qt.UserRole + 1, None)  # 逻辑行号
 
-        # 获取可见范围
-        visible_top = self._table.rowAt(0)
-        visible_bottom = self._table.rowAt(self._table.viewport().height())
-        if visible_top < 0:
-            visible_top = 0
-        if visible_bottom < 0:
-            visible_bottom = self._total_rows - 1
+        # 更新行头时间戳
+        for row in range(VISIBLE_ROWS):
+            logical_row = self._scroll_offset + row
+            time_ms = int(logical_row * self._global_interval)
+            header_item = QTableWidgetItem(ms_to_time_str(time_ms))
+            header_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self._table.setVerticalHeaderItem(row, header_item)
 
         # 计算可见时间范围
-        view_start_ms = int(visible_top * self._global_interval)
-        view_end_ms = int((visible_bottom + 1) * self._global_interval)
+        view_start_ms = int(self._scroll_offset * self._global_interval)
+        view_end_ms = int((self._scroll_offset + VISIBLE_ROWS) * self._global_interval)
 
-        # 填充可见范围内的字幕条
+        # 填充字幕条
         for col, sub_data in self._subtitle_mgr.data.items():
             for start in sorted(sub_data):
                 delta, text = sub_data[start]
@@ -329,13 +382,20 @@ class TimelineCard(QDockWidget):
 
     def _render_subtitle(self, col: int, start: int, duration: int, text: str):
         """渲染单个字幕条到表格"""
-        # 计算行范围
-        row_start = int(start / self._global_interval)
-        row_end = int((start + duration) / self._global_interval)
+        # 计算逻辑行范围
+        logical_row_start = int(start / self._global_interval)
+        logical_row_end = int((start + duration) / self._global_interval)
 
-        # 限制在表格范围内
-        row_start = max(0, min(self._total_rows - 1, row_start))
-        row_end = max(0, min(self._total_rows - 1, row_end))
+        # 转换为可视行范围
+        vis_row_start = logical_row_start - self._scroll_offset
+        vis_row_end = logical_row_end - self._scroll_offset
+
+        # 限制在可视范围内
+        vis_row_start = max(0, min(VISIBLE_ROWS - 1, vis_row_start))
+        vis_row_end = max(0, min(VISIBLE_ROWS - 1, vis_row_end))
+
+        if vis_row_start > VISIBLE_ROWS - 1 or vis_row_end < 0:
+            return
 
         # 确定颜色
         duration_sec = duration / 1000.0
@@ -347,22 +407,29 @@ class TimelineCard(QDockWidget):
             color = SUBTITLE_COLORS["normal"]
 
         # 合并单元格并设置内容
-        if row_start < row_end:
-            self._table.setSpan(row_start, col, row_end - row_start + 1, 1)
+        if vis_row_start < vis_row_end:
+            self._table.setSpan(vis_row_start, col, vis_row_end - vis_row_start + 1, 1)
 
         item = QTableWidgetItem(text)
         item.setBackground(QBrush(color))
         item.setForeground(QBrush(QColor("#e4e4e7")))
         item.setData(Qt.UserRole, start)  # 存储起始时间
-        self._table.setItem(row_start, col, item)
+        item.setData(Qt.UserRole + 1, logical_row_start)  # 存储逻辑行号
+        self._table.setItem(vis_row_start, col, item)
 
     def _move_selection(self, row_delta: int, col_delta: int):
         """移动选中位置"""
         current_row = self._table.currentRow()
         current_col = self._table.currentColumn()
 
-        new_row = max(0, min(self._total_rows - 1, current_row + row_delta))
+        new_row = max(0, min(VISIBLE_ROWS - 1, current_row + row_delta))
         new_col = max(0, min(NUM_COLUMNS - 1, current_col + col_delta))
+
+        # 如果移动超出可视范围，滚动
+        if new_row == 0 and row_delta < 0:
+            self._scroll_up(1)
+        elif new_row == VISIBLE_ROWS - 1 and row_delta > 0:
+            self._scroll_down(1)
 
         self._table.setCurrentCell(new_row, new_col)
 
@@ -373,24 +440,22 @@ class TimelineCard(QDockWidget):
         current_col = self._table.currentColumn()
         return max(0, min(NUM_COLUMNS - 1, current_col))
 
+    def _get_selected_logical_row(self) -> int:
+        """获取当前选中的逻辑行号"""
+        vis_row = self._table.currentRow()
+        return self._scroll_offset + vis_row
+
     def _shift_start(self, direction: int):
-        """调整轴左端
-
-        Args:
-            direction: -1 左移, 1 右移
-        """
-        current_row = self._table.currentRow()
+        """调整轴左端"""
+        logical_row = self._get_selected_logical_row()
         current_col = self._get_selected_col()
-        time_ms = int(current_row * self._global_interval)
+        time_ms = int(logical_row * self._global_interval)
 
-        # 查找包含此时间点的字幕条
         for start, (delta, text) in list(self._subtitle_mgr.data[current_col].items()):
             end = start + delta
             if start <= time_ms < end:
-                # 计算新起点
                 new_start = start + int(direction * self._global_interval)
                 if new_start < end and new_start >= 0:
-                    # 检查叠轴
                     overlap_result = self._subtitle_mgr.check_overlap(
                         current_col, new_start, end, self._global_interval
                     )
@@ -398,34 +463,26 @@ class TimelineCard(QDockWidget):
                         QMessageBox.warning(self, "叠轴检测", "操作会导致重叠，已阻止")
                         return
 
-                    # 执行调整
                     self._subtitle_mgr.push_undo()
                     self._subtitle_mgr.delete(current_col, start)
                     new_delta = end - new_start
                     self._subtitle_mgr.set(current_col, new_start, new_delta, text)
 
-                    self._refresh_visible_rows()
+                    self._refresh_display()
                     self.subtitle_changed.emit()
                 break
 
     def _shift_end(self, direction: int):
-        """调整轴右端
-
-        Args:
-            direction: -1 左移, 1 右移
-        """
-        current_row = self._table.currentRow()
+        """调整轴右端"""
+        logical_row = self._get_selected_logical_row()
         current_col = self._get_selected_col()
-        time_ms = int(current_row * self._global_interval)
+        time_ms = int(logical_row * self._global_interval)
 
-        # 查找包含此时间点的字幕条
         for start, (delta, text) in list(self._subtitle_mgr.data[current_col].items()):
             end = start + delta
             if start <= time_ms < end:
-                # 计算新终点
                 new_end = end + int(direction * self._global_interval)
                 if new_end > start:
-                    # 检查叠轴
                     overlap_result = self._subtitle_mgr.check_overlap(
                         current_col, start, new_end, self._global_interval
                     )
@@ -433,24 +490,23 @@ class TimelineCard(QDockWidget):
                         QMessageBox.warning(self, "叠轴检测", "操作会导致重叠，已阻止")
                         return
 
-                    # 执行调整
                     self._subtitle_mgr.push_undo()
                     new_delta = new_end - start
                     self._subtitle_mgr.set(current_col, start, new_delta, text)
 
-                    self._refresh_visible_rows()
+                    self._refresh_display()
                     self.subtitle_changed.emit()
                 break
 
     def _split_at_cursor(self):
         """在光标位置切割字幕条"""
-        current_row = self._table.currentRow()
+        logical_row = self._get_selected_logical_row()
         current_col = self._get_selected_col()
-        split_time = int(current_row * self._global_interval)
+        split_time = int(logical_row * self._global_interval)
 
         self._subtitle_mgr.push_undo()
         if self._subtitle_mgr.split(current_col, split_time):
-            self._refresh_visible_rows()
+            self._refresh_display()
             self.subtitle_changed.emit()
 
     def _delete_selected(self):
@@ -466,7 +522,7 @@ class TimelineCard(QDockWidget):
             if start_time is not None:
                 self._subtitle_mgr.delete(col, start_time)
 
-        self._refresh_visible_rows()
+        self._refresh_display()
         self.subtitle_changed.emit()
 
     def _merge_selected(self):
@@ -475,7 +531,6 @@ class TimelineCard(QDockWidget):
         if not selected:
             return
 
-        # 获取选中范围
         rows = set()
         cols = set()
         for item in selected:
@@ -488,24 +543,24 @@ class TimelineCard(QDockWidget):
         self._subtitle_mgr.push_undo()
 
         for col in cols:
-            # 计算时间范围
-            row_start = min(rows)
-            row_end = max(rows)
+            logical_rows = [self._scroll_offset + r for r in rows]
+            row_start = min(logical_rows)
+            row_end = max(logical_rows)
             time_start = int(row_start * self._global_interval)
             time_end = int((row_end + 1) * self._global_interval)
 
-            # 查找第一个非空文本
             text = ""
             for row in range(row_start, row_end + 1):
-                item = self._table.item(row, col)
-                if item and item.text():
-                    text = item.text()
-                    break
+                vis_row = row - self._scroll_offset
+                if 0 <= vis_row < VISIBLE_ROWS:
+                    item = self._table.item(vis_row, col)
+                    if item and item.text():
+                        text = item.text()
+                        break
 
-            # 合并
             self._subtitle_mgr.merge(col, time_start, time_end, text)
 
-        self._refresh_visible_rows()
+        self._refresh_display()
         self.subtitle_changed.emit()
 
     # ========== 剪贴板操作 ==========
@@ -523,14 +578,12 @@ class TimelineCard(QDockWidget):
             if start_time is not None:
                 sub_data = self._subtitle_mgr.get(col, start_time)
                 if sub_data:
-                    self._clipboard.append(
-                        {
-                            "col": col,
-                            "start": start_time,
-                            "duration": sub_data[0],
-                            "text": sub_data[1],
-                        }
-                    )
+                    self._clipboard.append({
+                        "col": col,
+                        "start": start_time,
+                        "duration": sub_data[0],
+                        "text": sub_data[1],
+                    })
 
     def _cut(self):
         """剪切选中的字幕条"""
@@ -542,14 +595,13 @@ class TimelineCard(QDockWidget):
         if not self._clipboard:
             return
 
-        current_row = self._table.currentRow()
+        logical_row = self._get_selected_logical_row()
         current_col = self._get_selected_col()
-        paste_time = int(current_row * self._global_interval)
+        paste_time = int(logical_row * self._global_interval)
 
         self._subtitle_mgr.push_undo()
 
         for item in self._clipboard:
-            # 粘贴到当前选中列
             self._subtitle_mgr.set(
                 current_col,
                 paste_time,
@@ -558,7 +610,7 @@ class TimelineCard(QDockWidget):
             )
             paste_time += item["duration"]
 
-        self._refresh_visible_rows()
+        self._refresh_display()
         self.subtitle_changed.emit()
 
     # ========== 撤销/重做 ==========
@@ -566,35 +618,34 @@ class TimelineCard(QDockWidget):
     def _undo(self):
         """撤销"""
         if self._subtitle_mgr.undo():
-            self._refresh_visible_rows()
+            self._refresh_display()
             self.subtitle_changed.emit()
 
     def _redo(self):
         """重做"""
         if self._subtitle_mgr.redo():
-            self._refresh_visible_rows()
+            self._refresh_display()
             self.subtitle_changed.emit()
 
     # ========== 信号处理 ==========
 
     def _on_cell_clicked(self, row: int, col: int):
         """单击单元格 - 跳转到对应时间并暂停播放"""
-        time_ms = int(row * self._global_interval)
+        logical_row = self._scroll_offset + row
+        time_ms = int(logical_row * self._global_interval)
         self.position_jump_requested.emit(time_ms)
 
     def _on_cell_double_clicked(self, row: int, col: int):
         """双击单元格 - 发射字幕选中信号"""
-        time_ms = int(row * self._global_interval)
+        logical_row = self._scroll_offset + row
+        time_ms = int(logical_row * self._global_interval)
 
-        # 查找此时间点的字幕条
         sub_data = self._subtitle_mgr.get(col, time_ms)
         if sub_data is None:
-            # 查找包含此时间点的字幕条
             for start, (delta, text) in self._subtitle_mgr.data[col].items():
                 end = start + delta
                 if start <= time_ms < end:
                     sub_data = [delta, text]
-                    time_ms = start
                     break
 
         if sub_data:
@@ -604,12 +655,10 @@ class TimelineCard(QDockWidget):
         """显示右键上下文菜单"""
         menu = QMenu(self)
 
-        # 获取当前单元格信息
-        current_row = self._table.currentRow()
+        logical_row = self._get_selected_logical_row()
         current_col = self._get_selected_col()
-        time_ms = int(current_row * self._global_interval)
+        time_ms = int(logical_row * self._global_interval)
 
-        # 检查是否有字幕条
         has_subtitle = False
         for start, (delta, text) in self._subtitle_mgr.data[current_col].items():
             end = start + delta
@@ -617,7 +666,6 @@ class TimelineCard(QDockWidget):
                 has_subtitle = True
                 break
 
-        # 菜单项
         if has_subtitle:
             split_action = QAction("切割", self)
             split_action.triggered.connect(self._split_at_cursor)
@@ -629,7 +677,6 @@ class TimelineCard(QDockWidget):
 
         menu.addSeparator()
 
-        # 合并操作
         selected = self._table.selectedItems()
         if selected and len(selected) > 1:
             merge_action = QAction("合并选中", self)
@@ -638,7 +685,6 @@ class TimelineCard(QDockWidget):
 
         menu.addSeparator()
 
-        # 剪贴板操作
         copy_action = QAction("复制", self)
         copy_action.triggered.connect(self._copy)
         menu.addAction(copy_action)
@@ -653,7 +699,6 @@ class TimelineCard(QDockWidget):
 
         menu.addSeparator()
 
-        # 撤销/重做
         undo_action = QAction("撤销", self)
         undo_action.triggered.connect(self._undo)
         menu.addAction(undo_action)
@@ -668,12 +713,11 @@ class TimelineCard(QDockWidget):
 
     def create_subtitle_at_cursor(self):
         """在光标位置创建新字幕条"""
-        current_row = self._table.currentRow()
+        logical_row = self._get_selected_logical_row()
         current_col = self._get_selected_col()
-        start_time = int(current_row * self._global_interval)
-        duration = int(self._global_interval * 10)  # 默认 10 个间隔长度
+        start_time = int(logical_row * self._global_interval)
+        duration = int(self._global_interval * 10)
 
-        # 检查叠轴
         overlap_result = self._subtitle_mgr.check_overlap(
             current_col, start_time, start_time + duration, self._global_interval
         )
@@ -683,7 +727,7 @@ class TimelineCard(QDockWidget):
 
         self._subtitle_mgr.push_undo()
         self._subtitle_mgr.set(current_col, start_time, duration, "")
-        self._refresh_visible_rows()
+        self._refresh_display()
         self.subtitle_changed.emit()
 
     def set_subtitle_text(self, col: int, start: int, text: str):
@@ -692,5 +736,5 @@ class TimelineCard(QDockWidget):
         if sub_data:
             self._subtitle_mgr.push_undo()
             self._subtitle_mgr.set(col, start, sub_data[0], text)
-            self._refresh_visible_rows()
+            self._refresh_display()
             self.subtitle_changed.emit()

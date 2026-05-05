@@ -243,6 +243,7 @@ class MainWindow(QMainWindow):
 
         # --- 播放卡片 → 时间轴卡片 ---
         self.player_card.position_changed.connect(self.timeline_card.set_player_position)
+        self.player_card.duration_changed.connect(self.timeline_card.set_duration)
 
         # --- 播放卡片 AB 循环 → 工具栏和波形卡片 ---
         self.player_card.ab_loop_changed.connect(self.toolbar.update_ab_loop_state)
