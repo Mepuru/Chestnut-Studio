@@ -15,6 +15,7 @@
 - 集成菜单栏、工具栏、状态栏
 - 连接各卡片间的信号通信
 - 处理菜单事件（打开视频、布局重置等）
+- 处理全局快捷键（Space、[、]、\）
 - 窗口缩放时按固定比例维护卡片尺寸
 
 ### 公有属性
@@ -32,19 +33,40 @@
 ### 信号连接图
 
 ```
-ToolBar                     MainWindow                    PlayerCard
-  │ play_clicked ──────────→ play_pause ──────────────→ QMediaPlayer
-  │ skip_forward ──────────→ _on_skip_forward ─────────→ set_position
-  │ skip_backward ─────────→ _on_skip_backward ────────→ set_position
-  │ rate_changed ──────────→ set_playback_rate ────────→ QMediaPlayer
-  │ ←──────────────────── update_position ←──────────── position_changed
-  │ ←──────────────────── set_duration ←─────────────── duration_changed
-  │ ←──────────────────── set_playing ←──────────────── playback_state_changed
-                            │
-                            ├──→ StatusBar.set_time (位置变化)
-                            ├──→ StatusBar.set_status (时长变化)
-                            └──→ StatusBar.set_video_info (FFmpeg 解析)
+ToolBar                          MainWindow                         PlayerCard
+  │ play_clicked ──────────────→ play_pause ───────────────────→ QMediaPlayer
+  │ skip_forward ──────────────→ _on_skip_forward ──────────────→ set_position
+  │ skip_backward ─────────────→ _on_skip_backward ─────────────→ set_position
+  │ rate_changed ──────────────→ set_playback_rate ─────────────→ QMediaPlayer
+  │ ab_loop_a_clicked ─────────→ _on_ab_loop_set_a ────────────→ set_ab_loop_a
+  │ ab_loop_b_clicked ─────────→ _on_ab_loop_set_b ────────────→ set_ab_loop_b
+  │ ab_loop_clear_clicked ─────→ _on_ab_loop_clear ────────────→ clear_ab_loop
+  │ ←───────────────────────── update_position ←──────────────── position_changed
+  │ ←───────────────────────── set_duration ←─────────────────── duration_changed
+  │ ←───────────────────────── set_playing ←──────────────────── playback_state_changed
+  │ ←───────────────────── update_ab_loop_state ←─────────────── ab_loop_changed
+                              │
+                              ├──→ WaveformCard.update_position
+                              ├──→ WaveformCard.set_duration
+                              ├──→ WaveformCard.set_ab_loop_region
+                              ├──→ StatusBar.set_time (位置变化)
+                              ├──→ StatusBar.set_status (时长变化)
+                              └──→ StatusBar.set_video_info (FFmpeg 解析)
+
+WaveformCard
+  │ position_clicked ──────────→ PlayerCard.set_position
 ```
+
+### 全局快捷键
+
+在 `keyPressEvent` 中处理，确保任何卡片获得焦点都能响应：
+
+| 快捷键 | 功能 | 调用方法 |
+|--------|------|----------|
+| `Space` | 播放/暂停 | `player_card.play_pause()` |
+| `[` | 设置 AB 循环 A 点 | `_on_ab_loop_set_a()` |
+| `]` | 设置 AB 循环 B 点 | `_on_ab_loop_set_b()` |
+| `\` | 清除 AB 循环 | `_on_ab_loop_clear()` |
 
 ### 布局系统
 
@@ -62,11 +84,12 @@ ToolBar                     MainWindow                    PlayerCard
 ### 布局
 
 ```
-[帧号] | [后退5秒] [播放/暂停] [前进5秒] | [倍速]
+[帧号] | [后退5秒] [播放/暂停] [前进5秒] | 循环 [A] [B] [×] | [倍速]
 ```
 
 - 左侧：当前帧号（`Frame: 123` 格式，等宽字体）
 - 中央：播放控制按钮组（弹性空间居中）
+- 中右：AB 循环按钮组
 - 右侧：倍速下拉选择
 
 ### 信号
@@ -77,6 +100,9 @@ ToolBar                     MainWindow                    PlayerCard
 | `skip_forward(ms)` | `int` | 前进毫秒 |
 | `skip_backward(ms)` | `int` | 后退毫秒 |
 | `rate_changed(rate)` | `float` | 倍速变化 |
+| `ab_loop_a_clicked` | 无 | 设置 A 点 |
+| `ab_loop_b_clicked` | 无 | 设置 B 点 |
+| `ab_loop_clear_clicked` | 无 | 清除 AB 循环 |
 
 ### 公有方法
 
@@ -87,6 +113,14 @@ ToolBar                     MainWindow                    PlayerCard
 | `update_position(ms)` | `int` | 更新当前播放位置，刷新帧号 |
 | `set_playing(playing)` | `bool` | 切换播放/暂停按钮文字 |
 | `set_playback_rate(rate)` | `float` | 设置倍速下拉框选中项 |
+| `update_ab_loop_state(a, b)` | `int, int` | 更新 AB 循环按钮状态和样式 |
+
+### AB 循环按钮
+
+- 按钮文本：`A` / `B` / `×`（28×28 像素）
+- 未激活：灰色背景
+- 激活后：蓝色高亮背景，鼠标悬停显示时间点
+- 清除按钮初始禁用，设置循环后启用
 
 ### 帧号计算
 
@@ -166,7 +200,7 @@ frame = int(ms * fps / 1000)
 
 ## 五、视频播放卡片 (`cards/player_card.py`)
 
-`PlayerCard(QDockWidget)` — 视频渲染和播放控制。
+`PlayerCard(QDockWidget)` — 视频渲染和播放控制，支持 AB 循环。
 
 ### 信号
 
@@ -177,6 +211,7 @@ frame = int(ms * fps / 1000)
 | `video_opened(path)` | `str` | 视频已打开 |
 | `playback_state_changed(playing)` | `bool` | 播放状态变化 |
 | `subtitle_dropped(path)` | `str` | 字幕文件拖入 |
+| `ab_loop_changed(a, b)` | `int, int` | AB 循环状态变化，-1 表示未设置 |
 
 ### 公有方法
 
@@ -195,6 +230,19 @@ frame = int(ms * fps / 1000)
 | `get_position()` | 无 | `int` | 获取当前播放位置 (ms) |
 | `get_duration()` | 无 | `int` | 获取视频总时长 (ms) |
 | `is_playing()` | 无 | `bool` | 是否正在播放 |
+| `set_ab_loop_a()` | 无 | 无 | 设置 A 点为当前位置 |
+| `set_ab_loop_b()` | 无 | 无 | 设置 B 点为当前位置 |
+| `clear_ab_loop()` | 无 | 无 | 清除 AB 循环 |
+| `get_ab_loop_points()` | 无 | `tuple[int, int]` | 获取 AB 点位置 |
+| `is_ab_loop_enabled()` | 无 | `bool` | AB 循环是否激活 |
+
+### AB 循环机制
+
+1. 用户设置 A 点和 B 点
+2. 自动确保 A < B（如果 A > B 则交换）
+3. 播放时 `_on_position_changed` 检测位置
+4. 当位置 >= B 点时，自动跳回 A 点
+5. 打开新视频时自动清除循环
 
 ### 内部组件
 
@@ -210,7 +258,7 @@ frame = int(ms * fps / 1000)
 
 ### VideoView 子类
 
-`VideoView(QGraphicsView)` — 自动 `fitInView` 保持宽高比居中显示，`resizeEvent` 时重新适配。
+`VideoView(QGraphicsView)` — 自动 `fitInView` 保持宽高比居中显示，`resizeEvent` 时重新适配。视频尺寸变化时通过 `nativeSizeChanged` 信号自动调用 `fit_video()`。
 
 ### 拖放支持
 
@@ -223,14 +271,105 @@ frame = int(ms * fps / 1000)
 
 ---
 
-## 六、其他卡片（占位）
+## 六、音频波形卡片 (`cards/waveform_card.py`)
+
+`WaveformCard(QDockWidget)` — 音频波形显示，支持交互操作。
+
+### 信号
+
+| 信号 | 参数 | 说明 |
+|------|------|------|
+| `position_clicked(ms)` | `int` | 点击波形位置 (ms) |
+
+### 布局
+
+```
+┌─────────────────────────────────────────────┐
+│ [1.0x] [0:00 - 0:30]        [滚轮缩放 | Shift+拖动平移] │  ← 信息栏
+├─────────────────────────────────────────────┤
+│                                             │
+│     ░░░░░░░     ░░░░░░░░░                   │  ← 包络线（半透明蓝色）
+│    ░░░▓▓▓░░░░░ ░░░░▓▓▓▓░░░░                 │  ← 原始波形（亮蓝色细线）
+│   ░░░▓▓▓▓▓░░░░░░░░▓▓▓▓▓▓░░░                 │
+│ ─────────────────────────────────────────── │  ← 零线
+│   ░░░▓▓▓▓▓░░░░░░░░▓▓▓▓▓▓░░░                 │
+│    ░░░▓▓▓░░░░░ ░░░░▓▓▓▓░░░░                 │
+│     ░░░░░░░     ░░░░░░░░░                   │
+│                                             │
+│   0:00  0:05  0:10  0:15  0:20  0:25  0:30  │  ← 时间刻度
+└─────────────────────────────────────────────┘
+```
+
+### 公有方法
+
+| 方法 | 参数 | 说明 |
+|------|------|------|
+| `load_waveform(video_path)` | `str` | 加载视频音频波形，返回是否成功 |
+| `set_duration(duration_ms)` | `int` | 设置视频总时长 |
+| `update_position(position_ms)` | `int` | 更新播放位置，移动红线和视窗 |
+| `set_subtitle_regions(regions)` | `dict[int, int]` | 设置字幕条覆盖区域 |
+| `clear_subtitle_regions()` | 无 | 清除字幕条覆盖 |
+| `set_ab_loop_region(a, b)` | `int, int` | 设置 AB 循环区域显示 |
+
+### 交互操作
+
+| 操作 | 功能 |
+|------|------|
+| `左键点击` | 跳转到点击位置 |
+| `Shift + 左键拖动` | 平移视窗 |
+| `滚轮` | 缩放视窗（以鼠标位置为中心） |
+
+### 缩放范围
+
+- 默认视窗：30 秒
+- 最小视窗：1 秒（约 1000x 放大）
+- 最大视窗：10 分钟或视频总时长
+
+### 波形显示
+
+- **包络线**：半透明蓝色填充区域，显示音频能量轮廓
+- **原始波形**：亮蓝色细线，显示音频细节
+- **下采样**：数据点限制在 5000 个，保留峰值特征
+- **Y 轴居中**：上下各留 15% 空间
+
+### AB 循环区域
+
+- 橙色虚线标记 A 点和 B 点
+- 半透明橙色填充区域显示循环区间
+- 与包络线和波形叠加显示
+
+### 内部组件
+
+| 组件 | 类型 | 说明 |
+|------|------|------|
+| `_plot_widget` | `WaveformPlotWidget` | pyqtgraph 绘图组件 |
+| `_envelope_curve` | `PlotCurveItem` | 包络线曲线 |
+| `_waveform_curve` | `PlotCurveItem` | 原始波形曲线 |
+| `_red_line` | `InfiniteLine` | 红色播放位置线 |
+| `_ab_loop_a_line` | `InfiniteLine` | AB 循环 A 点线 |
+| `_ab_loop_b_line` | `InfiniteLine` | AB 循环 B 点线 |
+| `_ab_loop_item` | `PlotCurveItem` | AB 循环填充区域 |
+| `_zoom_label` | `QLabel` | 缩放倍数显示 |
+| `_range_label` | `QLabel` | 视窗范围显示 |
+
+### WaveformPlotWidget 子类
+
+`WaveformPlotWidget(pg.PlotWidget)` — 自定义绘图组件：
+- 重写 `wheelEvent` 实现滚轮缩放
+- 重写 `mousePressEvent` 实现点击跳转和 Shift 拖动
+- 重写 `mouseMoveEvent` / `mouseReleaseEvent` 实现拖动平移
+- 自定义时间轴格式（mm:ss）
+- 隐藏 Auto Range 按钮
+
+---
+
+## 七、其他卡片（占位）
 
 以下卡片在 Phase 0 创建了空壳，后续阶段实现：
 
 | 卡片 | 文件 | 默认区域 | 实现阶段 |
 |------|------|----------|----------|
 | `TimelineCard` | `cards/timeline_card.py` | Right | Phase 3 |
-| `WaveformCard` | `cards/waveform_card.py` | Left | Phase 2 |
 | `TranslateCard` | `cards/translate_card.py` | Right | Phase 4 |
 
 当前均显示占位提示文字，功能为空。
