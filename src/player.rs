@@ -1,13 +1,11 @@
 use anyhow::Result;
 use std::path::Path;
 
-use crate::audio::AudioPlayer;
 use crate::decoder::{VideoDecoder, VideoFrame};
 
 /// 视频播放器封装
 pub struct VideoPlayer {
     decoder: Option<VideoDecoder>,
-    audio_player: AudioPlayer,
     video_path: Option<String>,
     /// 当前播放位置(毫秒)
     position_ms: u64,
@@ -37,7 +35,6 @@ impl VideoPlayer {
     pub fn new() -> Result<Self> {
         Ok(Self {
             decoder: None,
-            audio_player: AudioPlayer::new(),
             video_path: None,
             position_ms: 0,
             is_playing: false,
@@ -50,7 +47,6 @@ impl VideoPlayer {
     /// 加载视频文件
     pub fn load_file(&mut self, path: &Path) -> Result<()> {
         let mut decoder = VideoDecoder::new(path)?;
-        // 自动提取第一帧
         decoder.seek_to_frame(0)?;
         self.decoder = Some(decoder);
         self.video_path = path.to_str().map(|s| s.to_string());
@@ -104,12 +100,6 @@ impl VideoPlayer {
         if let Some(ref mut decoder) = self.decoder {
             decoder.play()?;
             self.is_playing = true;
-            
-            // 开始播放音频
-            if let Some(ref path) = self.video_path {
-                let start_time = decoder.current_frame_number() as f64 / decoder.fps();
-                let _ = self.audio_player.play(Path::new(path), start_time);
-            }
         }
         Ok(())
     }
@@ -119,7 +109,6 @@ impl VideoPlayer {
         if let Some(ref mut decoder) = self.decoder {
             decoder.pause();
             self.is_playing = false;
-            self.audio_player.pause();
         }
     }
 
@@ -137,7 +126,6 @@ impl VideoPlayer {
     pub fn seek_to_frame(&mut self, frame: u64) -> Result<()> {
         if let Some(ref mut decoder) = self.decoder {
             decoder.seek_to_frame(frame)?;
-            self.position_ms = (frame as f64 / decoder.fps() * 1000.0) as u64;
         }
         Ok(())
     }
@@ -146,7 +134,6 @@ impl VideoPlayer {
     pub fn seek_to_time(&mut self, time: f64) -> Result<()> {
         if let Some(ref mut decoder) = self.decoder {
             decoder.seek_to_time(time)?;
-            self.position_ms = (time * 1000.0) as u64;
         }
         Ok(())
     }
@@ -157,25 +144,7 @@ impl VideoPlayer {
             let current_frame = decoder.current_frame_number();
             let fps = decoder.fps();
             let target_frame = current_frame + (secs * fps) as u64;
-            let was_playing = self.is_playing;
-            
-            // 如果正在播放，先暂停
-            if was_playing {
-                decoder.pause();
-                self.audio_player.pause();
-            }
-            
-            // seek到新位置
             decoder.seek_to_frame(target_frame)?;
-            
-            // 如果之前在播放，从新位置继续播放
-            if was_playing {
-                decoder.play()?;
-                if let Some(ref path) = self.video_path {
-                    let position = target_frame as f64 / fps;
-                    let _ = self.audio_player.play(Path::new(path), position);
-                }
-            }
         }
         Ok(())
     }
@@ -190,25 +159,7 @@ impl VideoPlayer {
             } else {
                 0
             };
-            let was_playing = self.is_playing;
-            
-            // 如果正在播放，先暂停
-            if was_playing {
-                decoder.pause();
-                self.audio_player.pause();
-            }
-            
-            // seek到新位置
             decoder.seek_to_frame(target_frame)?;
-            
-            // 如果之前在播放，从新位置继续播放
-            if was_playing {
-                decoder.play()?;
-                if let Some(ref path) = self.video_path {
-                    let position = target_frame as f64 / fps;
-                    let _ = self.audio_player.play(Path::new(path), position);
-                }
-            }
         }
         Ok(())
     }
@@ -217,26 +168,7 @@ impl VideoPlayer {
     pub fn frame_step(&mut self) -> Result<()> {
         if let Some(ref mut decoder) = self.decoder {
             let current_frame = decoder.current_frame_number();
-            let fps = decoder.fps();
-            let was_playing = self.is_playing;
-            
-            // 如果正在播放，先暂停
-            if was_playing {
-                decoder.pause();
-                self.audio_player.pause();
-            }
-            
-            // seek到新位置
             decoder.seek_to_frame(current_frame + 1)?;
-            
-            // 如果之前在播放，从新位置继续播放
-            if was_playing {
-                decoder.play()?;
-                if let Some(ref path) = self.video_path {
-                    let position = (current_frame + 1) as f64 / fps;
-                    let _ = self.audio_player.play(Path::new(path), position);
-                }
-            }
         }
         Ok(())
     }
@@ -245,28 +177,8 @@ impl VideoPlayer {
     pub fn frame_back_step(&mut self) -> Result<()> {
         if let Some(ref mut decoder) = self.decoder {
             let current_frame = decoder.current_frame_number();
-            let fps = decoder.fps();
-            
             if current_frame > 0 {
-                let was_playing = self.is_playing;
-                
-                // 如果正在播放，先暂停
-                if was_playing {
-                    decoder.pause();
-                    self.audio_player.pause();
-                }
-                
-                // seek到新位置
                 decoder.seek_to_frame(current_frame - 1)?;
-                
-                // 如果之前在播放，从新位置继续播放
-                if was_playing {
-                    decoder.play()?;
-                    if let Some(ref path) = self.video_path {
-                        let position = (current_frame - 1) as f64 / fps;
-                        let _ = self.audio_player.play(Path::new(path), position);
-                    }
-                }
             }
         }
         Ok(())
