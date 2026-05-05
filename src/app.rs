@@ -4,7 +4,7 @@ use iced::widget::{
 };
 use iced::{Center, Color, Element, Fill, Font, Subscription, Theme};
 
-use crate::message::{Message, Pane};
+use crate::message::{LayoutPreset, Message, Pane};
 use crate::state::AppState;
 
 // ── 字体 ────────────────────────────────────────────────────────────
@@ -22,6 +22,7 @@ const FONT_BOLD: Font = Font {
 const BG_DARK: Color = Color::from_rgb(0.11, 0.11, 0.12);
 const BG_PANEL: Color = Color::from_rgb(0.15, 0.15, 0.17);
 const BG_SURFACE: Color = Color::from_rgb(0.18, 0.18, 0.20);
+const BG_DROPDOWN: Color = Color::from_rgb(0.20, 0.20, 0.23);
 const ACCENT: Color = Color::from_rgb(0.35, 0.55, 0.85);
 const ACCENT_HOVER: Color = Color::from_rgb(0.40, 0.62, 0.92);
 const TEXT_PRIMARY: Color = Color::from_rgb(0.90, 0.90, 0.92);
@@ -29,6 +30,8 @@ const TEXT_SECONDARY: Color = Color::from_rgb(0.55, 0.55, 0.60);
 const BORDER: Color = Color::from_rgb(0.25, 0.25, 0.28);
 const TITLE_BAR_BG: Color = Color::from_rgb(0.13, 0.13, 0.15);
 const TITLE_BAR_FOCUSED: Color = Color::from_rgb(0.18, 0.25, 0.38);
+const CHECKBOX_ON: Color = Color::from_rgb(0.35, 0.55, 0.85);
+const CHECKBOX_OFF: Color = Color::from_rgb(0.35, 0.35, 0.38);
 
 // ── 应用 ────────────────────────────────────────────────────────────
 
@@ -54,6 +57,7 @@ impl ChestnutStudio {
 
     pub fn update(&mut self, message: Message) -> iced::Task<Message> {
         match message {
+            // 面板布局
             Message::PaneClicked(pane) => {
                 self.state.focus = Some(pane);
             }
@@ -72,7 +76,20 @@ impl ChestnutStudio {
                 self.state.panes.restore();
                 self.state.is_maximized = false;
             }
-            Message::PaneClose(_) => {}
+
+            // 视图控制
+            Message::TogglePanel(pane) => {
+                self.state.toggle_panel(pane);
+            }
+            Message::ApplyLayout(preset) => {
+                self.state.apply_preset(preset);
+                self.state.view_menu_open = false;
+            }
+            Message::ToggleViewMenu => {
+                self.state.view_menu_open = !self.state.view_menu_open;
+            }
+
+            // 播放控制
             Message::TogglePlayPause => {
                 self.state.is_playing = !self.state.is_playing;
                 self.state.status = if self.state.is_playing {
@@ -93,6 +110,8 @@ impl ChestnutStudio {
             Message::FrameBackStep => {
                 self.state.current_frame = self.state.current_frame.saturating_sub(1);
             }
+
+            // 文件操作
             Message::OpenFile => {
                 self.state.status = "打开文件对话框...".into();
             }
@@ -125,20 +144,108 @@ impl ChestnutStudio {
     // ── 菜单栏 ──────────────────────────────────────────────────────
 
     fn view_menu_bar(&self) -> Element<'_, Message> {
-        container(
-            row![
-                menu_btn("文件").on_press(Message::OpenFile),
-                menu_btn("视图"),
-                menu_btn("工具"),
-                menu_btn("帮助"),
-            ]
-            .align_y(Center)
-            .spacing(2)
-            .padding([4, 8]),
+        // 视图菜单按钮
+        let view_menu_btn = button(
+            text("视图").font(FONT).size(13).color(
+                if self.state.view_menu_open { ACCENT } else { TEXT_PRIMARY }
+            )
         )
-        .width(Fill)
+        .on_press(Message::ToggleViewMenu)
+        .padding([6, 12])
+        .style(|_, status| {
+            let base = button::Style {
+                background: Some(Color::TRANSPARENT.into()),
+                text_color: TEXT_PRIMARY,
+                border: iced::Border {
+                    radius: 4.0.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            match status {
+                button::Status::Hovered => button::Style {
+                    background: Some(BG_SURFACE.into()),
+                    ..base
+                },
+                _ => base,
+            }
+        });
+
+        let menu_items = row![
+            menu_btn("文件").on_press(Message::OpenFile),
+            view_menu_btn,
+            menu_btn("工具"),
+            menu_btn("帮助"),
+        ]
+        .align_y(Center)
+        .spacing(2)
+        .padding([4, 8]);
+
+        // 视图下拉菜单
+        if self.state.view_menu_open {
+            let dropdown = self.view_dropdown_menu();
+
+            container(
+                column![menu_items, dropdown]
+                    .width(Fill)
+            )
+            .width(Fill)
+            .style(|_| container::Style {
+                background: Some(BG_DARK.into()),
+                ..Default::default()
+            })
+            .into()
+        } else {
+            container(menu_items)
+                .width(Fill)
+                .style(|_| container::Style {
+                    background: Some(BG_DARK.into()),
+                    ..Default::default()
+                })
+                .into()
+        }
+    }
+
+    /// 视图下拉菜单
+    fn view_dropdown_menu(&self) -> Element<'_, Message> {
+        let current_preset = self.state.current_preset();
+
+        container(
+            column![
+                // 预设布局
+                text("布局预设").font(FONT_BOLD).size(12).color(TEXT_SECONDARY),
+                preset_btn("全部面板", LayoutPreset::All, current_preset),
+                preset_btn("打轴模式", LayoutPreset::Timing, current_preset),
+                preset_btn("翻译模式", LayoutPreset::Translation, current_preset),
+                preset_btn("仅视频", LayoutPreset::VideoOnly, current_preset),
+
+                // 分隔线
+                container(text(" ").size(1))
+                    .width(Fill)
+                    .height(1)
+                    .style(|_| container::Style {
+                        background: Some(BORDER.into()),
+                        ..Default::default()
+                    }),
+
+                // 面板显隐
+                text("面板显示").font(FONT_BOLD).size(12).color(TEXT_SECONDARY),
+                toggle_btn("视频播放器", Pane::Video, self.state.show_video),
+                toggle_btn("音频波形", Pane::Waveform, self.state.show_waveform),
+                toggle_btn("轴卡片列表", Pane::AxisCards, self.state.show_axis_cards),
+                toggle_btn("翻译区", Pane::Translation, self.state.show_translation),
+            ]
+            .spacing(2)
+            .padding(8)
+            .width(200),
+        )
         .style(|_| container::Style {
-            background: Some(BG_DARK.into()),
+            background: Some(BG_DROPDOWN.into()),
+            border: iced::Border {
+                width: 1.0,
+                color: BORDER,
+                radius: 6.0.into(),
+            },
             ..Default::default()
         })
         .into()
@@ -281,7 +388,6 @@ impl ChestnutStudio {
     fn view_pane_content(&self, pane: Pane) -> Element<'_, Message> {
         match pane {
             Pane::Video => {
-                // 视频面板: 强制 16:9 比例
                 responsive(move |size| {
                     let width = size.width;
                     let height = width * 9.0 / 16.0;
@@ -345,6 +451,13 @@ impl ChestnutStudio {
     // ── 状态栏 ──────────────────────────────────────────────────────
 
     fn view_status_bar(&self) -> Element<'_, Message> {
+        let layout_label = match self.state.current_preset() {
+            LayoutPreset::All => "全部面板",
+            LayoutPreset::Timing => "打轴模式",
+            LayoutPreset::Translation => "翻译模式",
+            LayoutPreset::VideoOnly => "仅视频",
+        };
+
         container(
             row![
                 container(text(" ").size(8))
@@ -360,6 +473,8 @@ impl ChestnutStudio {
                     }),
                 text(&self.state.status).font(FONT).size(12).color(TEXT_SECONDARY),
                 horizontal_space(),
+                text(layout_label).font(FONT).size(11).color(TEXT_SECONDARY),
+                text(" | ").font(FONT).size(11).color(BORDER),
                 text("Chestnut Studio v0.1.0")
                     .font(FONT)
                     .size(11)
@@ -482,4 +597,77 @@ fn pane_ctrl_btn(_theme: &Theme, status: button::Status) -> button::Style {
         },
         _ => base,
     }
+}
+
+fn preset_btn(label: &str, preset: LayoutPreset, current: LayoutPreset) -> button::Button<'_, Message> {
+    let is_active = preset == current;
+    button(
+        row![
+            if is_active {
+                text(">").font(FONT).size(13).color(ACCENT)
+            } else {
+                text(" ").font(FONT).size(13).color(TEXT_PRIMARY)
+            },
+            text(label).font(FONT).size(13).color(
+                if is_active { ACCENT } else { TEXT_PRIMARY }
+            ),
+        ]
+        .spacing(8)
+    )
+    .on_press(Message::ApplyLayout(preset))
+    .width(Fill)
+    .padding([6, 12])
+    .style(|_, status| {
+        let base = button::Style {
+            background: Some(Color::TRANSPARENT.into()),
+            text_color: TEXT_PRIMARY,
+            ..Default::default()
+        };
+        match status {
+            button::Status::Hovered => button::Style {
+                background: Some(BG_SURFACE.into()),
+                ..base
+            },
+            _ => base,
+        }
+    })
+}
+
+fn toggle_btn(label: &str, pane: Pane, visible: bool) -> button::Button<'_, Message> {
+    button(
+        row![
+            container(text(" ").size(8))
+                .width(14)
+                .height(14)
+                .style(move |_| container::Style {
+                    background: Some(if visible { CHECKBOX_ON } else { CHECKBOX_OFF }.into()),
+                    border: iced::Border {
+                        width: 1.0,
+                        color: if visible { ACCENT } else { BORDER },
+                        radius: 3.0.into(),
+                    },
+                    ..Default::default()
+                }),
+            text(label).font(FONT).size(13).color(TEXT_PRIMARY),
+        ]
+        .spacing(8)
+        .align_y(Center)
+    )
+    .on_press(Message::TogglePanel(pane))
+    .width(Fill)
+    .padding([6, 12])
+    .style(|_, status| {
+        let base = button::Style {
+            background: Some(Color::TRANSPARENT.into()),
+            text_color: TEXT_PRIMARY,
+            ..Default::default()
+        };
+        match status {
+            button::Status::Hovered => button::Style {
+                background: Some(BG_SURFACE.into()),
+                ..base
+            },
+            _ => base,
+        }
+    })
 }

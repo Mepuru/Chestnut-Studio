@@ -23,10 +23,36 @@ impl Pane {
     }
 }
 
+/// 预设布局
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LayoutPreset {
+    /// 全部面板
+    All,
+    /// 打轴模式 (隐藏翻译区)
+    Timing,
+    /// 翻译模式 (隐藏波形)
+    Translation,
+    /// 仅视频
+    VideoOnly,
+}
+
+impl LayoutPreset {
+    #[allow(dead_code)]
+    pub fn label(&self) -> &str {
+        match self {
+            LayoutPreset::All => "全部面板",
+            LayoutPreset::Timing => "打轴模式",
+            LayoutPreset::Translation => "翻译模式",
+            LayoutPreset::VideoOnly => "仅视频",
+        }
+    }
+}
+
 /// 应用消息
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub enum Message {
+    // ── 面板布局 ──────────────────────────────────────────────────
     /// 面板被点击
     PaneClicked(iced::widget::pane_grid::Pane),
     /// 面板被拖拽
@@ -37,10 +63,16 @@ pub enum Message {
     PaneMaximize(iced::widget::pane_grid::Pane),
     /// 还原面板
     PaneRestore,
-    /// 关闭面板
-    PaneClose(iced::widget::pane_grid::Pane),
 
-    // 播放控制
+    // ── 视图控制 ──────────────────────────────────────────────────
+    /// 切换面板可见性
+    TogglePanel(Pane),
+    /// 应用预设布局
+    ApplyLayout(LayoutPreset),
+    /// 切换视图菜单展开/收起
+    ToggleViewMenu,
+
+    // ── 播放控制 ──────────────────────────────────────────────────
     /// 切换播放/暂停
     TogglePlayPause,
     /// 前进5秒
@@ -52,7 +84,7 @@ pub enum Message {
     /// 帧后退
     FrameBackStep,
 
-    // 文件操作
+    // ── 文件操作 ──────────────────────────────────────────────────
     /// 打开文件
     OpenFile,
 }
