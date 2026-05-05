@@ -210,7 +210,10 @@ class TimelineCard(QDockWidget):
 
     def _update_scrollbar(self):
         """更新滚动条范围"""
-        max_offset = max(0, self._total_logical_rows - VISIBLE_ROWS)
+        # 至少要有 VISIBLE_ROWS 行，确保可以滚动
+        min_rows = VISIBLE_ROWS + 100  # 额外100行用于滚动
+        total_rows = max(min_rows, self._total_logical_rows)
+        max_offset = max(0, total_rows - VISIBLE_ROWS)
         self._scrollbar.setRange(0, max_offset)
         self._scrollbar.setPageStep(VISIBLE_ROWS)
 
