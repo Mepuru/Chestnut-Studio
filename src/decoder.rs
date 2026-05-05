@@ -200,10 +200,16 @@ impl VideoDecoder {
     fn extract_frame(&self, frame_number: u64) -> Result<()> {
         let timestamp = frame_number as f64 / self.info.fps;
         
+        // 降低分辨率到640像素宽
+        let scale_width = 640;
+        let scale_height = (self.info.height as f64 * scale_width as f64 / self.info.width as f64) as u32;
+        let scale_height = if scale_height % 2 == 0 { scale_height } else { scale_height + 1 };
+        
         let output = Command::new("ffmpeg")
             .args([
                 "-ss", &format!("{:.6}", timestamp),
                 "-i", self.path.to_str().unwrap(),
+                "-vf", &format!("scale={}:{}", scale_width, scale_height),
                 "-vframes", "1",
                 "-f", "rawvideo",
                 "-pix_fmt", "rgba",
@@ -217,20 +223,19 @@ impl VideoDecoder {
         }
         
         let data = output.stdout;
-        let expected_size = (self.info.width * self.info.height * 4) as usize;
+        let expected_size = (scale_width * scale_height * 4) as usize;
         
         if data.len() != expected_size {
-            // 如果帧数据大小不匹配，可能是视频结束，填充黑色帧
+            // 填充黑色帧
             let mut black_frame = vec![0u8; expected_size];
-            // 设置alpha通道为255
             for i in (3..expected_size).step_by(4) {
                 black_frame[i] = 255;
             }
             
             let frame = VideoFrame {
                 data: black_frame,
-                width: self.info.width,
-                height: self.info.height,
+                width: scale_width,
+                height: scale_height,
                 frame_number,
             };
             
@@ -243,8 +248,8 @@ impl VideoDecoder {
         
         let frame = VideoFrame {
             data,
-            width: self.info.width,
-            height: self.info.height,
+            width: scale_width,
+            height: scale_height,
             frame_number,
         };
         
@@ -415,13 +420,19 @@ impl VideoDecoder {
     ) -> Result<()> {
         let frame_duration = Duration::from_secs_f64(1.0 / fps);
         
-        // 使用 ffmpeg 解码视频，降低分辨率提高效率
-        // 同时使用 -re 参数按原始帧率输出
+        // 降低分辨率到640像素宽，保持宽高比
+        let scale_width = 640;
+        let scale_height = (height as f64 * scale_width as f64 / width as f64) as u32;
+        let scale_height = if scale_height % 2 == 0 { scale_height } else { scale_height + 1 };
+        
+        let video_frame_size = (scale_width * scale_height * 4) as usize;
+        
+        // 使用 ffmpeg 解码视频，降低分辨率提高性能
         let mut child = Command::new("ffmpeg")
             .args([
                 "-ss", &format!("{:.6}", start_frame as f64 / fps),
                 "-i", path.to_str().unwrap(),
-                "-vf", "scale=640:360",  // 降低分辨率提高效率
+                "-vf", &format!("scale={}:{}", scale_width, scale_height),
                 "-f", "rawvideo",
                 "-pix_fmt", "rgba",
                 "-r", &format!("{}", fps),
@@ -433,8 +444,8 @@ impl VideoDecoder {
             .context("启动 ffmpeg 视频解码失败")?;
         
         let stdout = child.stdout.take().unwrap();
-        let mut reader = std::io::BufReader::with_capacity(640 * 360 * 4, stdout);
-        let mut video_buffer = vec![0u8; 640 * 360 * 4];
+        let mut reader = std::io::BufReader::with_capacity(video_frame_size * 2, stdout);
+        let mut video_buffer = vec![0u8; video_frame_size];
         
         let mut frame_num = start_frame;
         let mut last_frame_time = Instant::now();
@@ -450,8 +461,8 @@ impl VideoDecoder {
                 Ok(_) => {
                     let frame = VideoFrame {
                         data: video_buffer.clone(),
-                        width: 640,
-                        height: 360,
+                        width: scale_width,
+                        height: scale_height,
                         frame_number: frame_num,
                     };
                     
@@ -505,13 +516,20 @@ impl VideoDecoder {
             .context("启动 ffmpeg 音频解码失败")?;
         
         let stdout = child.stdout.take().unwrap();
-        let mut reader = std::io::BufReader::with_capacity(44100 * 4, stdout);
-        let mut audio_buffer_temp = vec![0u8; 44100 * 4]; // 1秒的音频数据
+        let mut reader = std::io::BufReader::with_capacity(44100 * 4 * 2, stdout);
+        let mut audio_buffer_temp = vec![0u8; 44100 * 4 * 2 / 30]; // 约1帧的音频数据
         
         loop {
             // 检查播放状态
             if *state.lock().unwrap() != PlaybackState::Playing {
                 break;
+            }
+            
+            // 检查音频缓冲区大小，避免缓冲区过大导致延迟
+            let buffer_size = audio_buffer.lock().unwrap().len();
+            if buffer_size > 44100 * 2 * 2 { // 最多缓冲0.5秒的音频
+                thread::sleep(Duration::from_millis(10));
+                continue;
             }
             
             // 读取音频数据
