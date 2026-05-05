@@ -90,7 +90,6 @@ class TestPlayerCard:
         assert hasattr(player, "_scene")
         assert hasattr(player, "_video_item")
         assert hasattr(player, "_subtitle_item")
-        assert hasattr(player, "_time_label")
 
     def test_player_card_signals(self, main_window):
         player = main_window.player_card
@@ -154,8 +153,6 @@ class TestToolBar:
         toolbar = main_window.toolbar
         assert hasattr(toolbar, "_frame_label")
         assert hasattr(toolbar, "_play_btn")
-        assert hasattr(toolbar, "_frame_back_btn")
-        assert hasattr(toolbar, "_frame_fwd_btn")
         assert hasattr(toolbar, "_skip_back_btn")
         assert hasattr(toolbar, "_skip_fwd_btn")
         assert hasattr(toolbar, "_rate_combo")
@@ -165,8 +162,6 @@ class TestToolBar:
         assert hasattr(toolbar, "play_clicked")
         assert hasattr(toolbar, "skip_forward")
         assert hasattr(toolbar, "skip_backward")
-        assert hasattr(toolbar, "frame_forward")
-        assert hasattr(toolbar, "frame_backward")
         assert hasattr(toolbar, "rate_changed")
 
     def test_toolbar_set_duration(self, main_window):

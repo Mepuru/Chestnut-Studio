@@ -26,7 +26,7 @@ class StatusBar(QStatusBar):
         self.video_info_label = QLabel("")
         self.video_info_label.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
 
-        self.time_label = QLabel("当前: 00:00:00.000")
+        self.time_label = QLabel("00:00 / 00:00")
         self.time_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         # 添加到状态栏
@@ -38,7 +38,7 @@ class StatusBar(QStatusBar):
         """设置默认状态"""
         self.status_label.setText("就绪")
         self.video_info_label.setText("")
-        self.time_label.setText("当前: 00:00:00.000")
+        self.time_label.setText("00:00 / 00:00")
 
     def set_status(self, text: str) -> None:
         """设置状态信息
@@ -66,13 +66,17 @@ class StatusBar(QStatusBar):
 
         self.video_info_label.setText(" · ".join(parts))
 
-    def set_time(self, time_str: str) -> None:
+    def set_time(self, current: str, total: str = "") -> None:
         """设置当前播放时间
 
         Args:
-            time_str: 时间字符串（如 "00:01:32.450"）
+            current: 当前时间（如 "01:32"）
+            total: 总时长（如 "05:30"），为空则只显示当前时间
         """
-        self.time_label.setText(f"当前: {time_str}")
+        if total:
+            self.time_label.setText(f"{current} / {total}")
+        else:
+            self.time_label.setText(current)
 
     def clear_video_info(self) -> None:
         """清除视频参数信息"""

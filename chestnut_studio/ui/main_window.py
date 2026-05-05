@@ -151,11 +151,9 @@ class MainWindow(QMainWindow):
         self.toolbar.play_clicked.connect(self.player_card.play_pause)
         self.toolbar.rate_changed.connect(self.player_card.set_playback_rate)
 
-        # 跳转信号：toolbar 发出 ms 偏移量，player_card 换算成绝对位置
+        # 跳转信号
         self.toolbar.skip_forward.connect(self._on_skip_forward)
         self.toolbar.skip_backward.connect(self._on_skip_backward)
-        self.toolbar.frame_forward.connect(self._on_frame_forward)
-        self.toolbar.frame_backward.connect(self._on_frame_backward)
 
         # --- 播放卡片 → 工具栏 ---
         self.player_card.position_changed.connect(self.toolbar.update_position)
@@ -249,26 +247,16 @@ class MainWindow(QMainWindow):
         pos = self.player_card.get_position() - ms
         self.player_card.set_position(max(pos, 0))
 
-    def _on_frame_forward(self):
-        """前进 1 帧"""
-        frame_ms = int(1000 / self.toolbar._fps)
-        pos = self.player_card.get_position() + frame_ms
-        self.player_card.set_position(min(pos, self.player_card.get_duration()))
-
-    def _on_frame_backward(self):
-        """后退 1 帧"""
-        frame_ms = int(1000 / self.toolbar._fps)
-        pos = self.player_card.get_position() - frame_ms
-        self.player_card.set_position(max(pos, 0))
-
     # ========== 状态栏更新 ==========
 
     def _on_position_changed(self, ms: int):
         """播放位置变化 → 更新状态栏时间"""
-        from chestnut_studio.utils.time_utils import ms_to_time_str
 
-        self.status_bar.set_time(ms_to_time_str(ms))
+        total = self.player_card.get_duration()
+        self.status_bar.set_time(split_time(ms), split_time(total) if total else "")
 
     def _on_duration_changed(self, ms: int):
         """视频时长变化 → 更新状态栏"""
+
+        self.status_bar.set_time("00:00", split_time(ms))
         self.status_bar.set_status(f"视频时长: {split_time(ms)}")
