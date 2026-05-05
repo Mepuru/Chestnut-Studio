@@ -125,14 +125,14 @@ class MainWindow(QMainWindow):
             self.removeDockWidget(self.translate_card)
         self._layout_initialized = True
 
-        # --- 左列：player + waveform ---
+        # 左列：player + waveform（显式添加到 Left 区域，再垂直分割）
         self.addDockWidget(Qt.LeftDockWidgetArea, self.player_card)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.waveform_card)
         self.splitDockWidget(self.player_card, self.waveform_card, Qt.Vertical)
 
-        # --- 右列：timeline + translation ---
-        # 先把 timeline 放到 player 右侧，形成左右分栏
-        self.splitDockWidget(self.player_card, self.timeline_card, Qt.Horizontal)
-        # 再把 translation 放到 timeline 下方
+        # 右列：timeline + translation（显式添加到 Right 区域，再垂直分割）
+        self.addDockWidget(Qt.RightDockWidgetArea, self.timeline_card)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.translate_card)
         self.splitDockWidget(self.timeline_card, self.translate_card, Qt.Vertical)
 
         # 动态计算尺寸
@@ -143,17 +143,21 @@ class MainWindow(QMainWindow):
         top_h = int(win_h * 0.56)
         bottom_h = win_h - top_h - 4
 
-        # 左列上下
-        self.resizeDocks([self.player_card, self.waveform_card],
-                         [top_h, bottom_h], Qt.Vertical)
-        # 右列上下
-        self.resizeDocks([self.timeline_card, self.translate_card],
-                         [top_h, bottom_h], Qt.Vertical)
-        # 左右
-        self.resizeDocks([self.player_card, self.timeline_card],
-                         [left_w, right_w], Qt.Horizontal)
+        # 一次性设置所有尺寸（避免多次调用导致布局错乱）
+        self.resizeDocks(
+            [self.player_card, self.timeline_card,
+             self.waveform_card, self.translate_card],
+            [left_w, right_w, left_w, right_w],
+            Qt.Horizontal,
+        )
+        self.resizeDocks(
+            [self.player_card, self.waveform_card,
+             self.timeline_card, self.translate_card],
+            [top_h, bottom_h, top_h, bottom_h],
+            Qt.Vertical,
+        )
 
-        # 延迟确保卡片可见（窗口显示后生效）
+        # 延迟确保卡片可见
         from PySide6.QtCore import QTimer
         QTimer.singleShot(0, self._show_all_cards)
 
