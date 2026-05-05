@@ -107,6 +107,19 @@ class SubtitleManager:
             return True
         return False
 
+    def break_to_rows(self, col: int, time_points: list[int], interval: float):
+        """将字幕拆分成每行独立条
+
+        Args:
+            col: 列号
+            time_points: 时间点列表
+            interval: 间隔 (ms)
+        """
+        for tp in time_points:
+            for start, (delta, text) in list(self._data[col].items()):
+                if start <= tp < start + delta:
+                    self._data[col][int(tp)] = [int(interval), text]
+
     def clear(self, col: int):
         """清空指定列"""
         self._data[col] = {}

@@ -50,7 +50,7 @@ class ToolBar(QToolBar):
     """主工具栏
 
     布局：
-    [帧号] | [后退5秒] [播放/暂停] [前进5秒] | [A点] [B点] [清除] | [倍速]
+    [帧号] | [后退5秒] [播放/暂停] [前进5秒] | [A点] [B点] [清除] | [倍速] | [间隔] | [操作按钮]
     """
 
     # 信号
@@ -61,6 +61,12 @@ class ToolBar(QToolBar):
     ab_loop_a_clicked = Signal()  # 设置 A 点
     ab_loop_b_clicked = Signal()  # 设置 B 点
     ab_loop_clear_clicked = Signal()  # 清除 AB 循环
+    interval_changed = Signal(float)  # 间隔变化
+    create_subtitle_clicked = Signal()  # 创建字幕条
+    merge_clicked = Signal()  # 合并
+    split_clicked = Signal()  # 切割
+    undo_clicked = Signal()  # 撤销
+    redo_clicked = Signal()  # 重做
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -138,6 +144,47 @@ class ToolBar(QToolBar):
         self._rate_combo.setCurrentText("1.0x")
         self._rate_combo.currentTextChanged.connect(self._on_rate_changed)
 
+        # --- 打轴工具栏 ---
+        # 间隔设置
+        self._interval_combo = QComboBox()
+        self._interval_combo.setFixedWidth(80)
+        self._interval_combo.addItems([
+            "10ms", "20ms", "33ms", "50ms", "100ms", "200ms", "500ms", "1s"
+        ])
+        self._interval_combo.setCurrentText("33ms")
+        self._interval_combo.currentTextChanged.connect(self._on_interval_changed)
+
+        # 操作按钮
+        self._create_btn = QPushButton("新建")
+        self._create_btn.setFixedSize(48, 28)
+        self._create_btn.setToolTip("创建字幕条")
+        self._create_btn.setStyleSheet(BTN_STYLE)
+        self._create_btn.clicked.connect(self.create_subtitle_clicked.emit)
+
+        self._merge_btn = QPushButton("合并")
+        self._merge_btn.setFixedSize(48, 28)
+        self._merge_btn.setToolTip("合并选中")
+        self._merge_btn.setStyleSheet(BTN_STYLE)
+        self._merge_btn.clicked.connect(self.merge_clicked.emit)
+
+        self._split_btn = QPushButton("切割")
+        self._split_btn.setFixedSize(48, 28)
+        self._split_btn.setToolTip("在光标位置切割")
+        self._split_btn.setStyleSheet(BTN_STYLE)
+        self._split_btn.clicked.connect(self.split_clicked.emit)
+
+        self._undo_btn = QPushButton("撤销")
+        self._undo_btn.setFixedSize(48, 28)
+        self._undo_btn.setToolTip("撤销 (Ctrl+Z)")
+        self._undo_btn.setStyleSheet(BTN_STYLE)
+        self._undo_btn.clicked.connect(self.undo_clicked.emit)
+
+        self._redo_btn = QPushButton("重做")
+        self._redo_btn.setFixedSize(48, 28)
+        self._redo_btn.setToolTip("重做 (Ctrl+Y)")
+        self._redo_btn.setStyleSheet(BTN_STYLE)
+        self._redo_btn.clicked.connect(self.redo_clicked.emit)
+
         # --- 布局 ---
         self.addWidget(self._frame_label)
         self._add_separator()
@@ -179,6 +226,28 @@ class ToolBar(QToolBar):
         self.addWidget(rate_label)
         self._add_spacing(4)
         self.addWidget(self._rate_combo)
+
+        # 打轴工具栏分隔
+        self._add_separator()
+
+        # 间隔设置
+        interval_label = QLabel("间隔")
+        interval_label.setStyleSheet("color: #52525b; font-size: 9pt;")
+        self.addWidget(interval_label)
+        self._add_spacing(4)
+        self.addWidget(self._interval_combo)
+
+        # 操作按钮
+        self._add_separator()
+        self.addWidget(self._create_btn)
+        self._add_spacing(4)
+        self.addWidget(self._merge_btn)
+        self._add_spacing(4)
+        self.addWidget(self._split_btn)
+        self._add_spacing(4)
+        self.addWidget(self._undo_btn)
+        self._add_spacing(4)
+        self.addWidget(self._redo_btn)
 
     def _add_separator(self):
         """添加分隔线"""
@@ -260,5 +329,19 @@ class ToolBar(QToolBar):
         try:
             rate = float(text.replace("x", ""))
             self.rate_changed.emit(rate)
+        except ValueError:
+            pass
+
+    def _on_interval_changed(self, text: str):
+        """间隔选择变化"""
+        try:
+            # 解析间隔值
+            if text.endswith("ms"):
+                interval = float(text[:-2])
+            elif text.endswith("s"):
+                interval = float(text[:-1]) * 1000
+            else:
+                interval = float(text)
+            self.interval_changed.emit(interval)
         except ValueError:
             pass
