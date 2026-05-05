@@ -328,6 +328,15 @@ class TimelineCard(QDockWidget):
         self._scrollbar.setValue(self._scroll_offset)
         self._refresh_display()
 
+    def jump_to_position_at_top(self, ms: int):
+        """跳转到指定时间位置，显示在可视行1"""
+        target_row = int(ms / self._global_interval)
+        self._scroll_offset = max(0, target_row)
+        max_offset = max(0, self._total_logical_rows - VISIBLE_ROWS)
+        self._scroll_offset = min(self._scroll_offset, max_offset)
+        self._scrollbar.setValue(self._scroll_offset)
+        self._refresh_display()
+
     # ========== 快捷键操作 ==========
 
     def keyPressEvent(self, event):

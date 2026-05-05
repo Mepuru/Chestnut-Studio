@@ -252,6 +252,9 @@ class MainWindow(QMainWindow):
         # --- 波形卡片 → 播放卡片（点击跳转） ---
         self.waveform_card.position_clicked.connect(self.player_card.set_position)
 
+        # --- 波形卡片 → 时间轴卡片（点击跳转到可视行1） ---
+        self.waveform_card.position_clicked.connect(self.timeline_card.jump_to_position_at_top)
+
         # --- 时间轴卡片 → 播放卡片（位置跳转并暂停） ---
         self.timeline_card.position_jump_requested.connect(self._on_timeline_jump)
 
