@@ -32,7 +32,7 @@ class SubtitleIO:
             {start_ms: [duration_ms, "text"], ...}
         """
         result = {}
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             lines = f.readlines()
 
         i = 0

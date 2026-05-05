@@ -1,7 +1,6 @@
 """字幕数据结构与操作"""
 
 import copy
-from typing import Optional
 
 # 字幕字典类型
 # key: 列号 (0-4)
@@ -24,7 +23,7 @@ class SubtitleManager:
     def data(self) -> SubtitleDict:
         return self._data
 
-    def get(self, col: int, start: int) -> Optional[list]:
+    def get(self, col: int, start: int) -> list | None:
         """获取字幕条"""
         return self._data[col].get(start)
 
