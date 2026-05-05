@@ -127,8 +127,6 @@ impl ChestnutStudio {
     fn view_menu_bar(&self) -> Element<'_, Message> {
         container(
             row![
-                text("Chestnut Studio").font(FONT_BOLD).size(14).color(ACCENT),
-                horizontal_space(),
                 menu_btn("文件").on_press(Message::OpenFile),
                 menu_btn("视图"),
                 menu_btn("工具"),
@@ -153,7 +151,7 @@ impl ChestnutStudio {
             text(format!(
                 "帧 {} | {}",
                 self.state.current_frame,
-                if self.state.is_playing { "▶ 播放中" } else { "⏸ 已暂停" }
+                if self.state.is_playing { "播放中" } else { "已暂停" }
             ))
             .font(FONT)
             .size(13)
@@ -173,10 +171,10 @@ impl ChestnutStudio {
             row![
                 time_display,
                 horizontal_space(),
-                tool_btn("◀帧").on_press(Message::FrameBackStep),
-                tool_btn("◀5s").on_press(Message::SeekBackward5s),
+                tool_btn("|<").on_press(Message::FrameBackStep),
+                tool_btn("<<").on_press(Message::SeekBackward5s),
                 button(
-                    text(if self.state.is_playing { "⏸" } else { "▶" })
+                    text(if self.state.is_playing { "||" } else { ">" })
                         .font(FONT_BOLD)
                         .size(16)
                         .color(Color::WHITE)
@@ -184,8 +182,8 @@ impl ChestnutStudio {
                 .on_press(Message::TogglePlayPause)
                 .padding([8, 20])
                 .style(accent_btn),
-                tool_btn("5s▶").on_press(Message::SeekForward5s),
-                tool_btn("帧▶").on_press(Message::FrameStep),
+                tool_btn(">>").on_press(Message::SeekForward5s),
+                tool_btn(">|").on_press(Message::FrameStep),
             ]
             .align_y(Center)
             .spacing(6)
@@ -281,17 +279,16 @@ impl ChestnutStudio {
     }
 
     fn view_pane_content(&self, pane: Pane) -> Element<'_, Message> {
-        let (icon, title, subtitle) = match pane {
-            Pane::Video => ("🎬", "视频播放器", "mpv 将嵌入此处"),
-            Pane::Waveform => ("📊", "音频波形", "Canvas 绘制波形"),
-            Pane::AxisCards => ("📋", "轴卡片列表", "水平滚动卡片容器"),
-            Pane::Translation => ("🌐", "翻译区 / 术语库", "双轴并排编辑"),
+        let (title, subtitle) = match pane {
+            Pane::Video => ("视频播放器", "mpv 将嵌入此处"),
+            Pane::Waveform => ("音频波形", "Canvas 绘制波形"),
+            Pane::AxisCards => ("轴卡片列表", "水平滚动卡片容器"),
+            Pane::Translation => ("翻译区 / 术语库", "双轴并排编辑"),
         };
 
         container(
             column![
-                text(icon).size(36).color(TEXT_SECONDARY),
-                text(title).font(FONT).size(14).color(TEXT_SECONDARY),
+                text(title).font(FONT_BOLD).size(16).color(TEXT_SECONDARY),
                 text(subtitle).font(FONT).size(12).color(TEXT_SECONDARY),
             ]
             .align_x(Center)
@@ -311,7 +308,17 @@ impl ChestnutStudio {
     fn view_status_bar(&self) -> Element<'_, Message> {
         container(
             row![
-                text("●").font(FONT).size(10).color(ACCENT),
+                container(text(" ").size(8))
+                    .width(8)
+                    .height(8)
+                    .style(|_| container::Style {
+                        background: Some(ACCENT.into()),
+                        border: iced::Border {
+                            radius: 4.0.into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }),
                 text(&self.state.status).font(FONT).size(12).color(TEXT_SECONDARY),
                 horizontal_space(),
                 text("Chestnut Studio v0.1.0")
