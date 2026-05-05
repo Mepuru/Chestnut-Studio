@@ -85,39 +85,47 @@ uv run ruff format chestnut_studio/
 
 ```
 ChestnutStudio/
-├── main.py                  # 入口文件
-├── chestnut_studio/         # 主模块
+├── main.py                        # 入口文件
+├── chestnut_studio/               # 主模块
 │   ├── __init__.py
-│   ├── core/                # 核心逻辑（无 UI 依赖）
+│   ├── core/                      # 核心逻辑（无 UI 依赖）
 │   │   ├── __init__.py
-│   │   ├── ffmpeg.py        # FFmpeg 封装
-│   │   ├── audio.py         # 音频数据处理
-│   │   ├── subtitle.py      # 字幕数据结构
-│   │   └── subtitle_io.py   # 字幕导入/导出
-│   ├── ui/                  # UI 层
+│   │   ├── ffmpeg.py              # FFmpeg 封装
+│   │   ├── audio.py               # 音频数据处理
+│   │   ├── subtitle.py            # 字幕数据结构
+│   │   └── subtitle_io.py         # 字幕导入/导出
+│   ├── ui/                        # UI 层
 │   │   ├── __init__.py
-│   │   ├── main_window.py   # 主窗口
-│   │   ├── menubar.py       # 菜单栏
-│   │   ├── statusbar.py     # 状态栏
-│   │   ├── cards/           # 卡片组件
+│   │   ├── main_window.py         # 主窗口
+│   │   ├── menubar.py             # 菜单栏
+│   │   ├── statusbar.py           # 状态栏
+│   │   ├── cards/                 # 卡片组件
 │   │   │   ├── __init__.py
-│   │   │   ├── player_card.py    # 视频播放卡片
-│   │   │   ├── timeline_card.py  # 打轴编辑卡片
-│   │   │   ├── waveform_card.py  # 音频波形卡片
-│   │   │   └── translate_card.py # 翻译面板卡片
-│   │   └── dialogs/         # 弹窗
+│   │   │   ├── player_card.py     # 视频播放卡片
+│   │   │   ├── waveform_card.py   # 音频波形卡片
+│   │   │   ├── timeline_card.py   # 打轴编辑卡片
+│   │   │   └── translate_card.py  # 翻译面板卡片
+│   │   └── dialogs/               # 弹窗
 │   │       └── __init__.py
-│   ├── utils/               # 工具函数
+│   ├── utils/                     # 工具函数
 │   │   ├── __init__.py
-│   │   └── time_utils.py    # 时间格式转换
-│   └── resources/           # 资源文件
-│       └── style.qss        # 暗色主题样式表
-├── tests/                   # 测试
-├── prototypes/              # 设计文档
-├── pyproject.toml           # 项目配置
-├── uv.lock                  # 依赖锁定
+│   │   └── time_utils.py          # 时间格式转换
+│   └── resources/                 # 资源文件
+│       ├── style.qss              # 暗色主题样式表
+│       └── fonts/                 # 字体（HarmonyOS Sans）
+├── docs/                          # 文档
+│   ├── architecture.md            # 架构文档
+│   ├── development.md             # 开发指南
+│   └── changelog.md               # 变更日志
+├── tests/                         # 测试
+│   ├── conftest.py                # 测试配置
+│   ├── test_phase0.py             # Phase 0 测试
+│   └── test_subtitle.py           # 字幕测试
+├── prototypes/                    # 设计文档
+├── pyproject.toml                 # 项目配置
+├── uv.lock                        # 依赖锁定
 ├── README.md
-└── LICENSE                  # MIT 协议
+└── LICENSE                        # MIT 协议
 ```
 
 ## 开发路线
