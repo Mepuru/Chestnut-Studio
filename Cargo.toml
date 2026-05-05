@@ -6,7 +6,6 @@ build = "build.rs"
 
 [features]
 default = []
-mpv = ["dep:libmpv2"]
 
 [dependencies]
 # GUI
@@ -22,16 +21,12 @@ anyhow = "1"
 # File dialog
 rfd = "0.15"
 
-# Windows API for embedded video
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["winuser", "windef", "libloaderapi"] }
-
 # Logging
 tracing = "0.1"
 tracing-subscriber = "0.3"
 
-# Video playback (optional) - 使用 libmpv2 支持新版 mpv (API v2)
-libmpv2 = { version = "5.0", optional = true }
+# Image processing
+image = "0.25"
 
 # [TODO] Phase 3+: Audio waveform
 # ffmpeg-next = "7.0"

@@ -1,4 +1,5 @@
 mod app;
+mod decoder;
 mod message;
 mod player;
 mod state;

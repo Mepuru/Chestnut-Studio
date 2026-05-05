@@ -38,10 +38,6 @@ pub enum Message {
     ExportSubtitle,
     VideoFileOpened(PathBuf),
 
-    // 视频窗口初始化
-    InitializeVideoWindow,
-    VideoWindowCreated(i64),
-
     // 播放控制
     TogglePlayPause,
     Play,
