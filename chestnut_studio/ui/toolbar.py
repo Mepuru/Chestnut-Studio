@@ -52,6 +52,14 @@ class ToolBar(QToolBar):
         """初始化 UI"""
         self.setMovable(False)
         self.setFloatable(False)
+        self.setStyleSheet("""
+            QToolBar {
+                background: #18181b;
+                border: none;
+                border-bottom: 1px solid #27272a;
+                padding: 4px 8px;
+            }
+        """)
 
         # --- 最左侧：帧号 ---
         self._frame_label = QLabel("0 | 帧")
@@ -93,6 +101,7 @@ class ToolBar(QToolBar):
 
         left_spacer = QWidget()
         left_spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        left_spacer.setStyleSheet("background: #18181b;")
         self.addWidget(left_spacer)
 
         self.addWidget(self._skip_back_btn)
@@ -103,6 +112,7 @@ class ToolBar(QToolBar):
 
         right_spacer = QWidget()
         right_spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        right_spacer.setStyleSheet("background: #18181b;")
         self.addWidget(right_spacer)
 
         self._add_separator()
