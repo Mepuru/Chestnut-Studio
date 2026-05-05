@@ -348,10 +348,7 @@ class TimelineCard(QDockWidget):
 
     def _refresh_display(self):
         """刷新表格显示"""
-        # 计算可视行
-        vis_row = self._selected_logical_row - self._scroll_offset
-
-        # 清空所有单元格（不触发信号）
+        # 清空所有单元格
         self._table.blockSignals(True)
         for row in range(VISIBLE_ROWS):
             for col in range(NUM_COLUMNS):
@@ -384,9 +381,13 @@ class TimelineCard(QDockWidget):
                     break
                 self._render_subtitle(col, start, delta, text)
 
-        # 恢复选中状态
+        # 恢复选中状态（只在逻辑行在可视区域内时）
+        vis_row = self._selected_logical_row - self._scroll_offset
         if 0 <= vis_row < VISIBLE_ROWS:
             self._table.setCurrentCell(vis_row, self._selected_col)
+        else:
+            # 选中框不在可视区域内，清除选中
+            self._table.clearSelection()
         self._table.blockSignals(False)
 
     def _render_subtitle(self, col: int, start: int, duration: int, text: str):
