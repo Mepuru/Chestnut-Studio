@@ -2,7 +2,7 @@
 
 import sys
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMainWindow
 
 
 def main():
@@ -21,8 +21,6 @@ def main():
     print("Phase 0: 基础设施搭建中...")
 
     # 临时：显示一个空窗口
-    from PySide6.QtWidgets import QMainWindow
-
     window = QMainWindow()
     window.setWindowTitle("Chestnut Studio - 打轴工具")
     window.resize(1280, 720)

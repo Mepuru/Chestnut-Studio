@@ -1,11 +1,5 @@
 """字幕管理器测试"""
 
-import sys
-from pathlib import Path
-
-# 添加 src 到 Python 路径
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
 from chestnut_studio.core.subtitle import SubtitleManager
 
 

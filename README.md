@@ -59,10 +59,10 @@ uv sync
 
 ```bash
 # 运行应用
-uv run python src/chestnut_studio/main.py
+uv run python main.py
 
 # 或者激活虚拟环境后直接运行
-python src/chestnut_studio/main.py
+python main.py
 ```
 
 ### 开发
@@ -75,33 +75,39 @@ uv sync --group dev
 uv run pytest
 
 # 代码检查
-uv run ruff check src/
+uv run ruff check chestnut_studio/
 
 # 代码格式化
-uv run ruff format src/
+uv run ruff format chestnut_studio/
 ```
 
 ## 项目结构
 
 ```
 ChestnutStudio/
-├── src/
-│   └── chestnut_studio/
-│       ├── main.py              # 入口文件
-│       ├── core/                # 核心逻辑（无 UI 依赖）
-│       │   ├── ffmpeg.py        # FFmpeg 封装
-│       │   ├── audio.py         # 音频数据处理
-│       │   ├── subtitle.py      # 字幕数据结构
-│       │   └── subtitle_io.py   # 字幕导入/导出
-│       ├── ui/                  # UI 层
-│       │   ├── cards/           # 卡片组件
-│       │   └── dialogs/         # 弹窗
-│       ├── resources/           # 资源文件
-│       └── utils/               # 工具函数
-├── tests/                       # 测试
-├── prototypes/                  # 设计文档
-├── pyproject.toml               # 项目配置
-└── LICENSE                      # MIT 协议
+├── main.py                  # 入口文件
+├── chestnut_studio/         # 主模块
+│   ├── __init__.py
+│   ├── core/                # 核心逻辑（无 UI 依赖）
+│   │   ├── __init__.py
+│   │   ├── ffmpeg.py        # FFmpeg 封装
+│   │   ├── audio.py         # 音频数据处理
+│   │   ├── subtitle.py      # 字幕数据结构
+│   │   └── subtitle_io.py   # 字幕导入/导出
+│   ├── ui/                  # UI 层
+│   │   ├── __init__.py
+│   │   ├── cards/           # 卡片组件
+│   │   └── dialogs/         # 弹窗
+│   ├── utils/               # 工具函数
+│   │   ├── __init__.py
+│   │   └── time_utils.py    # 时间格式转换
+│   └── resources/           # 资源文件
+├── tests/                   # 测试
+├── prototypes/              # 设计文档
+├── pyproject.toml           # 项目配置
+├── uv.lock                  # 依赖锁定
+├── README.md
+└── LICENSE                  # MIT 协议
 ```
 
 ## 开发路线

@@ -34,7 +34,7 @@ dev = [
 ]
 
 [project.scripts]
-chestnut = "chestnut_studio.main:main"
+chestnut = "main:main"
 
 [tool.ruff]
 line-length = 120
@@ -49,7 +49,6 @@ known-first-party = ["chestnut_studio"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
 
 [build-system]
 requires = ["hatchling"]
