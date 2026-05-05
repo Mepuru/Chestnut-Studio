@@ -54,6 +54,10 @@ class MainWindow(QMainWindow):
         # 初始化设置
         self.settings = QSettings("ChestnutStudio", "KaoRouTool")
 
+        # 布局比例常量
+        self._layout_left_ratio = 0.39
+        self._layout_top_ratio = 0.56
+
         # FFmpeg 实例
         self._ffmpeg = FFmpeg()
         self._layout_initialized = False
@@ -136,14 +140,28 @@ class MainWindow(QMainWindow):
         self.splitDockWidget(self.timeline_card, self.translate_card, Qt.Vertical)
 
         # 动态计算尺寸
+        self._apply_layout_size()
+
+        # 延迟确保卡片可见
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, self._show_all_cards)
+
+    def _show_all_cards(self):
+        """确保所有卡片可见"""
+        for card in [self.player_card, self.timeline_card,
+                     self.waveform_card, self.translate_card]:
+            card.show()
+            card.setVisible(True)
+
+    def _apply_layout_size(self):
+        """按固定比例设置卡片尺寸"""
         win_w = self.width()
         win_h = self.height() - 45
-        left_w = int(win_w * 0.39)
+        left_w = int(win_w * self._layout_left_ratio)
         right_w = win_w - left_w - 4
-        top_h = int(win_h * 0.56)
+        top_h = int(win_h * self._layout_top_ratio)
         bottom_h = win_h - top_h - 4
 
-        # 一次性设置所有尺寸（避免多次调用导致布局错乱）
         self.resizeDocks(
             [self.player_card, self.timeline_card,
              self.waveform_card, self.translate_card],
@@ -157,16 +175,11 @@ class MainWindow(QMainWindow):
             Qt.Vertical,
         )
 
-        # 延迟确保卡片可见
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(0, self._show_all_cards)
-
-    def _show_all_cards(self):
-        """确保所有卡片可见"""
-        for card in [self.player_card, self.timeline_card,
-                     self.waveform_card, self.translate_card]:
-            card.show()
-            card.setVisible(True)
+    def resizeEvent(self, event):
+        """窗口大小变化时保持卡片比例"""
+        super().resizeEvent(event)
+        if self._layout_initialized:
+            self._apply_layout_size()
 
     def _create_toolbar(self):
         """创建工具栏"""
