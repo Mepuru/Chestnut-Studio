@@ -392,8 +392,9 @@ class TimelineCard(QDockWidget):
         if 0 <= vis_row < VISIBLE_ROWS:
             self._table.setCurrentCell(vis_row, self._selected_col)
         else:
-            # 选中框不在可视区域内，清除选中
+            # 选中框不在可视区域内，清除选中和焦点
             self._table.clearSelection()
+            self._table.setCurrentCell(-1, -1)
         self._table.blockSignals(False)
 
     def _render_subtitle(self, col: int, start: int, duration: int, text: str):
