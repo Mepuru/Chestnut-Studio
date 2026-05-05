@@ -1,408 +1,581 @@
-# 视频打轴与翻译协作平台 —— Iced + mpv 完整技术方案
+# 打轴工具 — 卡片化工作台 UI 方案
 
-## 1. 方案概述
-本方案采用纯 Rust 技术栈，以 **Iced** 作为原生 GUI 框架，**libmpv** 作为视频后端，构建一个具备帧级精确控制、多面板联动、轴区间编辑与翻译功能的高性能桌面应用。所有模块运行于同一进程，通过中心化状态和确定性消息循环实现高效、低延迟的交互体验。
+> Python + PySide6 　｜　现代卡片化工作台　｜　自由布局　｜　视图化信息
+> 源项目参考：`D:\DD_KaoRou2-master`　｜　重构目标：`D:\ChestnutStudio`
 
-## 2. 技术栈
+---
 
-| 层次          | 技术选型                                | 说明                                                        |
-| ------------- | --------------------------------------- | ----------------------------------------------------------- |
-| GUI 框架      | [Iced](https://github.com/iced-rs/iced) | 基于 Elm 架构的模块化原生 GUI，支持复杂弹性布局与自定义绘制 |
-| 视频播放      | `mpv` crate (libmpv)                    | 成熟的播放器库，支持 `seek_exact`、`frame_step` 等帧级控制  |
-| 窗口嵌入      | `winit` (Iced 依赖)                     | mpv 可渲染到 winit 窗口上，实现视频区域的原生集成           |
-| 音频波形      | `ffmpeg-next` 或 `symphonia`            | 从视频中提取音频，计算波形峰值数据                          |
-| 自定义绘制    | Iced `Canvas`                           | 绘制音频波形、轴区域色块                                    |
-| 轴列表/编辑器 | Iced `List` + `TextInput`               | 高性能虚拟列表显示轴段，支持就地编辑                        |
-| 状态管理      | Elm 架构 (Model-View-Update)            | 中心化 `AppState`，明确的消息类型，调试友好                 |
-| 持久化        | `serde` + `serde_json` / `ron`          | 项目保存/加载                                               |
-| 术语库        | `sled` 或 `rusqlite` (可扩展)           | 目前占位，预留接口                                          |
-| 语言          | Rust                                    | 零开销抽象，内存安全                                        |
+## 一、设计理念
 
-## 3. 核心数据模型
+### 1.1 核心原则
 
-### 3.1 项目结构
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Project {
-    pub media_path: String,
-    pub frame_rate: f64,
-    pub total_frames: u64,
-    pub axes: Vec<Axis>,
-    pub translation_axis_ids: Vec<AxisId>,  // 在翻译区显示的轴ID，最多2个
+| 原则 | 说明 |
+|------|------|
+| **卡片化** | 每个功能区是独立的可操作卡片（DockWidget） |
+| **自由布局** | 卡片可拖拽、停靠、浮动、调整大小、标签页合并 |
+| **视图化** | 所有信息以可视化方式呈现，减少文字表格依赖 |
+| **现代感** | 圆角、阴影、毛玻璃、暗色主题、平滑动画 |
+
+### 1.2 布局方案选择：QDockWidget
+
+**为什么选择 QDockWidget：**
+
+| 方案 | 拖拽 | 停靠 | 浮动 | 调整大小 | 工作量 | 视觉 |
+|------|:----:|:----:|:----:|:--------:|:------:|:----:|
+| 固定 Grid 布局 | ❌ | ❌ | ❌ | ❌ | 低 | 差 |
+| 完全自定义卡片 | ✅ | ✅ | ✅ | ✅ | 极高 | 极好 |
+| **QDockWidget + QSS** | **✅** | **✅** | **✅** | **✅** | **中** | **好** |
+| qt-advanced-docking | ✅ | ✅ | ✅ | ✅ | 中 | 极好 |
+
+**QDockWidget 方案：**
+- Qt 原生支持，无需额外依赖
+- 拖拽、停靠、浮动、调整大小全部内置
+- 通过 QSS 可大幅美化视觉效果
+- 支持标签页合并（多卡片叠放时自动 tab 化）
+
+---
+
+## 二、整体架构
+
+### 2.1 主窗口结构
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  QMainWindow                                                             │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │  QMenuBar（文件 · 视图 · 帮助）                                    │  │
+│  ├───────────────────────────────────────────────────────────────────┤  │
+│  │  QToolBar（打开 · 播放/暂停 · 音量 · 进度条 · 时间 · 倍速 · 间隔）   │  │
+│  ├───────────────────────────────────────────────────────────────────┤  │
+│  │                                                                   │  │
+│  │  QDockWidget Area（中央区域，可自由排列卡片）                       │  │
+│  │                                                                   │  │
+│  │  ┌─────────────┐  ┌─────────────────────┐  ┌──────────────┐     │  │
+│  │  │  视频播放卡片  │  │     打轴编辑卡片      │  │  翻译面板卡片  │     │  │
+│  │  │  (DockWidget) │  │    (DockWidget)      │  │ (DockWidget) │     │  │
+│  │  │             │  │                     │  │             │     │  │
+│  │  │  可拖拽      │  │  可拖拽              │  │  可拖拽      │     │  │
+│  │  │  可调整大小   │  │  可调整大小           │  │  可调整大小   │     │  │
+│  │  │  可浮动      │  │  可浮动              │  │  可浮动      │     │  │
+│  │  └─────────────┘  └─────────────────────┘  └──────────────┘     │  │
+│  │                                                                   │  │
+│  │  ┌──────────────────────────────────────────────────────────┐    │  │
+│  │  │              音频波形卡片 (DockWidget)                     │    │  │
+│  │  │              可拖拽 · 可调整大小 · 可浮动                   │    │  │
+│  │  └──────────────────────────────────────────────────────────┘    │  │
+│  │                                                                   │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │  QStatusBar（状态信息 · 视频参数 · 当前时间）                       │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.2 卡片清单
+
+| 卡片 ID | 名称 | QDockWidget 标题 | 默认位置 | 默认大小 |
+|---------|------|------------------|----------|----------|
+| `player` | 视频播放 | 视频预览 | 左上 | 640×450 |
+| `timeline` | 打轴编辑 | 时间轴 | 右侧 | 500×600 |
+| `waveform` | 音频波形 | 波形图 | 底部 | 全宽×200 |
+| `translate` | 翻译面板 | 翻译 | 右下 | 500×200 |
+
+---
+
+## 三、卡片设计规范
+
+### 3.1 卡片通用结构
+
+每个 QDockWidget 卡片包含：
+
+```
+┌─ 卡片标题栏 ──────────────────────────────────────────┐
+│  📺 视频预览                    [_] [□] [×]           │  ← 标题栏：图标 + 标题 + 控制按钮
+├───────────────────────────────────────────────────────┤
+│                                                       │
+│                    卡片内容区域                         │  ← 内容区：实际功能 UI
+│                                                       │
+│                                                       │
+└───────────────────────────────────────────────────────┘
+```
+
+控制按钮说明：
+- `[_]` 最小化（折叠）
+- `□` 浮动（脱离主窗口）
+- `×` 隐藏卡片（从视图菜单可重新显示）
+
+### 3.2 各卡片详细设计
+
+---
+
+#### 卡片 ①：视频播放（player）
+
+```
+┌─ 📺 视频预览 ──────────────────────────────── [_][□][×] ┐
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │                                                     │ │
+│ │                                                     │ │
+│ │              视频画面 + 字幕叠加                      │ │
+│ │                                                     │ │
+│ │                                                     │ │
+│ │            （点击播放/暂停，滚轮缩放）                 │ │
+│ │                                                     │ │
+│ └─────────────────────────────────────────────────────┘ │
+│  00:00 ────●────────────────────────────── 05:30        │  ← 进度条
+│  ▶ 播放   🔊 ━━━━●━━━━  1.0x  间隔 33ms                 │  ← 控制栏
+└─────────────────────────────────────────────────────────┘
+```
+
+**内容组件：**
+- `QGraphicsView` + `QGraphicsScene`：视频渲染容器
+- `QGraphicsVideoItem`：视频画面
+- `QGraphicsTextItem`：字幕叠加层
+- 进度条 + 时间标签（内嵌在卡片底部，不在工具栏）
+- 播放控制按钮（内嵌）
+
+**交互：**
+- 点击视频区域 → 播放/暂停
+- 滚轮 → 缩放视频尺寸
+- 拖入文件 → 打开视频或导入字幕
+
+---
+
+#### 卡片 ②：打轴编辑（timeline）
+
+```
+┌─ ✂️ 时间轴 ────────────────────────────── [_][□][×] ┐
+│  轨道 [1▾] [2] [3] [4] [5]    间隔 [33ms▾]          │  ← 轨道选择 + 间隔设置
+├─────────────────────────────────────────────────────┤
+│  00:15.2 │ ██████████ 你好        │                  │  ← 动态表格
+│  00:18.4 │ ████████   谢谢        │                  │     行头=时间戳
+│  00:22.0 │ ████████████████████   │                  │     单元格=字幕条
+│  00:25.6 │                        │                  │     颜色=持续时间
+│  00:29.2 │ ██ 对                   │                  │
+│  00:32.8 │ ██████████████ 不起    │                  │
+│  00:36.4 │                        │                  │
+│  ...     │                        │                  │
+├─────────────────────────────────────────────────────┤
+│  [合并] [切割] [拆分] [导入]         [撤销] [重做]    │  ← 操作按钮栏
+└─────────────────────────────────────────────────────┘
+```
+
+**内容组件：**
+- `QTableWidget`：101行×5列动态表格
+- 轨道切换按钮组（高亮当前选中轨道）
+- 间隔选择下拉框
+- 操作按钮栏（合并/切割/拆分/导入/撤销/重做）
+
+**交互：**
+- 完整的快捷键支持（Q/W/E/R/5/Delete/Space/S/方向键等）
+- 右键上下文菜单
+- 双击编辑字幕文本
+- 鼠标拖动跟随播放位置
+
+---
+
+#### 卡片 ③：音频波形（waveform）
+
+```
+┌─ 🎵 波形图 ──────────────────────────────── [_][□][×] ┐
+│  ┌─────────────────────────────────────────────────┐  │
+│  │     ░░░▓▓▓░░░░▓▓▓▓▓░░░░░▓▓▓░░░░░░▓▓▓▓▓░░░     │  │  ← 主音轨波形
+│  │     ░░░▓▓▓░░░░▓▓▓▓▓░░░░░▓▓▓░░░░░░▓▓▓▓▓░░░     │  │
+│  │     ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓     │  │  ← 字幕条覆盖（蓝色）
+│  │                     │                           │  │  ← 红色时间线
+│  └─────────────────────────────────────────────────┘  │
+│  [主音轨] [人声] [BGM]           点击跳转 · 右键菜单    │  ← 切换按钮 + 提示
+└─────────────────────────────────────────────────────────┘
+```
+
+**内容组件：**
+- `pyqtgraph.PlotWidget`：波形绑图
+- 红色 `InfiniteLine`：播放位置指示
+- 半透明 `PlotCurveItem`：字幕条覆盖
+- 切换按钮（主音轨/人声/BGM）
+
+**交互：**
+- 点击波形 → 跳转到对应时间
+- 右键 → 切换显示音轨
+- 定时刷新（30FPS）
+
+---
+
+#### 卡片 ④：翻译面板（translate）
+
+```
+┌─ 🌐 翻译 ────────────────────────────────── [_][□][×] ┐
+│  当前字幕: "你好"                                      │  ← 自动显示选中字幕
+│ ┌─────────────────────────────────────────────────────┐│
+│ │                                                     ││  ← 翻译输入区
+│ │  请输入翻译...                                       ││     多行文本框
+│ │                                                     ││
+│ └─────────────────────────────────────────────────────┘│
+│  轨道 [3▾] 保存至             [清空] [保存]             │  ← 目标轨道 + 操作
+└─────────────────────────────────────────────────────────┘
+```
+
+**内容组件：**
+- `QLabel`：显示当前选中的原始字幕文本
+- `QTextEdit`：翻译文本输入
+- 轨道选择下拉框：选择将翻译保存到哪一列
+- 操作按钮：清空 / 保存
+
+**交互：**
+- 选中字幕条时自动显示原文
+- 输入翻译后点击保存，写入 `subtitleDict` 指定列
+- 纯手动，无外部 API 依赖
+
+---
+
+## 四、视觉规范（QSS 暗色主题）
+
+### 4.1 色彩系统
+
+| 用途 | 色值 | 说明 |
+|------|------|------|
+| 背景主色 | `#1e1e2e` | 深蓝灰，卡片背景 |
+| 背景次色 | `#232629` | 稍浅，工具栏/状态栏 |
+| 卡片背景 | `#2b2d30` | 卡片内容区 |
+| 卡片标题栏 | `#313338` | 标题栏背景 |
+| 边框 | `#3f4147` | 卡片边框、分割线 |
+| 文字主色 | `#e0e0e0` | 主要文字 |
+| 文字次色 | `#9ca3af` | 次要文字、提示 |
+| 强调色 | `#3daee9` | 选中状态、链接、按钮高亮 |
+| 危险色 | `#e74c3c` | 删除、警告 |
+| 成功色 | `#2ecc71` | 保存成功 |
+| 字幕条蓝 | `#35545d` | 正常持续时间 |
+| 字幕条橙 | `#FA8072` | 持续时间 > 4.5s |
+| 字幕条红 | `#B22222` | 持续时间异常 |
+| 红线 | `#d93c30` | 播放位置指示 |
+
+### 4.2 卡片视觉效果
+
+```css
+/* 卡片（QDockWidget）整体 */
+QDockWidget {
+    background: #2b2d30;
+    border: 1px solid #3f4147;
+    border-radius: 8px;              /* 圆角 */
+    titlebar-close-icon: url(close.svg);
+    titlebar-normal-icon: url(float.svg);
+}
+
+/* 卡片标题栏 */
+QDockWidget::title {
+    background: #313338;
+    padding: 6px 12px;
+    border-radius: 8px 8px 0 0;
+    text-align: left;
+    font-weight: bold;
+    color: #e0e0e0;
+}
+
+/* 卡片悬浮状态（脱离主窗口） */
+QDockWidget[floating="true"] {
+    border: 1px solid #3daee9;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);  /* 阴影 */
 }
 ```
 
-### 3.2 轴
-```rust
-pub type AxisId = u64;
+### 4.3 现代感细节
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Axis {
-    pub id: AxisId,
-    pub index: usize,           // 自动递增的序号，如 1,2,3...
-    pub name: String,           // 自动生成 "轴1"
-    pub axis_type: AxisType,
-    pub color: Color,           // 使用 Iced 的 Color 类型
-    pub locked: bool,
-    pub segments: Vec<Segment>,
-}
+| 元素 | 效果 |
+|------|------|
+| 卡片边框 | 1px 实线 + 8px 圆角 |
+| 卡片阴影 | 浮动时 `box-shadow` |
+| 标题栏 | 比内容区稍亮，分隔感 |
+| 按钮 | 圆角 4px，hover 时高亮 |
+| 滚动条 | 细滚动条（6px），hover 时变宽 |
+| 表格选中行 | 半透明蓝色高亮 |
+| 工具栏 | 平铺图标 + 文字，分组分割线 |
+| 状态栏 | 三段式：状态 · 视频参数 · 当前时间 |
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum AxisType { Source, Target, Note }
-```
+---
 
-### 3.3 片段
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Segment {
-    pub id: u64,
-    pub start_frame: u64,    // 包含
-    pub end_frame: u64,      // 不包含，保证 end_frame > start_frame
-    pub text: String,
-}
-```
-**约束**：同一轴内 segments 按 `start_frame` 升序，且 `prev.end_frame <= next.start_frame`，即轴内不重叠。不同轴之间允许任意重叠。
+## 五、布局管理
 
-### 3.4 术语库条目
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GlossaryEntry {
-    pub id: u64,
-    pub source_term: String,
-    pub target_term: String,
-    pub note: Option<String>,
-}
-```
+### 5.1 默认布局
 
-## 4. 界面布局设计
-
-整个窗口使用 `PaneGrid` 管理面板分割，允许用户拖拽调整大小、拖拽重排、最大化/关闭面板。每个面板是一个独立模块，带有标题栏。
-
-### 4.1 PaneGrid 模块化布局
+应用首次启动时的默认布局：
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  菜单栏 (文件 / 视图 / 工具 / 帮助)                           │
+│  菜单栏                                                       │
 ├─────────────────────────────────────────────────────────────┤
-│  项目工具栏 (视频名 | 时间显示 | 播放控制)                      │
-├──────────────────────────────┬──────────────────────────────┤
-│  [ 视频播放器 ]     [最大化] │  [ 轴卡片列表 ]       [最大化] │
-│  ┌────────────────────────┐  │  ┌────────────────────────┐  │
-│  │   (嵌入 mpv 视频)      │  │  │  ┌──┬──┬──┬──┐       │  │
-│  │   16:9 自适应          │  │  │  │轴│轴│轴│轴│       │  │
-│  └────────────────────────┘  │  │  │1 │2 │3 │4 │       │  │
-│  ↔ 拖拽调整左右比例          │  │  └──┴──┴──┴──┘       │  │
-│  [ 音频波形 ]        [最大化] │  └────────────────────────┘  │
-│  ┌────────────────────────┐  │  [ 翻译区 ]           [最大化] │
-│  │  ▁▂▃█▅▇▃▂▁▂▃█▅▇▃▂    │  │  ┌────────────────────────┐  │
-│  │  (可缩放/拖选/打轴)    │  │  │  [翻译 | 术语库]       │  │
-│  └────────────────────────┘  │  │  可选双轴并排           │  │
-│                              │  └────────────────────────┘  │
-├──────────────────────────────┴──────────────────────────────┤
-│  状态栏                                                      │
-└─────────────────────────────────────────────────────────────┘
+│  工具栏                                                       │
+├───────────────────────────┬─────────────────────────────────┤
+│                           │                                 │
+│                           │                                 │
+│      视频播放卡片           │        打轴编辑卡片              │
+│      (左 55%)              │        (右 45%)                 │
+│                           │                                 │
+│                           │                                 │
+│                           │                                 │
+├───────────────────────────┴─────────────────────────────────┤
+│                           │                                 │
+│      音频波形卡片           │        翻译面板卡片              │
+│      (左 55%)              │        (右 45%)                 │
+│      高度 200px            │        高度 200px               │
+│                           │                                 │
+└───────────────────────────┴─────────────────────────────────┘
 ```
 
-### 4.2 PaneGrid 面板模块
+### 5.2 布局保存与恢复
 
-| 面板ID | 名称 | 默认位置 | 可关闭 | 说明 |
-|--------|------|----------|--------|------|
-| video | 视频播放器 | 左上 | 否 | 嵌入mpv，16:9比例 |
-| waveform | 音频波形 | 左下 | 否 | Canvas绘制，支持缩放拖选 |
-| axis_cards | 轴卡片列表 | 右上 | 否 | 水平滚动卡片容器 |
-| translation | 翻译区 | 右下 | 否 | TAB切换翻译/术语库 |
+```python
+# 保存布局（关闭应用时）
+settings = QSettings("ChestnutStudio", "KaoRouTool")
+settings.setValue("geometry", mainWindow.saveGeometry())
+settings.setValue("windowState", mainWindow.saveState())
 
-### 4.3 面板交互
-
-- **拖拽分割线**：调整相邻面板的比例
-- **拖拽标题栏**：重排面板位置
-- **双击标题栏**：最大化/还原面板
-- **右键标题栏**：上下文菜单（重置布局等）
-- **视图菜单**：控制面板可见性
-
-### 4.4 字体配置
-
-- 默认使用系统中文字体（Windows: Microsoft YaHei, macOS: PingFang SC）
-- 通过 `Font::with_name()` 指定优先字体
-- 回退到 iced 内置字体
-
-```
-┌──────────────────────────────────────────────┐
-│  菜单栏 (文件 / 视图 / 工具 / 帮助)            │
-├──────────────────────────────────────────────┤
-│  项目工具栏 (视频名 | 时间显示 | ◀5s ⏸️ ▶5s 🔁) │
-├──────────────────────┬───────────────────────┤
-│  左侧面板             │  右侧面板             │
-│ ┌──────────────────┐ │  ┌──────────────────┐ │
-│ │  视频区域        │ │  │  轴卡片区 (上)   │ │
-│ │  (嵌入 mpv)      │ │  │  水平滚动        │ │
-│ │  16:9 自适应     │ │  │  ┌──┬──┬──┬──┐  │ │
-│ └──────────────────┘ │  │  │轴│轴│轴│轴│  │ │
-│ ┌──────────────────┐ │  │  │1 │2 │3 │4 │  │ │
-│ │  音频波形        │ │  │  │..│..│..│..│  │ │
-│ │  (可缩放/拖选)   │ │  │  └──┴──┴──┴──┘  │ │
-│ └──────────────────┘ │  │  垂直滚动        │ │
-│    (分隔条可调高度)  │  └──────────────────┘ │
-│                      │  ┌──────────────────┐ │
-│                      │  │  翻译区 (下)     │ │
-│                      │  │  [翻译｜术语库]  │ │
-│                      │  │  可选双轴并排    │ │
-│                      │  └──────────────────┘ │
-└──────────────────────┴───────────────────────┘
+# 恢复布局（启动时）
+mainWindow.restoreGeometry(settings.value("geometry"))
+mainWindow.restoreState(settings.value("windowState"))
 ```
 
-- **菜单栏**：文件操作、面板可见性切换、设置。
-- **工具栏**：视频文件名、当前时间/总时长（格式 `HH:MM:SS.frame`）、播放控制按钮。
-- **左侧面板**：
-  - 视频区：固定 16:9 比例，宽度自适应，高度可根据需求与波形区分配。
-  - 波形区：显示整个音频波形，支持缩放和时间定位，轴上区域用半透明色块标记。
-- **右侧面板**：
-  - 轴卡片区：水平滚动容器，并排显示所有轴卡片，每个卡片内部垂直滚动，展示该轴的所有片段条目。
-  - 翻译区：TAB 切换翻译工作区和术语库。翻译区双轴模式下左右并排显示两个轴的全部分段，支持文本编辑。
+### 5.3 预设布局方案
 
-所有面板之间的分割线均可拖拽调整比例。菜单“视图”中可以勾选/取消勾选面板的显示。
+菜单栏「视图」中提供：
 
-## 5. 核心功能详细设计
+| 预设 | 说明 |
+|------|------|
+| 默认布局 | 上面描述的四卡片默认排列 |
+| 打轴优先 | 视频+打轴左右并列，波形+翻译底部折叠 |
+| 全屏打轴 | 视频最小化，打轴表格最大化 |
+| 双屏模式 | 视频浮动到第二屏幕，打轴独占主屏幕 |
+| 重置布局 | 恢复出厂默认 |
 
-### 5.1 视频播放与帧级控制
+### 5.4 卡片标签页合并
 
-#### 5.1.1 mpv 集成
-- 使用 `mpv` crate（通过 `libmpv` 系统库）。
-- 配置选项：
-  ```rust
-  mpv.set_property("keep-open", true)?;
-  mpv.set_property("no-osd", true)?;
-  mpv.set_property("no-border", true)?;
-  mpv.set_property("input-default-bindings", false)?;
-  mpv.set_property("video-sync", "audio")?;  // 保持音画同步
-  mpv.set_property("hr-seek", "yes")?;       // 高精度 seek
-  ```
-- 视频嵌入方案：  
-  - **推荐**：将 mpv 的输出直接渲染到 Iced 窗口的指定区域。Iced 基于 `winit`，可通过 `MpvHandler::set_wid` 传入窗口句柄。在实际实现中，可以创建一块 `winit::window::Window` 的子区域，或利用 Iced 的 `Canvas` 作为渲染目标（更复杂）。简单方式：使用一个 `container` 并通过 `window_handle` 获取原生窗口 ID，然后调用 `mpv.set_wid(..)`，mpv 会在此区域上覆盖绘制。确保在布局中为该容器预留空间，并跟随调整大小事件更新 mpv 的渲染区域。
-- 帧精确 API：
-  ```rust
-  mpv.command("seek", &[&format!("{:.6}", time_secs), "exact"])?;  // 精确 seek
-  mpv.command("frame-step")?;   // 下一帧
-  mpv.command("frame-back-step")?; // 上一帧
-  ```
-- 时间获取：通过 `mpv.get_property("time-pos")` 获得当前播放时间（秒），可换算为帧号。
+当两个卡片拖放到同一区域时，自动合并为标签页：
 
-#### 5.1.2 播放联动
-**中心状态**：
-```rust
-pub struct AppState {
-    pub current_frame: u64,       // 当前帧号
-    pub is_playing: bool,
-    pub is_dragging: bool,        // 用户正在拖拽选区，暂停 Tick 同步
-    // ... 其他项目数据
+```
+┌─ [视频预览] [波形图] ──────────────────────── [_][□][×] ┐
+│  ┌─────────────────────────────────────────────────────┐│
+│  │                                                     ││
+│  │            当前显示的卡片内容                          ││
+│  │                                                     ││
+│  └─────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────┘
+```
+
+点击标签切换显示内容。
+
+---
+
+## 六、工具栏设计
+
+### 6.1 工具栏布局
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  📂打开  │  ▶播放  🔇静音  ━━━●━━━ 音量  │  00:00 / 05:30  │  ───●─── 进度条  │  1.0x▾  │  33ms▾  │  💾导出  │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+分组：
+1. **文件**：打开按钮
+2. **播放控制**：播放/暂停、静音、音量滑块
+3. **时间**：当前时间 / 总时长（可点击跳转）
+4. **进度条**：全宽进度条
+5. **倍速**：下拉选择
+6. **间隔**：下拉选择
+7. **导出**：保存/导出按钮
+
+### 6.2 工具栏样式
+
+```css
+QToolBar {
+    background: #232629;
+    border-bottom: 1px solid #3f4147;
+    padding: 4px 8px;
+    spacing: 8px;
+}
+
+QToolBar::separator {
+    width: 1px;
+    background: #3f4147;
+    margin: 4px 8px;
+}
+
+QPushButton {
+    background: #313338;
+    border: 1px solid #3f4147;
+    border-radius: 4px;
+    padding: 4px 12px;
+    color: #e0e0e0;
+}
+
+QPushButton:hover {
+    background: #3daee9;
+    border-color: #3daee9;
 }
 ```
 
-**消息流**：
-- `Tick` 消息：通过 `Application::subscription` 定时产生（每 16ms），在 `update` 中处理：
-  ```rust
-  Message::Tick => {
-      if !self.is_dragging {
-          if let Ok(time) = self.mpv.get_property::<f64>("time-pos") {
-              self.current_frame = time_to_frame(time, self.project.frame_rate);
-          }
-      }
-  }
-  ```
-- 用户交互（波形点击、轴卡片点击、工具栏按钮）产生 `Message::SeekTo(frame)` 消息：
-  ```rust
-  Message::SeekTo(frame) => {
-      let time = frame_to_time(frame, self.project.frame_rate);
-      self.mpv.command("seek", &[&format!("{:.6}", time), "exact"]).ok();
-      self.current_frame = frame;   // 立即更新 UI 状态
-  }
-  ```
-- 播放/暂停切换：`Message::TogglePlayPause` 调用 `mpv.set_property("pause", !self.is_playing)` .
+---
 
-#### 5.1.3 拖拽期间的联动保护
-在调用 `Message::DragStart` 时设置 `is_dragging = true`，`Tick` 消息会跳过时间同步。`DragMove` 直接更新 `current_frame` 并 seek mpv。`DragEnd` 后恢复 `is_dragging = false`。
+## 七、交互细节
 
-### 5.2 音频波形与打轴
+### 7.1 卡片拖拽体验
 
-#### 5.2.1 波形生成
-- 使用 `ffmpeg-next` 或直接调用系统 `ffmpeg` 提取音频为 PCM (`ffmpeg -i input.mp4 -f s16le -ac 1 -ar 44100 -`)，读取数据并计算峰值数组（每 N 个样本取最大值）。
-- 峰值数据保存到项目文件中，避免重复计算。
-- 使用 Iced `Canvas` 绘制波形：遍历峰值数组，绘制竖线，支持缩放（调整时间窗口）和平移（滚动条或拖拽）。
-- 叠加显示现有轴的 Region：通过 `Frame::fill_rectangle` 在半透明区域绘制轴色彩。
+- 拖拽标题栏时显示半透明预览
+- 停靠区域高亮（蓝色边框提示可停靠位置）
+- 拖拽到边缘 → 上下/左右分割
+- 拖拽到已有卡片上 → 标签页合并
+- 拖拽到空白区域 → 浮动窗口
 
-#### 5.2.2 打轴交互 (Shift 修饰)
-**进入/退出选区模式**：通过全局键盘事件监听 Shift 键状态，在 `AppState` 中维护 `shift_held` 标志。
+### 7.2 卡片调整大小
 
-**Shift+左键拖选创建轴**：
-1. 在波形 Canvas 上监听鼠标事件（`Canvas::on_mouse_down` 等），当 `shift_held && event.button() == Left` 时启动拖拽。
-2. `DragStart`：记录起始时间（根据点击位置换算），并创建临时选区显示。
-3. `DragMove`：不断更新结束时间，同时调用 `Message::SeekTo` 实时更新视频预览。波形上绘制临时选区矩形。
-4. `DragEnd`：获取 `start_frame..end_frame` 范围，调用 `create_axis(start, end)` 方法。
-5. `create_axis` 逻辑：
-   - 生成新 `Axis`：`id` 自增，`index = axes.len() + 1`，`name = format!("轴{}", index)`，随机颜色，`segments = vec![Segment { ... }]`。
-   - 插入 `project.axes`。
-   - 重叠检查：**不需要**与其他轴检查，因为不同轴可重叠；若需轴内插入新片段，则按顺序插入并确保重叠检查。
+- 卡片边缘拖拽调整（QSplitter 内嵌）
+- 双击标题栏 → 最大化/还原
+- 最小尺寸限制（防止卡片被拖得过小）
 
-**Shift+右键删除轴**：
-- 在波形 Canvas 上点击右键，检测是否命中了某个轴的 Region（通过轴颜色映射确定轴 ID）。
-- 如果是，弹出确认对话框（或直接删除），删除该轴并刷新界面。
+### 7.3 卡片状态
 
-**非 Shift 下的轴管理**：
-- 右键点击轴卡片头部：弹出上下文菜单（删除、重命名、锁定、颜色、在翻译区显示等）。
+| 状态 | 视觉表现 |
+|------|---------|
+| 正常停靠 | 标准边框 |
+| 浮动 | 蓝色边框 + 阴影 |
+| 最小化 | 折叠为标题栏一行 |
+| 隐藏 | 从视图中消失（菜单可恢复） |
+| 活动/聚焦 | 标题栏稍亮 |
 
-### 5.3 帧级表格选择（辅助打轴）
-为满足“像 Excel 一样选择轴帧”的需求，可以在波形图下方或轴卡片区域旁边提供一个“时间轴列表”视图（可隐藏）。该视图以固定间隔（如每帧或每10帧）列出时间码，支持：
-- 单击定位帧。
-- Shift+左键拖选或 Ctrl+单击多选（范围选择），最终生成轴片段。
-- 此功能作为可选辅助，开发阶段可推后。
+### 7.4 响应式考虑
 
-### 5.4 轴卡片区域
-- 使用水平 `Scrollable` 包裹一个 `Row`，每个轴卡片是一个 `Column`，内部使用 `List`（虚拟滚动）显示片段条目。
-- 条目内容：片段序号（如 `轴2-3`）、时间码范围、文本预览。
-- 高亮当前帧所在片段：通过 `current_frame` 判断是否在 `[start, end)` 区间，高亮背景。
-- 点击片段 → 发送 `SeekTo(segment.start_frame)` 消息。
-- 双击文本 → 进入编辑模式，通过 `TextInput` 修改文本，失焦后更新 `segment.text` 并发送 `SegmentUpdated` 消息。
-- 每个轴卡片头部显示轴名称、颜色条、锁定图标；右键菜单（非 Shift）执行管理操作。
-- 翻译区显示控制：通过右键菜单将轴 ID 加入/移出 `translation_axis_ids`。
+- 窗口缩小到一定尺寸时，自动将卡片改为标签页合并
+- 工具栏溢出时自动折叠为「⋮」菜单
+- 小屏幕下提供紧凑布局预设
 
-### 5.5 翻译区
-- 使用 `Tab` 组件切换【翻译区｜术语库】。
-- **翻译区**：
-  - 双轴/单轴模式切换按钮。
-  - 双轴模式下，左右两个 `Scrollable` 分别显示两个轴的全部分段（从 `translation_axis_ids` 获取轴数据）。每个分段旁标注所属轴和序号，支持点击跳帧、双击编辑文本。
-  - 当前播放帧所在分段高亮。
-- **术语库区**：占位，展示静态提示信息。数据存储预留，未来可通过 IndexedDB 或嵌入数据库实现。
+---
 
-### 5.6 快捷键与工具栏
-- 全局快捷键（通过 Iced 键盘事件）：
-  - `Space`：播放/暂停
-  - `Left Arrow`：回退5秒 (`seek -5s`)
-  - `Right Arrow`：前进5秒 (`seek +5s`)
-  - `L`：AB循环（先记录A点，再记录B点，循环播放AB区间）
-  - `Shift`：进入/退出选区模式（波形打轴）
-- 工具栏显示对应按钮，并支持点击触发。
+## 八、菜单栏设计
 
-## 6. 状态管理与消息架构
+### 8.1 菜单结构
 
-### 6.1 中心状态
-```rust
-pub struct MyApp {
-    pub state: AppState,
-    pub mpv: Option<MpvHandler>,
-    // 其他运行时字段
-}
+```
+文件(F)
+  ├── 打开视频...          Ctrl+O
+  ├── 导入字幕...          Ctrl+I
+  ├── 导出字幕...          Ctrl+S
+  ├── ────────────
+  └── 退出                Ctrl+Q
 
-pub struct AppState {
-    pub project: Project,
-    pub current_frame: u64,
-    pub is_playing: bool,
-    pub is_dragging: bool,
-    pub shift_held: bool,
-    pub waveform_scale: f64,         // 波形缩放系数
-    pub waveform_offset: f64,        // 波形平移
-    pub selected_axis_for_menu: Option<AxisId>,
-    // 临时选区数据（波形拖拽）
-    pub drag_start_frame: Option<u64>,
-    pub drag_end_frame: Option<u64>,
-}
+视图(V)
+  ├── 卡片
+  │   ├── ☑ 视频预览       （勾选显示/隐藏）
+  │   ├── ☑ 时间轴
+  │   ├── ☑ 波形图
+  │   └── ☑ 翻译
+  ├── ────────────
+  ├── 布局
+  │   ├── 默认布局
+  │   ├── 打轴优先
+  │   ├── 全屏打轴
+  │   ├── 双屏模式
+  │   └── ────────────
+  │   └── 保存当前布局
+  ├── ────────────
+  └── 全屏                F11
+
+帮助(H)
+  └── 快捷键说明
 ```
 
-### 6.2 消息枚举
-```rust
-#[derive(Debug, Clone)]
-pub enum Message {
-    // 应用循环
-    Tick,
-    // 视频控制
-    TogglePlayPause,
-    SeekForward5s,
-    SeekBackward5s,
-    SeekTo(u64),
-    // 按键
-    KeyDown(Key),
-    KeyUp(Key),
-    // 波形交互
-    WaveformMouseDown { x: f32, y: f32 },
-    WaveformMouseMove { x: f32, y: f32 },
-    WaveformMouseUp { x: f32, y: f32 },
-    WaveformRightClick { x: f32, y: f32 },
-    // 轴管理
-    AxisRightClick { axis_id: AxisId, action: AxisAction },
-    SegmentClick { axis_id: AxisId, segment_id: u64 },
-    SegmentDoubleClick { axis_id: AxisId, segment_id: u64 },
-    SegmentTextChanged { axis_id: AxisId, segment_id: u64, text: String },
-    // 翻译区
-    TranslationTabChanged(Tab),
-    TranslationAxisSelected { slot: usize, axis_id: AxisId },
-    // 项目/文件
-    OpenProject,
-    SaveProject,
-    // 其他 UI 事件
-    LayoutChanged(PaneGridDragEvent),
-}
+### 8.2 视图菜单的卡片控制
+
+```python
+# 每个卡片对应一个 QAction（可勾选）
+viewMenu.addAction(self.playerDock.toggleViewAction())
+viewMenu.addAction(self.timelineDock.toggleViewAction())
+viewMenu.addAction(self.waveformDock.toggleViewAction())
+viewMenu.addAction(self.translateDock.toggleViewAction())
 ```
 
-## 7. 开发依赖清单 (Crates)
+---
 
-```toml
-[dependencies]
-# GUI
-iced = { version = "0.13", features = ["canvas", "wgpu", "multi-window"] }  # 需根据实际情况
-iced_aw = { version = "0.9", features = ["split"] }  # 可能需要的额外组件
-# 视频
-mpv = "0.37"  # 或最新的 mpv-rs
-# 音频处理
-ffmpeg-next = "7.0"  # 或 symphonia = "0.5"
-# 状态与序列化
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-ron = "0.8"
-# 时间/数学
-chrono = "0.4"
-# 颜色
-palette = "0.7"
-# 可选术语库存储
-sled = "0.34"
-# 错误处理
-anyhow = "1"
-thiserror = "1"
-# 日志
-tracing = "0.1"
-tracing-subscriber = "0.3"
+## 九、状态栏设计
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  就绪  │  1920×1080 · 60fps · 2000kbps  │  当前: 00:01:32.450        │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-## 8. 开发路线图
+| 区域 | 内容 |
+|------|------|
+| 左 | 应用状态（就绪 / 正在加载 / 正在导出...） |
+| 中 | 视频参数（分辨率 · 帧率 · 码率） |
+| 右 | 当前播放时间（精确到毫秒） |
 
-| 阶段                  | 目标                                                         | 关键交付               |
-| --------------------- | ------------------------------------------------------------ | ---------------------- |
-| **P1 基础播放**       | 搭建 Iced 窗口，集成 mpv 并显示视频，实现播放/暂停、时间戳显示。 | 可播放视频，看见画面。 |
-| **P2 精确控制与波形** | 实现 `seek_exact`、逐帧步进；提取音频并绘制静态波形，点击波形跳转。 | 波形联动跳帧。         |
-| **P3 打轴核心**       | Shift 拖选创建轴，视频实时跟随，右键删除轴，轴数据管理。     | 可通过波形打轴。       |
-| **P4 轴卡片**         | 右侧卡片列表，片段显示、高亮、编辑、右键菜单。               | 多轴可视化与管理。     |
-| **P5 翻译区**         | 双轴选择，并排文本编辑，联动高亮，术语库占位。               | 翻译工作区。           |
-| **P6 界面完善**       | 菜单栏、工具栏、面板拖拽(PaneGrid)、快捷键、主题。           | 完整桌面体验。         |
-| **P7 持久化与优化**   | 项目保存/加载，性能优化，错误处理，打包发布。                | Alpha 可分发版本。     |
+---
 
-## 9. 关键技术细节补充
+## 十、技术实现要点
 
-### 9.1 mpv 窗口嵌入步骤
-1. 创建 Iced 窗口后，获取原生窗口句柄 (`window_handle`)。在 Iced 中可通过 `Application::new` 提供的 `Settings` 或 `window::Id` 间接获得，实际实现可能需要扩展 Iced 的 `Compositor` 或使用 `raw-window-handle` crate。
-2. 初始化 mpv 并设置 `wid`：
-   ```rust
-   let mpv = MpvHandler::new()?;
-   mpv.set_property("wid", window_id)?;  // window_id 从 raw-window-handle 获取
-   ```
-3. 在 Iced 布局中为视频预留空间，当窗口大小变化时，调用 mpv 的 `geometry` 调整渲染区域。
+### 10.1 核心类结构
 
-更优雅的方式是使用 `mpv` 的 OpenGL 渲染回调，将帧纹理直接绘制到 Iced 的 `Canvas` 上，但实现较复杂。对于初始原型，子窗口方式即可。
+```python
+class MainWindow(QMainWindow):
+    """主窗口，管理所有 DockWidget 卡片"""
+    def __init__(self):
+        # 创建四个 DockWidget
+        self.playerDock = QDockWidget("视频预览", self)
+        self.timelineDock = QDockWidget("时间轴", self)
+        self.waveformDock = QDockWidget("波形图", self)
+        self.translateDock = QDockWidget("翻译", self)
+        
+        # 设置卡片属性
+        for dock in [self.playerDock, self.timelineDock, 
+                     self.waveformDock, self.translateDock]:
+            dock.setFeatures(
+                QDockWidget.DockWidgetMovable |
+                QDockWidget.DockWidgetClosable |
+                QDockWidget.DockWidgetFloatable
+            )
+            dock.setMinimumSize(200, 150)
+        
+        # 添加到主窗口
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.playerDock)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.timelineDock)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.waveformDock)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.translateDock)
+        
+        # 标签页合并
+        self.tabifyDockWidget(self.waveformDock, self.translateDock)
+```
 
-### 9.2 波形性能优化
-- 预计算峰值时降采样，每个屏幕像素对应一个峰值数据点。
-- 波形 Canvas 的 `draw` 方法只绘制当前可视范围的线段，利用 Iced 的裁剪区域。
-- 轴区域绘制同样只处理可见范围，避免遍历所有 segments。
+### 10.2 信号连接
 
-### 9.3 帧表格选择（可选）
-如需实现，可用 Iced 的 `Grid` 或自定义 Widget，每行代表一帧，Shift+点击选择范围，再转换为 segment。此功能可推迟到 P3 之后作为增强。
+```python
+# 卡片间的信号连接
+self.player.positionChanged.connect(self.waveform.updatePosition)
+self.player.positionChanged.connect(self.timeline.highlightRow)
+self.timeline.subtitleSelected.connect(self.translate.showSubtitle)
+self.waveform.positionClicked.connect(self.player.setPosition)
+```
 
-## 10. 总结
-本方案基于 Iced + mpv，提供了一个完全原生、高性能、帧精确的视频打轴应用骨架。其 Elm 架构保证了复杂交互下的状态可预测性，libmpv 提供了生产级的视频控制能力。开发路径清晰，模块解耦，非常适合用 Rust 逐步实现并持续迭代。
+### 10.3 布局持久化
+
+```python
+# 使用 QSettings 保存/恢复
+settings = QSettings("ChestnutStudio", "KaoRouTool")
+
+# 保存
+settings.setValue("geometry", self.saveGeometry())
+settings.setValue("state", self.saveState())
+
+# 恢复
+self.restoreGeometry(settings.value("geometry"))
+self.restoreState(settings.value("state"))
+```
+
+---
+
+## 附录：依赖清单
+
+| 依赖 | 用途 | 版本 |
+|------|------|------|
+| Python | 运行环境 | 3.10+ |
+| PySide6 | UI 框架 + 多媒体 | 6.5+ |
+| pyqtgraph | 波形图绘制 | 0.13+ |
+| numpy | 波形数据处理 | |
+| FFmpeg | 视频解析 + 音轨提取 | 外部 exe |
