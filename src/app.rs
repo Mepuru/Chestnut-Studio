@@ -1,8 +1,8 @@
 use iced::widget::{
-    button, column, container, horizontal_space, pane_grid,
+    button, column, container, horizontal_space, image, pane_grid,
     row, text, PaneGrid,
 };
-use iced::{Center, Color, Element, Fill, Font, Subscription, Theme};
+use iced::{Center, Color, ContentFit, Element, Fill, Font, Subscription, Theme};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -232,14 +232,37 @@ impl ChestnutStudio {
                 }
             }
             Message::Tick => {
-                // 定时同步播放状态
+                // 定时同步播放状态和更新视频帧
                 if let Some(ref player) = self.state.player {
                     if player.is_playing() {
                         self.state.position_ms = player.get_position_ms();
                         self.state.current_frame = player.get_current_frame();
                         self.state.is_playing = true;
+                        
+                        // 更新视频帧
+                        if let Some(frame) = player.current_frame() {
+                            let handle = image::Handle::from_rgba(
+                                frame.width,
+                                frame.height,
+                                frame.data,
+                            );
+                            self.state.video_frame_handle = Some(handle);
+                        }
                     } else {
                         self.state.is_playing = false;
+                    }
+                }
+            }
+            Message::UpdateVideoFrame => {
+                // 手动更新视频帧（用于seek等操作后）
+                if let Some(ref player) = self.state.player {
+                    if let Some(frame) = player.current_frame() {
+                        let handle = image::Handle::from_rgba(
+                            frame.width,
+                            frame.height,
+                            frame.data,
+                        );
+                        self.state.video_frame_handle = Some(handle);
                     }
                 }
             }
@@ -260,7 +283,7 @@ impl ChestnutStudio {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        // 如果正在播放，每 16ms 同步一次状态 (约 60fps)
+        // 如果正在播放，每 16ms 同步一次状态和更新视频帧 (约 60fps)
         if self.state.is_playing {
             iced::time::every(Duration::from_millis(16))
                 .map(|_| Message::Tick)
@@ -476,9 +499,25 @@ impl ChestnutStudio {
                     .style(pane_ctrl_btn)
             };
 
+            // 获取面板标题
+            let pane_title = if *pane == Pane::Video {
+                if let Some(ref path) = self.state.video_path {
+                    // 显示视频文件名
+                    std::path::Path::new(path)
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string()
+                } else {
+                    pane.title().to_string()
+                }
+            } else {
+                pane.title().to_string()
+            };
+
             let title_bar = pane_grid::TitleBar::new(
                 row![
-                    text(pane.title()).font(FONT_BOLD).size(13)
+                    text(pane_title).font(FONT_BOLD).size(13)
                         .color(if is_focused { ACCENT } else { TEXT_PRIMARY }),
                     horizontal_space(),
                     maximize_btn,
@@ -556,47 +595,33 @@ impl ChestnutStudio {
         let has_video = self.state.video_path.is_some();
 
         if has_video {
-            // 显示视频信息
-            let video_info = if let Some(ref path) = self.state.video_path {
-                let filename = std::path::Path::new(path)
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy();
-                text(format!("正在播放: {}", filename))
-                    .font(FONT).size(12).color(TEXT_SECONDARY)
+            // 视频容器 - 显示当前帧
+            let video_container: Element<'_, Message> = if let Some(ref handle) = self.state.video_frame_handle {
+                // 显示视频帧
+                iced::widget::image(handle.clone())
+                    .width(Fill)
+                    .height(Fill)
+                    .content_fit(ContentFit::Contain)
+                    .into()
             } else {
-                text("").font(FONT).size(12).color(TEXT_SECONDARY)
+                // 没有帧数据时显示加载提示
+                container(
+                    text("视频加载中...").font(FONT).size(14).color(TEXT_SECONDARY)
+                )
+                .center_x(Fill)
+                .center_y(Fill)
+                .into()
             };
 
-            // 视频容器 - 显示当前帧
-            let video_container = container(
-                text("视频渲染区域").font(FONT).size(14).color(TEXT_SECONDARY)
-            )
-            .width(Fill)
-            .height(Fill)
-            .center_x(Fill)
-            .center_y(Fill)
-            .style(|_| container::Style {
-                background: Some(Color::from_rgb(0.08, 0.08, 0.10).into()),
-                border: iced::Border { width: 1.0, color: BORDER, ..Default::default() },
-                ..Default::default()
-            });
-
-            container(
-                column![
-                    video_info,
-                    video_container,
-                ]
-                .spacing(4)
-                .padding(4),
-            )
-            .width(Fill)
-            .height(Fill)
-            .style(|_| container::Style {
-                background: Some(Color::from_rgb(0.08, 0.08, 0.10).into()),
-                ..Default::default()
-            })
-            .into()
+            container(video_container)
+                .width(Fill)
+                .height(Fill)
+                .style(|_| container::Style {
+                    background: Some(Color::from_rgb(0.08, 0.08, 0.10).into()),
+                    border: iced::Border { width: 1.0, color: BORDER, ..Default::default() },
+                    ..Default::default()
+                })
+                .into()
         } else {
             // 没有视频时显示提示
             container(

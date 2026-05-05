@@ -51,6 +51,7 @@ pub enum Message {
     ToggleMute,
     SetSpeed(f64),
 
-    // 定时同步
+    // 视频帧更新
+    UpdateVideoFrame,
     Tick,
 }

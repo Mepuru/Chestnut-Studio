@@ -1,4 +1,5 @@
 use iced::widget::pane_grid;
+use iced::widget::image::Handle as ImageHandle;
 use serde::{Deserialize, Serialize};
 
 use crate::message::Pane;
@@ -31,6 +32,7 @@ pub struct AppState {
     pub speed: f64,
     pub fps: f64,
     pub video_path: Option<String>,
+    pub video_frame_handle: Option<ImageHandle>,
 }
 
 impl AppState {
@@ -152,6 +154,7 @@ impl Default for AppState {
             speed: 1.0,
             fps: 30.0,
             video_path: None,
+            video_frame_handle: None,
         }
     }
 }
