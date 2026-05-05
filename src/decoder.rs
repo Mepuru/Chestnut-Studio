@@ -414,13 +414,14 @@ impl VideoDecoder {
         start_frame: u64,
     ) -> Result<()> {
         let frame_duration = Duration::from_secs_f64(1.0 / fps);
-        let video_frame_size = (width * height * 4) as usize;
         
-        // 使用 ffmpeg 解码视频
+        // 使用 ffmpeg 解码视频，降低分辨率提高效率
+        // 同时使用 -re 参数按原始帧率输出
         let mut child = Command::new("ffmpeg")
             .args([
                 "-ss", &format!("{:.6}", start_frame as f64 / fps),
                 "-i", path.to_str().unwrap(),
+                "-vf", "scale=640:360",  // 降低分辨率提高效率
                 "-f", "rawvideo",
                 "-pix_fmt", "rgba",
                 "-r", &format!("{}", fps),
@@ -432,10 +433,11 @@ impl VideoDecoder {
             .context("启动 ffmpeg 视频解码失败")?;
         
         let stdout = child.stdout.take().unwrap();
-        let mut reader = std::io::BufReader::new(stdout);
-        let mut video_buffer = vec![0u8; video_frame_size];
+        let mut reader = std::io::BufReader::with_capacity(640 * 360 * 4, stdout);
+        let mut video_buffer = vec![0u8; 640 * 360 * 4];
         
         let mut frame_num = start_frame;
+        let mut last_frame_time = Instant::now();
         
         loop {
             // 检查播放状态
@@ -448,8 +450,8 @@ impl VideoDecoder {
                 Ok(_) => {
                     let frame = VideoFrame {
                         data: video_buffer.clone(),
-                        width,
-                        height,
+                        width: 640,
+                        height: 360,
                         frame_number: frame_num,
                     };
                     
@@ -463,8 +465,12 @@ impl VideoDecoder {
                     
                     frame_num += 1;
                     
-                    // 控制帧率
-                    thread::sleep(frame_duration);
+                    // 精确帧率控制
+                    let elapsed = last_frame_time.elapsed();
+                    if elapsed < frame_duration {
+                        thread::sleep(frame_duration - elapsed);
+                    }
+                    last_frame_time = Instant::now();
                 }
                 Err(_) => break,
             }
@@ -499,8 +505,8 @@ impl VideoDecoder {
             .context("启动 ffmpeg 音频解码失败")?;
         
         let stdout = child.stdout.take().unwrap();
-        let mut reader = std::io::BufReader::new(stdout);
-        let mut audio_buffer_temp = vec![0u8; 4096];
+        let mut reader = std::io::BufReader::with_capacity(44100 * 4, stdout);
+        let mut audio_buffer_temp = vec![0u8; 44100 * 4]; // 1秒的音频数据
         
         loop {
             // 检查播放状态
