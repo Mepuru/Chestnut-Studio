@@ -168,6 +168,11 @@ class TimelineCard(QDockWidget):
         self._table.cellDoubleClicked.connect(self._on_cell_double_clicked)
         self._table.customContextMenuRequested.connect(self._show_context_menu)
 
+        # 禁用拖动选择
+        self._table.mouseMoveEvent = lambda e: None
+        self._table.mousePressEvent = self._table_mouse_press
+        self._table.mouseReleaseEvent = self._table_mouse_release
+
         # 滚轮事件
         self._table.wheelEvent = self._wheel_event
 
@@ -198,6 +203,26 @@ class TimelineCard(QDockWidget):
         elif delta < 0:
             # 向下滚动
             self._scroll_down(3)
+        event.accept()
+
+    def _table_mouse_press(self, event):
+        """鼠标按下事件 - 只允许左键点击，不允许拖动"""
+        # 只处理左键点击，忽略拖动
+        if event.button() == Qt.LeftButton:
+            # 获取点击的单元格
+            index = self._table.indexAt(event.pos())
+            if index.isValid():
+                self._table.setCurrentCell(index.row(), index.column())
+                self._on_cell_clicked(index.row(), index.column())
+        elif event.button() == Qt.RightButton:
+            # 右键菜单
+            index = self._table.indexAt(event.pos())
+            if index.isValid():
+                self._table.setCurrentCell(index.row(), index.column())
+        event.accept()
+
+    def _table_mouse_release(self, event):
+        """鼠标释放事件"""
         event.accept()
 
     def _scroll_up(self, rows: int):
