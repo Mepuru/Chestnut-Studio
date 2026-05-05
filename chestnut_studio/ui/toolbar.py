@@ -50,6 +50,8 @@ class ToolBar(QToolBar):
 
     def _setup_ui(self):
         """初始化 UI"""
+        self.setObjectName("toolbar")
+        self.setWindowTitle("播放控制")
         self.setMovable(False)
         self.setFloatable(False)
         self.setStyleSheet("""
