@@ -79,6 +79,7 @@ class TimelineCard(QDockWidget):
         self._total_logical_rows = 0  # 逻辑总行数（根据视频时长计算）
         self._selected_logical_row = 0  # 选中的逻辑行号
         self._selected_col = 0  # 选中的列号
+        self._user_clicked = False  # 用户手动点击标志
         self._setup_ui()
 
     def _setup_ui(self):
@@ -218,6 +219,11 @@ class TimelineCard(QDockWidget):
     def set_player_position(self, ms: int):
         """设置播放器位置，可选跟随滚动"""
         self._player_position = ms
+        # 用户手动点击后，不改变滚动位置
+        if self._user_clicked:
+            self._user_clicked = False
+            self._refresh_display()
+            return
         if self._follow_player:
             target_row = int(ms / self._global_interval)
             # 确保播放位置在可视区域中间
@@ -646,6 +652,7 @@ class TimelineCard(QDockWidget):
         """单击单元格 - 记录选中位置并跳转"""
         self._selected_logical_row = self._scroll_offset + row
         self._selected_col = col
+        self._user_clicked = True  # 标记用户手动点击
         time_ms = int(self._selected_logical_row * self._global_interval)
         self.position_jump_requested.emit(time_ms)
 
