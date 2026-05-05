@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QGraphicsScene,
     QGraphicsTextItem,
     QGraphicsView,
+    QLabel,
     QVBoxLayout,
     QWidget,
 )
@@ -43,8 +44,8 @@ class PlayerCard(QDockWidget):
 
     功能：
     - 视频渲染（QGraphicsVideoItem）+ 字幕叠加预览（QGraphicsTextItem）
+    - 右下角时间标签（当前时间 / 总时长）
     - 拖放打开文件
-    - 打开视频后锁定卡片宽高比
     - 播放控制全部由工具栏负责
     """
 
@@ -102,6 +103,20 @@ class PlayerCard(QDockWidget):
         self._view.setStyleSheet("QGraphicsView { background: #000000; border: none; }")
 
         layout.addWidget(self._view)
+
+        # 时间标签（叠加在视频右下角）
+        self._time_label = QLabel("00:00 / 00:00", content)
+        self._time_label.setStyleSheet("""
+            QLabel {
+                color: #cccccc;
+                font-size: 10pt;
+                font-family: Consolas, monospace;
+                background: rgba(0, 0, 0, 120);
+                padding: 2px 8px;
+            }
+        """)
+        self._time_label.adjustSize()
+
         self.setWidget(content)
 
     def _setup_player(self):
@@ -117,6 +132,19 @@ class PlayerCard(QDockWidget):
         self._player.positionChanged.connect(self._on_position_changed)
         self._player.durationChanged.connect(self._on_duration_changed)
         self._player.playbackStateChanged.connect(self._on_playback_state_changed)
+
+    def resizeEvent(self, event: QResizeEvent):
+        """保持时间标签在右下角"""
+        super().resizeEvent(event)
+        self._reposition_time_label()
+
+    def _reposition_time_label(self):
+        """将时间标签定位到右下角"""
+        parent_size = self.widget().size()
+        label_size = self._time_label.sizeHint()
+        x = parent_size.width() - label_size.width() - 8
+        y = parent_size.height() - label_size.height() - 8
+        self._time_label.move(x, y)
 
     # ========== 公有方法 ==========
 
@@ -188,10 +216,12 @@ class PlayerCard(QDockWidget):
     # ========== 内部事件 ==========
 
     def _on_position_changed(self, position: int):
+        self._time_label.setText(f"{self._ms_to_str(position)} / {self._ms_to_str(self._duration)}")
         self.position_changed.emit(position)
 
     def _on_duration_changed(self, duration: int):
         self._duration = duration
+        self._time_label.setText(f"00:00 / {self._ms_to_str(duration)}")
         self.duration_changed.emit(duration)
 
     def _on_playback_state_changed(self, state):
@@ -214,3 +244,14 @@ class PlayerCard(QDockWidget):
             elif ext in SUBTITLE_EXTENSIONS:
                 self.subtitle_dropped.emit(path)
                 return
+
+    # ========== 工具方法 ==========
+
+    @staticmethod
+    def _ms_to_str(ms: int) -> str:
+        """毫秒 -> MM:SS 格式"""
+        if ms < 0:
+            ms = 0
+        total_seconds = ms // 1000
+        m, s = divmod(total_seconds, 60)
+        return f"{m:02d}:{s:02d}"

@@ -147,35 +147,23 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self):
         """连接各组件间的信号"""
-        # --- 工具栏 ↔ 播放卡片 ---
-        # 工具栏播放按钮 → 播放卡片
+        # --- 工具栏 → 播放卡片 ---
         self.toolbar.play_clicked.connect(self.player_card.play_pause)
-
-        # 工具栏音量 → 播放卡片
-        self.toolbar.volume_changed.connect(self.player_card.set_volume)
-
-        # 工具栏静音 → 播放卡片
-        self.toolbar.mute_clicked.connect(self._on_mute_toggle)
-
-        # 工具栏进度条 → 播放卡片
-        self.toolbar.position_changed.connect(self.player_card.set_position)
-
-        # 工具栏倍速 → 播放卡片
         self.toolbar.rate_changed.connect(self.player_card.set_playback_rate)
 
-        # 播放卡片 → 工具栏（位置同步）
+        # 跳转信号：toolbar 发出 ms 偏移量，player_card 换算成绝对位置
+        self.toolbar.skip_forward.connect(self._on_skip_forward)
+        self.toolbar.skip_backward.connect(self._on_skip_backward)
+        self.toolbar.frame_forward.connect(self._on_frame_forward)
+        self.toolbar.frame_backward.connect(self._on_frame_backward)
+
+        # --- 播放卡片 → 工具栏 ---
         self.player_card.position_changed.connect(self.toolbar.update_position)
-
-        # 播放卡片 → 工具栏（时长同步）
         self.player_card.duration_changed.connect(self.toolbar.set_duration)
-
-        # 播放卡片 → 工具栏（播放状态同步）
         self.player_card.playback_state_changed.connect(self.toolbar.set_playing)
 
         # --- 播放卡片 → 状态栏 ---
         self.player_card.duration_changed.connect(self._on_duration_changed)
-
-        # --- 播放卡片 → 状态栏（时间更新） ---
         self.player_card.position_changed.connect(self._on_position_changed)
 
     # ========== 布局管理 ==========
@@ -226,6 +214,8 @@ class MainWindow(QMainWindow):
                     fps=f"{info.fps:.0f}fps" if info.fps else "",
                     bitrate=f"{info.bitrate}kbps" if info.bitrate else "",
                 )
+                # 传递帧率给工具栏（用于逐帧和帧号显示）
+                self.toolbar.set_fps(info.fps)
             except Exception:
                 # FFmpeg 不可用时不报错，只是不显示视频信息
                 self.status_bar.clear_video_info()
@@ -247,11 +237,29 @@ class MainWindow(QMainWindow):
         else:
             self.showFullScreen()
 
-    def _on_mute_toggle(self):
-        """切换静音"""
-        current = self.player_card._audio_output.isMuted()
-        self.player_card.set_muted(not current)
-        self.toolbar.set_muted(not current)
+    # ========== 跳转/逐帧 ==========
+
+    def _on_skip_forward(self, ms: int):
+        """前进指定毫秒"""
+        pos = self.player_card.get_position() + ms
+        self.player_card.set_position(min(pos, self.player_card.get_duration()))
+
+    def _on_skip_backward(self, ms: int):
+        """后退指定毫秒"""
+        pos = self.player_card.get_position() - ms
+        self.player_card.set_position(max(pos, 0))
+
+    def _on_frame_forward(self):
+        """前进 1 帧"""
+        frame_ms = int(1000 / self.toolbar._fps)
+        pos = self.player_card.get_position() + frame_ms
+        self.player_card.set_position(min(pos, self.player_card.get_duration()))
+
+    def _on_frame_backward(self):
+        """后退 1 帧"""
+        frame_ms = int(1000 / self.toolbar._fps)
+        pos = self.player_card.get_position() - frame_ms
+        self.player_card.set_position(max(pos, 0))
 
     # ========== 状态栏更新 ==========
 
