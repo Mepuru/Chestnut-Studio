@@ -4,7 +4,29 @@
 
 ---
 
-## 2026-05-05 — Phase 0 完成
+## 2026-05-05 — Phase 1 完成
+
+### 完成内容
+
+- 实现 PlayerCard 视频播放卡片（QMediaPlayer + QGraphicsVideoItem）
+- 实现 ToolBar 工具栏（播放/暂停、跳转5秒、倍速选择、帧号显示）
+- 视频画面自动铺满卡片（fitInView 保持宽高比）
+- 支持拖放打开视频文件
+- FFmpeg 增强：码率解析、多字节编码修复、attached pic 流跳过
+- PlayerCard 空状态提示（未加载视频时显示操作引导）
+- 状态栏时间改为 MM:SS / MM:SS 格式
+- 默认布局：左 39% 右 61%，上 56% 下 44%，窗口缩放保持比例
+- 菜单 视图 > 布局 > 默认布局 可重置布局
+- 菜单 视图 > 布局 > 打印当前布局 输出调试信息
+- 新增 24 个 Phase 1 测试用例（40 个总计）
+
+### 技术决策
+
+1. **QGraphicsVideoItem 渲染视频** - 配合 fitInView 自动缩放居中
+2. **工具栏统一控制播放** - PlayerCard 不再包含播放按钮，只负责渲染
+3. **addDockWidget 显式指定区域** - splitDockWidget 会让第二个 widget 进入同一区域，无法创建左右分栏
+4. **QTimer.singleShot 延迟 show()** - 窗口渲染完成后再显示卡片，避免不可见
+5. **resizeEvent 维护比例** - 动态计算卡片尺寸，窗口缩放时比例不变
 
 ### 完成内容
 

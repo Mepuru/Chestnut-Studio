@@ -35,10 +35,11 @@
 
 | 模块 | 职责 |
 |------|------|
-| `main_window.py` | 主窗口，管理四个 DockWidget 卡片的布局 |
+| `main_window.py` | 主窗口，管理四个 DockWidget 卡片的布局，连接各组件信号 |
+| `toolbar.py` | 工具栏，播放控制（播放/暂停、跳转、倍速、帧号显示） |
 | `menubar.py` | 菜单栏，文件/视图/帮助菜单 |
-| `statusbar.py` | 状态栏，三段式显示（状态/视频参数/时间） |
-| `cards/player_card.py` | 视频播放卡片（Phase 1 实现） |
+| `statusbar.py` | 状态栏，三段式显示（状态/视频参数/当前时间/总时间） |
+| `cards/player_card.py` | 视频播放卡片，QMediaPlayer + 拖放打开 + 字幕叠加 |
 | `cards/timeline_card.py` | 打轴编辑卡片（Phase 3 实现） |
 | `cards/waveform_card.py` | 音频波形卡片（Phase 2 实现） |
 | `cards/translate_card.py` | 翻译面板卡片（Phase 4 实现） |
@@ -125,25 +126,30 @@ TimelineCard                  TranslateCard
 
 ### 5.1 默认布局
 
+比例：左 39% 右 61%，上 56% 下 44%，窗口缩放时保持比例不变。
+
 ```
-┌───────────────────────┬───────────────────────┐
-│                       │                       │
-│    视频播放卡片         │    打轴编辑卡片        │
-│    (左 55%)           │    (右 45%)           │
-│                       │                       │
-├───────────────────────┼───────────────────────┤
-│                       │                       │
-│    音频波形卡片         │    翻译面板卡片        │
-│    高度 200px          │    高度 200px          │
-│                       │                       │
-└───────────────────────┴───────────────────────┘
+┌──────────────────┬───────────────────────────────┐
+│                  │                               │
+│  Player          │  Timeline (打轴)              │
+│                  │                               │
+├──────────────────┼───────────────────────────────┤
+│  Waveform        │  Translation (翻译)           │
+│                  │                               │
+└──────────────────┴───────────────────────────────┘
 ```
+
+布局通过 `addDockWidget` 显式指定左右区域，`splitDockWidget` 在区域内垂直分割，`resizeDocks` 动态计算尺寸。`resizeEvent` 中按固定比例维护。
 
 ### 5.2 布局持久化
 
 使用 `QSettings` 保存和恢复布局：
 - 保存时机：`closeEvent`
-- 恢复时机：`__init__`
+- 恢复时机：`__init__`（开发阶段跳过）
+
+### 5.3 布局调试
+
+菜单 **视图 > 布局 > 打印当前布局** 可输出各卡片的区域、尺寸、位置到控制台。
 
 ---
 
@@ -181,5 +187,6 @@ TimelineCard                  TranslateCard
 tests/
 ├── conftest.py           # 测试配置，共享 fixtures
 ├── test_phase0.py        # Phase 0 基础设施测试
+├── test_phase1.py        # Phase 1 视频播放测试（FFmpeg/PlayerCard/ToolBar）
 └── test_subtitle.py      # 字幕数据结构测试
 ```

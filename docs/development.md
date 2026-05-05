@@ -19,6 +19,7 @@ D:\ChestnutStudio\
 │   ├── ui/                        # UI 层
 │   │   ├── __init__.py
 │   │   ├── main_window.py         # QMainWindow
+│   │   ├── toolbar.py             # 工具栏（播放控制）
 │   │   ├── menubar.py             # 菜单栏
 │   │   ├── statusbar.py           # 状态栏
 │   │   ├── cards/                 # 卡片组件
@@ -139,11 +140,17 @@ class PlayerCard(QDockWidget):
     """视频播放卡片
     
     功能：
-    - 视频渲染 + 字幕叠加预览
-    - 播放控制（播放/暂停/停止/音量/倍速）
-    - 进度条拖拽 + 时间显示
-    - 滚轮缩放 + 拖放打开
+    - 视频渲染（QGraphicsVideoItem）+ 字幕叠加预览
+    - 拖放打开文件
+    - 播放控制全部由工具栏负责
     """
+    
+    # 信号定义
+    position_changed = Signal(int)  # 播放位置变化
+    video_opened = Signal(str)      # 视频已打开
+    
+    # 默认停靠区域
+    default_area = Qt.LeftDockWidgetArea
     
     def open_video(self, path: str) -> bool:
         """打开视频文件
@@ -221,6 +228,7 @@ self.player_card._player.setPosition(1000)
 tests/
 ├── conftest.py           # 测试配置，共享 fixtures
 ├── test_phase0.py        # Phase 0 基础设施测试
+├── test_phase1.py        # Phase 1 视频播放测试
 └── test_subtitle.py      # 字幕数据结构测试
 ```
 
