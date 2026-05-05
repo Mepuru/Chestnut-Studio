@@ -1,44 +1,58 @@
-/// Application message types for the Elm architecture.
-///
-/// All user interactions and system events are represented as messages
-/// that flow through the update function.
+/// 面板标识
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Pane {
+    /// 视频播放器
+    Video,
+    /// 音频波形
+    Waveform,
+    /// 轴卡片列表
+    AxisCards,
+    /// 翻译区
+    Translation,
+}
+
+impl Pane {
+    /// 面板显示名称
+    pub fn title(&self) -> &str {
+        match self {
+            Pane::Video => "视频播放器",
+            Pane::Waveform => "音频波形",
+            Pane::AxisCards => "轴卡片列表",
+            Pane::Translation => "翻译区",
+        }
+    }
+}
+
+/// 应用消息
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub enum Message {
-    /// No-op message
-    None,
+    /// 面板被点击
+    PaneClicked(iced::widget::pane_grid::Pane),
+    /// 面板被拖拽
+    PaneDragged(iced::widget::pane_grid::DragEvent),
+    /// 面板被调整大小
+    PaneResized(iced::widget::pane_grid::ResizeEvent),
+    /// 面板最大化/还原
+    PaneMaximize(iced::widget::pane_grid::Pane),
+    /// 还原面板
+    PaneRestore,
+    /// 关闭面板
+    PaneClose(iced::widget::pane_grid::Pane),
 
-    // ── Window lifecycle ──────────────────────────────────────────────
-    /// Window was resized
-    WindowResized { width: u32, height: u32 },
-
-    // ── Tick / timer ──────────────────────────────────────────────────
-    /// Periodic tick for UI updates (e.g. syncing playback position)
-    Tick,
-
-    // ── File operations ───────────────────────────────────────────────
-    /// User wants to open a video file
-    OpenFile,
-    /// A file was selected via dialog
-    FileSelected(Option<String>),
-
-    // ── Playback control ──────────────────────────────────────────────
-    /// Toggle play / pause
+    // 播放控制
+    /// 切换播放/暂停
     TogglePlayPause,
-    /// Seek forward 5 seconds
+    /// 前进5秒
     SeekForward5s,
-    /// Seek backward 5 seconds
+    /// 后退5秒
     SeekBackward5s,
-    /// Seek to an exact frame
-    SeekTo(u64),
-    /// Step one frame forward
+    /// 帧前进
     FrameStep,
-    /// Step one frame backward
+    /// 帧后退
     FrameBackStep,
 
-    // ── Keyboard ──────────────────────────────────────────────────────
-    /// A key was pressed
-    KeyDown(String),
-    /// A key was released
-    KeyUp(String),
+    // 文件操作
+    /// 打开文件
+    OpenFile,
 }
