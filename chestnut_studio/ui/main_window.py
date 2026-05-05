@@ -147,6 +147,7 @@ class MainWindow(QMainWindow):
         self.menu_bar.save_subtitle.connect(self._on_save_subtitle)
         self.menu_bar.quit_app.connect(self.close)
         self.menu_bar.toggle_fullscreen.connect(self._toggle_fullscreen)
+        self.menu_bar.reset_layout.connect(self._setup_default_layout)
 
     def _create_statusbar(self):
         """创建状态栏"""

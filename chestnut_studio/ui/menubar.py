@@ -20,6 +20,7 @@ class MenuBar(QMenuBar):
     save_subtitle = Signal()
     quit_app = Signal()
     toggle_fullscreen = Signal()
+    reset_layout = Signal()  # 重置为默认布局
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -120,8 +121,7 @@ class MenuBar(QMenuBar):
 
     def _reset_layout(self):
         """重置为默认布局"""
-        # TODO: 实现布局重置
-        pass
+        self.reset_layout.emit()
 
     def _show_hotkey_dialog(self):
         """显示快捷键说明对话框"""
