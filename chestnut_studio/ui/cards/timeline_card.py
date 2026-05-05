@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QBrush, QColor
 from PySide6.QtWidgets import (
     QDockWidget,
+    QHeaderView,
     QMenu,
     QMessageBox,
     QTableWidget,
@@ -122,7 +123,7 @@ class TimelineCard(QDockWidget):
         self._table.setSelectionMode(QTableWidget.ExtendedSelection)
         self._table.setSelectionBehavior(QTableWidget.SelectItems)
         self._table.verticalHeader().setDefaultSectionSize(15)
-        self._table.horizontalHeader().setStretchLastSection(True)
+        self._table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self._table.setContextMenuPolicy(Qt.CustomContextMenu)
         self._table.verticalHeader().setMinimumSectionSize(15)
 
