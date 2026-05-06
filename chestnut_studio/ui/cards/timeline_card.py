@@ -75,6 +75,7 @@ class TimelineCard(QDockWidget):
         self._user_clicked = False
         self._is_refreshing = False  # 标记是否正在刷新，用于禁用鼠标跟随
         self._is_wheel_scrolling = False  # 标记是否正在滚轮滚动，用于禁用鼠标跟随
+        self._last_mouse_pos = None  # 记录上次鼠标位置，用于判断是否真正移动
 
         # 撤销/重做后端
         self._subtitle_backend = []
@@ -182,6 +183,12 @@ class TimelineCard(QDockWidget):
         # 正在刷新或滚轮滚动时禁用鼠标跟随
         if self._is_refreshing or self._is_wheel_scrolling:
             return
+        
+        # 检查鼠标是否真的移动了（避免表格刷新后触发）
+        current_pos = event.pos()
+        if self._last_mouse_pos == current_pos:
+            return
+        self._last_mouse_pos = current_pos
         
         # 获取鼠标位置对应的单元格
         index = self._table.indexAt(event.pos())
