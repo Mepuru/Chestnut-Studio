@@ -639,12 +639,15 @@ class TimelineCard(QDockWidget):
         
         # 以当前播放位置为中心，显示前50行后50行
         current_row = int(ms / self._global_interval)
-        self._row = max(0, current_row - 50)  # 前50行
-        print(f"[DEBUG] set_player_position: new_row={self._row}, center_row={current_row}")
+        # 计算视图起始行，确保不超过视频开头
+        self._row = max(0, current_row - 50)
+        # 计算当前播放位置在视图中的实际行号
+        highlight_row = current_row - self._row
+        print(f"[DEBUG] set_player_position: new_row={self._row}, center_row={current_row}, highlight_row={highlight_row}")
         # 刷新表格
         self._refresh_table()
-        # 高亮显示当前播放位置对应的单元格（第50行，因为前50行后50行，中心在第50行）
-        self._highlight_current_position(50)
+        # 高亮显示当前播放位置对应的单元格
+        self._highlight_current_position(highlight_row)
         # 重置滚动条到中心位置
         self._scrollbar.blockSignals(True)
         self._scrollbar.setValue(500)
