@@ -279,6 +279,12 @@ class TimelineCard(QDockWidget):
         self._is_wheel_scrolling = True
         print(f"[DEBUG] _wheel_event: delta={delta}, current_row={self._row}")
 
+        # 保存当前选择的逻辑行号
+        selected_rows = []
+        for index in self._table.selectionModel().selectedIndexes():
+            logical_row = index.row() + self._row
+            selected_rows.append((logical_row, index.column()))
+
         # 计算允许的滚动范围（以当前播放位置为中心，上下各500行）
         center_row = int(self._player_position / self._global_interval)
         min_row = max(0, center_row - 500)
@@ -291,6 +297,8 @@ class TimelineCard(QDockWidget):
                 print(f"[DEBUG] _wheel_event: scroll UP, new_row={new_row}")
                 self._row = new_row
                 self._refresh_table()
+                # 恢复选择
+                self._restore_selection(selected_rows)
                 # 更新滚动条位置
                 offset = self._row - center_row
                 self._scrollbar.blockSignals(True)
@@ -303,6 +311,8 @@ class TimelineCard(QDockWidget):
                 print(f"[DEBUG] _wheel_event: scroll DOWN, new_row={new_row}")
                 self._row = new_row
                 self._refresh_table()
+                # 恢复选择
+                self._restore_selection(selected_rows)
                 # 更新滚动条位置
                 offset = self._row - center_row
                 self._scrollbar.blockSignals(True)
@@ -312,6 +322,15 @@ class TimelineCard(QDockWidget):
         # 延迟重置标志
         QTimer.singleShot(100, lambda: setattr(self, '_is_wheel_scrolling', False))
         event.accept()
+
+    def _restore_selection(self, selected_rows):
+        """恢复之前的选择状态"""
+        self._table.clearSelection()
+        for logical_row, col in selected_rows:
+            visual_row = logical_row - self._row
+            if 0 <= visual_row < VISIBLE_ROWS:
+                self._table.setCurrentCell(visual_row, col)
+                break  # 只恢复第一个选中的cell
 
     def _refresh_table(self, position=None, select=0, scroll=0):
         """实时刷新表格 - 完全照搬DD烤肉机的实现"""
