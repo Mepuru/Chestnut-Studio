@@ -40,7 +40,7 @@
 | `menubar.py` | 菜单栏，文件/视图/帮助菜单 |
 | `statusbar.py` | 状态栏，三段式显示（状态/视频参数/当前时间/总时间） |
 | `cards/player_card.py` | 视频播放卡片，QMediaPlayer + 拖放打开 + 字幕叠加 + AB 循环 |
-| `cards/timeline_card.py` | 打轴编辑卡片（Phase 3 实现） |
+| `cards/timeline_card.py` | 字幕列表卡片，显示和编辑字幕 |
 | `cards/waveform_card.py` | 音频波形卡片，波形显示 + 包络线 + AB 循环区域 + 滚轮缩放 + Shift 拖动 |
 | `cards/translate_card.py` | 翻译面板卡片（Phase 4 实现） |
 

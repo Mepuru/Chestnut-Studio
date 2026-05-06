@@ -26,7 +26,7 @@ D:\ChestnutStudio\
 │   │   │   ├── __init__.py
 │   │   │   ├── player_card.py     # 视频播放卡片
 │   │   │   ├── waveform_card.py   # 音频波形卡片
-│   │   │   ├── timeline_card.py   # 打轴编辑卡片
+│   │   │   ├── timeline_card.py   # 字幕列表卡片
 │   │   │   └── translate_card.py  # 翻译面板卡片
 │   │   └── dialogs/               # 弹窗
 │   │       └── __init__.py

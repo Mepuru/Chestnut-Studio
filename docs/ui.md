@@ -23,7 +23,7 @@
 | 属性 | 类型 | 说明 |
 |------|------|------|
 | `player_card` | `PlayerCard` | 视频播放卡片 |
-| `timeline_card` | `TimelineCard` | 打轴编辑卡片 |
+| `timeline_card` | `TimelineCard` | 字幕列表卡片 |
 | `waveform_card` | `WaveformCard` | 音频波形卡片 |
 | `translate_card` | `TranslateCard` | 翻译面板卡片 |
 | `toolbar` | `ToolBar` | 工具栏 |
@@ -363,13 +363,54 @@ frame = int(ms * fps / 1000)
 
 ---
 
-## 七、其他卡片（占位）
+## 七、字幕列表卡片 (`cards/timeline_card.py`)
 
-以下卡片在 Phase 0 创建了空壳，后续阶段实现：
+`TimelineCard(QDockWidget)` — 字幕列表显示和编辑。
 
-| 卡片 | 文件 | 默认区域 | 实现阶段 |
-|------|------|----------|----------|
-| `TimelineCard` | `cards/timeline_card.py` | Right | Phase 3 |
-| `TranslateCard` | `cards/translate_card.py` | Right | Phase 4 |
+### 信号
 
-当前均显示占位提示文字，功能为空。
+| 信号 | 参数 | 说明 |
+|------|------|------|
+| `subtitle_selected(col, text)` | `int, str` | 字幕被选中 |
+| `subtitle_changed()` | 无 | 字幕数据变化 |
+
+### 布局
+
+```
+┌─────────────────────────────────────────────┐
+│ 轨道1 | 轨道2 | 轨道3 | 轨道4              │  ← 列头
+├─────────────────────────────────────────────┤
+│ 0:00.0 | 0:02.0 | 0.50s | 你好             │  ← 字幕条目
+│ 0:05.0 | 0:07.0 | 0.80s | 世界             │
+│ ...                                         │
+└─────────────────────────────────────────────┘
+```
+
+### 公有方法
+
+| 方法 | 参数 | 说明 |
+|------|------|------|
+| `set_player_position(ms)` | `int` | 设置播放器位置 |
+| `set_interval(ms)` | `float` | 设置间隔 |
+| `set_duration(ms)` | `int` | 设置视频时长 |
+| `get_subtitle_data()` | 无 | 获取字幕数据 |
+| `get_subtitle_manager()` | 无 | 获取字幕管理器实例 |
+| `jump_to_position_at_top(ms)` | `int` | 跳转到指定时间位置 |
+| `create_subtitle_at_cursor()` | 无 | 在光标位置创建字幕 |
+
+### 交互操作
+
+| 操作 | 功能 |
+|------|------|
+| `右键点击` | 显示编辑菜单（编辑/删除/创建/撤销/重做） |
+| `双击` | 跳转到字幕位置 |
+| `Ctrl+Z` | 撤销 |
+| `Ctrl+Y` | 重做 |
+
+### 字幕颜色
+
+| 颜色 | 条件 |
+|------|------|
+| 绿色 `#35545d` | 正常持续时间 |
+| 粉色 `#FA8072` | 持续时间 > 4.5s |
+| 红色 `#B22222` | 持续时间异常（< 100ms 或 > 8s） |
