@@ -656,7 +656,17 @@ class TimelineCard(QDockWidget):
         # 重新计算总行数
         if self._duration_ms > 0:
             self._total_logical_rows = int(self._duration_ms / self._global_interval) + 1
+        # 根据当前播放位置重新计算 _row
+        if self._player_position > 0:
+            current_row = int(self._player_position / self._global_interval)
+            self._row = max(0, current_row - 50)  # 以当前播放位置为中心
         self._refresh_table()
+        # 高亮显示当前播放位置对应的单元格
+        self._highlight_current_position(50)
+        # 重置滚动条到中心位置
+        self._scrollbar.blockSignals(True)
+        self._scrollbar.setValue(500)
+        self._scrollbar.blockSignals(False)
 
     def get_interval(self) -> float:
         """获取当前间隔"""
