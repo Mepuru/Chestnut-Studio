@@ -218,12 +218,13 @@ class TimelineCard(QDockWidget):
                 self._row = new_row
                 self._refresh_table()
         elif delta < 0:
-            # 向下滚动
-            new_row = self._row + scroll_speed
-            print(f"[DEBUG] _wheel_event: scroll DOWN, new_row={new_row}")
-            # 不限制最大值，允许无限滚动
-            self._row = new_row
-            self._refresh_table()
+            # 向下滚动，限制最大值
+            max_row = max(0, self._total_logical_rows - VISIBLE_ROWS)
+            new_row = min(self._row + scroll_speed, max_row)
+            if new_row != self._row:
+                print(f"[DEBUG] _wheel_event: scroll DOWN, new_row={new_row}")
+                self._row = new_row
+                self._refresh_table()
 
         # 延迟重置标志，确保所有 pending 的 cellEntered 信号都被忽略
         QTimer.singleShot(100, lambda: setattr(self, '_is_wheel_scrolling', False))
