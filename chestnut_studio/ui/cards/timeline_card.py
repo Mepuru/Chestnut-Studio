@@ -148,14 +148,14 @@ class TimelineCard(QDockWidget):
         for row in range(VISIBLE_ROWS):
             self._table.setRowHeight(row, 15)
 
-        # 连接信号（与DD烤肉机一致）
+        # 连接信号
         self._table.customContextMenuRequested.connect(self._show_context_menu)
-        self._table.cellEntered.connect(self._follow_mouse)
         self._table.doubleClicked.connect(self._start_edit)
         self._table.verticalHeader().sectionClicked.connect(self._header_click)
 
-        # 重写滚轮事件
+        # 重写事件
         self._table.wheelEvent = self._wheel_event
+        self._table.mouseMoveEvent = self._mouse_move_event
 
         # 创建自定义滚动条
         from PySide6.QtWidgets import QScrollBar
@@ -177,16 +177,21 @@ class TimelineCard(QDockWidget):
         # 初始刷新
         self._refresh_table()
 
-    def _follow_mouse(self, row, col):
-        """鼠标按住拖动时 全局进度跟随鼠标（与DD烤肉机一致）"""
+    def _mouse_move_event(self, event):
+        """鼠标移动事件 - 只在实际移动鼠标时触发跟随"""
         # 正在刷新或滚轮滚动时禁用鼠标跟随
         if self._is_refreshing or self._is_wheel_scrolling:
-            print(f"[DEBUG] _follow_mouse blocked: is_refreshing={self._is_refreshing}, is_wheel_scrolling={self._is_wheel_scrolling}")
             return
-        if self._player_position and self._follow_player:
-            position = int(row * self._global_interval) + self._player_position
-            print(f"[DEBUG] _follow_mouse: row={row}, col={col}, position={position}, player_position={self._player_position}")
-            self.position_jump_requested.emit(position)
+        
+        # 获取鼠标位置对应的单元格
+        index = self._table.indexAt(event.pos())
+        if index.isValid():
+            row = index.row()
+            col = index.column()
+            if self._player_position and self._follow_player:
+                position = int(row * self._global_interval) + self._player_position
+                print(f"[DEBUG] _mouse_move_event: row={row}, col={col}, position={position}, player_position={self._player_position}")
+                self.position_jump_requested.emit(position)
 
     def _header_click(self, row):
         """点击行号跳转（与DD烤肉机一致）"""
