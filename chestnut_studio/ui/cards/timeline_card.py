@@ -151,12 +151,12 @@ class TimelineCard(QDockWidget):
 
         # 连接信号
         self._table.customContextMenuRequested.connect(self._show_context_menu)
+        self._table.cellClicked.connect(self._cell_clicked)
         self._table.doubleClicked.connect(self._start_edit)
         self._table.verticalHeader().sectionClicked.connect(self._header_click)
 
         # 重写事件
         self._table.wheelEvent = self._wheel_event
-        self._table.mouseMoveEvent = self._mouse_move_event
 
         # 创建自定义滚动条
         from PySide6.QtWidgets import QScrollBar
@@ -178,28 +178,11 @@ class TimelineCard(QDockWidget):
         # 初始刷新
         self._refresh_table()
 
-    def _mouse_move_event(self, event):
-        """鼠标移动事件 - 只在实际移动鼠标时触发跟随"""
-        # 正在刷新或滚轮滚动时禁用鼠标跟随
-        if self._is_refreshing or self._is_wheel_scrolling:
-            return
-        
-        # 检查鼠标是否真的移动了（避免表格刷新后触发）
-        current_pos = event.pos()
-        if self._last_mouse_pos == current_pos:
-            return
-        self._last_mouse_pos = current_pos
-        
-        # 获取鼠标位置对应的单元格
-        index = self._table.indexAt(event.pos())
-        if index.isValid():
-            row = index.row()
-            col = index.column()
-            if self._follow_player:
-                # 计算位置：视觉行号 * 间隔 + 视窗起始位置
-                position = int(row * self._global_interval) + int(self._row * self._global_interval)
-                print(f"[DEBUG] _mouse_move_event: row={row}, col={col}, position={position}, view_start={int(self._row * self._global_interval)}")
-                self.position_jump_requested.emit(position)
+    def _cell_clicked(self, row, col):
+        """点击单元格跳转到对应时间（与DD烤肉机一致）"""
+        position = int((row + self._row) * self._global_interval)
+        print(f"[DEBUG] _cell_clicked: row={row}, col={col}, position={position}")
+        self.position_jump_requested.emit(position)
 
     def _header_click(self, row):
         """点击行号跳转（与DD烤肉机一致）"""
