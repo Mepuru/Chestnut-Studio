@@ -138,6 +138,7 @@ class TimelineCard(QDockWidget):
         self._table.setDragDropMode(QAbstractItemView.NoDragDrop)
         self._table.setContextMenuPolicy(Qt.CustomContextMenu)
         self._table.setMouseTracking(True)
+        self._table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)  # 隐藏内置滚动条
 
         # 设置列宽和行高（与DD烤肉机一致）
         for i in range(NUM_COLUMNS):
@@ -214,13 +215,10 @@ class TimelineCard(QDockWidget):
                 self._refresh_table()
         elif delta < 0:
             # 向下滚动
-            max_row = max(0, self._total_logical_rows - VISIBLE_ROWS)
             new_row = self._row + scroll_speed
-            if new_row > max_row:
-                new_row = max_row
-            if new_row != self._row:
-                self._row = new_row
-                self._refresh_table()
+            # 不限制最大值，允许无限滚动
+            self._row = new_row
+            self._refresh_table()
 
         event.accept()
 
