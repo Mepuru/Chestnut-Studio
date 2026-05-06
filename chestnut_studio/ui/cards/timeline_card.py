@@ -180,9 +180,11 @@ class TimelineCard(QDockWidget):
         """鼠标按住拖动时 全局进度跟随鼠标（与DD烤肉机一致）"""
         # 正在刷新时禁用鼠标跟随，避免拆分等操作后视频进度跳动
         if self._is_refreshing:
+            print(f"[DEBUG] _follow_mouse blocked: is_refreshing=True")
             return
         if self._player_position and self._follow_player:
             position = int(row * self._global_interval) + self._player_position
+            print(f"[DEBUG] _follow_mouse: row={row}, col={col}, position={position}, player_position={self._player_position}")
             self.position_jump_requested.emit(position)
 
     def _header_click(self, row):
@@ -205,17 +207,21 @@ class TimelineCard(QDockWidget):
         delta = event.angleDelta().y()
         scroll_speed = 3
 
+        print(f"[DEBUG] _wheel_event: delta={delta}, current_row={self._row}")
+
         if delta > 0:
             # 向上滚动
             new_row = self._row - scroll_speed
             if new_row < 0:
                 new_row = 0
             if new_row != self._row:
+                print(f"[DEBUG] _wheel_event: scroll UP, new_row={new_row}")
                 self._row = new_row
                 self._refresh_table()
         elif delta < 0:
             # 向下滚动
             new_row = self._row + scroll_speed
+            print(f"[DEBUG] _wheel_event: scroll DOWN, new_row={new_row}")
             # 不限制最大值，允许无限滚动
             self._row = new_row
             self._refresh_table()
@@ -541,9 +547,11 @@ class TimelineCard(QDockWidget):
 
     def set_player_position(self, ms: int):
         """设置播放器位置"""
+        print(f"[DEBUG] set_player_position: ms={ms}, follow_player={self._follow_player}, old_row={self._row}")
         self._player_position = ms
         if self._follow_player:
             self._row = int(ms / self._global_interval)
+            print(f"[DEBUG] set_player_position: new_row={self._row}")
         # 刷新表格但不改变 _row（如果跟随播放器，_row 已经更新）
         self._refresh_table()
 
