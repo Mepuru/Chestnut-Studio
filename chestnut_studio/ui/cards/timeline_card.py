@@ -1,10 +1,9 @@
-"""打轴编辑卡片模块 - 完全照搬 DD_KaoRou2 的实现"""
+"""打轴编辑卡片模块 - 简化版，使用音频图+快捷键打轴"""
 
 import copy
-from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QAction, QBrush, QColor, QFont
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QAction, QColor
 from PySide6.QtWidgets import (
-    QAbstractItemView,
     QDockWidget,
     QHeaderView,
     QInputDialog,
@@ -19,38 +18,15 @@ from PySide6.QtWidgets import (
 from chestnut_studio.core.subtitle import SubtitleManager
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
-# 字幕条颜色配置（与DD烤肉机一致）
-SUBTITLE_COLORS = {
-    "normal": QColor(53, 84, 93),    # #35545d 正常持续时间
-    "long": QColor(250, 128, 114),   # #FA8072 持续时间 > 4.5s
-    "abnormal": QColor(178, 34, 34), # #B22222 持续时间异常
-}
-
-# 轨道数量
-NUM_COLUMNS = 4
-
-# 可视区域行数（与DD烤肉机一致）
-VISIBLE_ROWS = 101
-
-
-def cnt2time(cnt, interval):
-    """将计数转换为时间字符串 m:s.ms"""
-    total_ms = int(cnt * interval)
-    m, s = divmod(total_ms, 60000)
-    s, ms = divmod(s, 1000)
-    return '%s:%02d.%03d' % (m, s, ms)
-
 
 class TimelineCard(QDockWidget):
-    """打轴编辑卡片 - 完全照搬 DD_KaoRou2 的实现
+    """打轴编辑卡片 - 简化版
 
     功能：
-    - 虚拟滚动：只渲染可视区域，支持任意长度视频
-    - 4列字幕轨道
-    - 点击跳转到视频对应位置并暂停
-    - 右键菜单：合并、切割、拆分、删除等操作
-    - 完整的快捷键支持
-    - 撤销/重做
+    - 显示字幕列表（只读）
+    - 通过音频图调整位置
+    - 通过快捷键打轴
+    - 右键菜单编辑字幕
     """
 
     # 信号
@@ -67,17 +43,9 @@ class TimelineCard(QDockWidget):
         self._subtitle_mgr = SubtitleManager()
         self._global_interval = 33.33  # 间隔 (ms)
         self._style_names = ["1", "2", "3", "4"]
-        self._clipboard = []
-        self._follow_player = True
+        self._duration_ms = 0
         self._player_position = 0
-        self._row = 0  # 当前视窗起始行号（与DD烤肉机一致）
-        self._total_logical_rows = 0
-        self._user_clicked = False
-        self._is_refreshing = False  # 标记是否正在刷新，用于禁用鼠标跟随
-        self._is_wheel_scrolling = False  # 标记是否正在滚轮滚动，用于禁用鼠标跟随
-        self._cell_clicked_flag = False  # 标记是否是单元格点击触发的位置更新
-        self._duration_ms = 0  # 视频时长（毫秒）
-
+        
         # 撤销/重做后端
         self._subtitle_backend = []
         self._subtitle_backend_point = 0
@@ -85,7 +53,7 @@ class TimelineCard(QDockWidget):
         self._setup_ui()
 
     def _setup_ui(self):
-        """初始化 UI - 照搬DD烤肉机的设置"""
+        """初始化 UI"""
         content = QWidget()
         content.setStyleSheet("""
             QWidget {
@@ -97,8 +65,8 @@ class TimelineCard(QDockWidget):
         layout = QVBoxLayout(content)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # 创建表格（与DD烤肉机一致：101行）
-        self._table = QTableWidget(VISIBLE_ROWS, NUM_COLUMNS, self)
+        # 创建字幕列表表格（只读）
+        self._table = QTableWidget(0, 4, self)
         self._table.setStyleSheet("""
             QTableWidget {
                 background: #0f0f14;
@@ -123,565 +91,221 @@ class TimelineCard(QDockWidget):
                 padding: 4px;
                 font-size: 8pt;
             }
-            QHeaderView::section:vertical {
-                min-width: 70px;
-                max-width: 70px;
-            }
-            QHeaderView::section:horizontal {
-                min-height: 25px;
-            }
         """)
 
-        # 设置表格属性（与DD烤肉机一致）
-        self._table.setAutoScroll(False)
-        self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self._table.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self._table.setSelectionBehavior(QAbstractItemView.SelectItems)
-        self._table.setDragEnabled(False)
-        self._table.setDragDropMode(QAbstractItemView.NoDragDrop)
+        # 设置表格属性
+        self._table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self._table.setSelectionBehavior(QTableWidget.SelectRows)
+        self._table.setSelectionMode(QTableWidget.SingleSelection)
         self._table.setContextMenuPolicy(Qt.CustomContextMenu)
-        self._table.setMouseTracking(True)
-        self._table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)  # 隐藏内置滚动条
-
-        # 设置列宽和行高（与DD烤肉机一致）
-        for i in range(NUM_COLUMNS):
-            self._table.setColumnWidth(i, 130)
-            self._table.setHorizontalHeaderItem(i, QTableWidgetItem(self._style_names[i]))
-        for row in range(VISIBLE_ROWS):
-            self._table.setRowHeight(row, 15)
-
-        # 拖动选择状态
-        self._is_dragging = False
-        self._drag_flag = False  # 标记是否是拖动触发的位置更新
-
+        
+        # 设置列头
+        self._table.setHorizontalHeaderLabels(["轨道1", "轨道2", "轨道3", "轨道4"])
+        self._table.horizontalHeader().setStretchLastSection(True)
+        
         # 连接信号
         self._table.customContextMenuRequested.connect(self._show_context_menu)
-        self._table.cellClicked.connect(self._cell_clicked)
-        self._table.doubleClicked.connect(self._start_edit)
-        self._table.verticalHeader().sectionClicked.connect(self._header_click)
-
-        # 重写事件
-        self._table.wheelEvent = self._wheel_event
-        self._table.mousePressEvent = self._mouse_press_event
-        self._table.mouseMoveEvent = self._mouse_move_event
-        self._table.mouseReleaseEvent = self._mouse_release_event
-
-        # 创建滚动条（范围0-1000，中心500）
-        from PySide6.QtWidgets import QScrollBar
-        self._scrollbar = QScrollBar(Qt.Vertical, self)
-        self._scrollbar.setRange(0, 1000)
-        self._scrollbar.setValue(500)  # 默认中心位置
-        self._scrollbar.valueChanged.connect(self._on_scrollbar_changed)
+        self._table.doubleClicked.connect(self._on_double_click)
 
         # 布局
-        from PySide6.QtWidgets import QHBoxLayout
-        h_layout = QHBoxLayout()
-        h_layout.setContentsMargins(0, 0, 0, 0)
-        h_layout.setSpacing(0)
-        h_layout.addWidget(self._table)
-        h_layout.addWidget(self._scrollbar)
-        layout.addLayout(h_layout)
+        layout.addWidget(self._table)
         self.setWidget(content)
 
-        # 初始刷新
-        self._refresh_table()
-
-    def _cell_clicked(self, row, col):
-        """点击单元格跳转到对应时间（与DD烤肉机一致）"""
-        # 计算点击的单元格对应的时间位置
-        position = int((row + self._row) * self._global_interval)
-        print(f"[DEBUG] _cell_clicked: row={row}, col={col}, position={position}, _row={self._row}")
-        # 标记是单元格点击，不更新视图位置
-        self._cell_clicked_flag = True
-        self.position_jump_requested.emit(position)
-
-    def _header_click(self, row):
-        """点击行号跳转（与DD烤肉机一致）"""
-        position = int(row * self._global_interval) + self._player_position
-        self.position_jump_requested.emit(position)
-
-    def _start_edit(self):
-        """双击单元格开始编辑（与DD烤肉机一致）"""
-        selected = self._table.selectionModel().selection().indexes()
-        if not selected:
-            return
-        row = selected[0].row()
-        col = selected[0].column()
-        # 这里可以添加编辑逻辑
-        pass
-
-    def _mouse_press_event(self, event):
-        """鼠标按下事件"""
-        if event.button() == Qt.LeftButton:
-            modifiers = event.modifiers()
-            if modifiers & Qt.ShiftModifier:
-                # Shift+左键：开始拖动选择，视频跟随
-                self._is_dragging = True
-                index = self._table.indexAt(event.pos())
-                if index.isValid():
-                    row = index.row()
-                    position = int((row + self._row) * self._global_interval)
-                    print(f"[DEBUG] _mouse_press_event: Shift+click, row={row}, position={position}")
-                    self._drag_flag = True
-                    self.position_jump_requested.emit(position)
-            else:
-                # 普通左键：只选择cell，不触发视频跳转
-                self._is_dragging = False
-                print(f"[DEBUG] _mouse_press_event: normal click")
-        # 调用原始的 mousePressEvent
-        QTableWidget.mousePressEvent(self._table, event)
-
-    def _mouse_move_event(self, event):
-        """鼠标移动事件 - Shift+左键拖动时更新视频位置"""
-        if self._is_dragging:
-            index = self._table.indexAt(event.pos())
-            if index.isValid():
-                row = index.row()
-                position = int((row + self._row) * self._global_interval)
-                print(f"[DEBUG] _mouse_move_event: row={row}, position={position}")
-                self._drag_flag = True
-                self.position_jump_requested.emit(position)
-        # 调用原始的 mouseMoveEvent
-        QTableWidget.mouseMoveEvent(self._table, event)
-
-    def _mouse_release_event(self, event):
-        """鼠标释放事件 - 结束拖动选择"""
-        if event.button() == Qt.LeftButton:
-            self._is_dragging = False
-            print(f"[DEBUG] _mouse_release_event: dragging ended")
-        # 调用原始的 mouseReleaseEvent
-        QTableWidget.mouseReleaseEvent(self._table, event)
-
-    def _on_scrollbar_changed(self, value):
-        """滚动条变化 - 以当前播放位置为中心偏移"""
-        # 计算相对于中心位置（500）的偏移
-        offset = value - 500
-        # 计算新的行号（以当前播放位置为中心）
-        center_row = int(self._player_position / self._global_interval)
-        new_row = center_row + offset
+    def _update_table(self):
+        """更新字幕列表"""
+        self._table.setRowCount(0)
         
-        if new_row != self._row:
-            print(f"[DEBUG] _on_scrollbar_changed: value={value}, offset={offset}, new_row={new_row}")
-            self._row = new_row
-            self._refresh_table()
-
-    def _wheel_event(self, event):
-        """滚轮事件 - 允许在当前位置附近滚动确认帧"""
-        # 拖动时禁用滚轮，避免可视框和逻辑框分家
-        if self._is_dragging:
-            print(f"[DEBUG] _wheel_event: blocked during dragging")
-            event.accept()
-            return
-
-        delta = event.angleDelta().y()
-        scroll_speed = 3
-
-        self._is_wheel_scrolling = True
-        print(f"[DEBUG] _wheel_event: delta={delta}, current_row={self._row}")
-
-        # 保存当前选择的逻辑行号
-        selected_rows = []
-        for index in self._table.selectionModel().selectedIndexes():
-            logical_row = index.row() + self._row
-            selected_rows.append((logical_row, index.column()))
-
-        # 计算允许的滚动范围（以当前播放位置为中心，上下各500行）
-        center_row = int(self._player_position / self._global_interval)
-        min_row = max(0, center_row - 500)
-        max_row = center_row + 500
-
-        if delta > 0:
-            # 向上滚动
-            new_row = max(min_row, self._row - scroll_speed)
-            if new_row != self._row:
-                print(f"[DEBUG] _wheel_event: scroll UP, new_row={new_row}")
-                self._row = new_row
-                self._refresh_table()
-                # 恢复选择
-                self._restore_selection(selected_rows)
-                # 更新滚动条位置
-                offset = self._row - center_row
-                self._scrollbar.blockSignals(True)
-                self._scrollbar.setValue(500 + offset)
-                self._scrollbar.blockSignals(False)
-        elif delta < 0:
-            # 向下滚动
-            new_row = min(max_row, self._row + scroll_speed)
-            if new_row != self._row:
-                print(f"[DEBUG] _wheel_event: scroll DOWN, new_row={new_row}")
-                self._row = new_row
-                self._refresh_table()
-                # 恢复选择
-                self._restore_selection(selected_rows)
-                # 更新滚动条位置
-                offset = self._row - center_row
-                self._scrollbar.blockSignals(True)
-                self._scrollbar.setValue(500 + offset)
-                self._scrollbar.blockSignals(False)
-
-        # 延迟重置标志
-        QTimer.singleShot(100, lambda: setattr(self, '_is_wheel_scrolling', False))
-        event.accept()
-
-    def _restore_selection(self, selected_rows):
-        """恢复之前的选择状态"""
-        if not selected_rows:
-            return
-        self._table.clearSelection()
-        logical_row, col = selected_rows[0]  # 只恢复第一个选中的cell
-        visual_row = logical_row - self._row
-        # 只有在可视区域内才恢复选择
-        if 0 <= visual_row < VISIBLE_ROWS:
-            self._table.setCurrentCell(visual_row, col)
-
-    def _refresh_table(self, position=None, select=0, scroll=0):
-        """实时刷新表格 - 完全照搬DD烤肉机的实现"""
-        self._is_refreshing = True  # 标记正在刷新，禁用鼠标跟随
-        self._table.blockSignals(True)
-        self._table.clearSpans()
-        self._table.clear()
-
-        # 设置当前行号（与DD烤肉机一致）
-        # 只有明确传入 position 时才更新 _row，否则保持当前 _row
-        if position is not None:
-            self._player_position = position
-            self._row = int(position / self._global_interval)
-
-        # 设置行头时间戳（与DD烤肉机一致）
-        self._table.setVerticalHeaderLabels(
-            [cnt2time(i, self._global_interval) for i in range(self._row, self._row + VISIBLE_ROWS)]
-        )
-        self._table.setHorizontalHeaderLabels(self._style_names)
-
-        # 计算可见时间范围
-        subtitle_view_up = int(self._row * self._global_interval)
-        subtitle_view_down = int((self._row + VISIBLE_ROWS) * self._global_interval)
-
-        # 填充字幕条（与DD烤肉机一致）
+        # 收集所有字幕
+        all_subtitles = []
         for col, sub_data in self._subtitle_mgr.data.items():
-            for start in sorted(sub_data):
-                delta, text = sub_data[start]
-                if delta < 500 or delta > 8000:
-                    table_color = SUBTITLE_COLORS["abnormal"]
-                elif delta > 4500:
-                    table_color = SUBTITLE_COLORS["long"]
-                else:
-                    table_color = SUBTITLE_COLORS["normal"]
-
-                if start >= subtitle_view_down or not delta:
-                    break
-                elif start + delta >= subtitle_view_up:
-                    # 计算字幕条位于表格视窗的位置
-                    start_row = int(start / self._global_interval)
-                    if start % self._global_interval:
-                        start_row += 1
-                    start_row = start_row - self._row
-
-                    end_row = int((start + delta) / self._global_interval)
-                    if (start + delta) % self._global_interval:
-                        end_row += 1
-                    end_row = end_row - self._row
-
-                    if start_row < 0:
-                        start_row = 0
-                    if end_row > VISIBLE_ROWS:
-                        end_row = VISIBLE_ROWS
-
-                    if end_row > start_row:
-                        for y in range(start_row, end_row):
-                            self._table.setItem(y, col, QTableWidgetItem(text))
-                        self._table.item(start_row, col).setBackground(table_color)
-                        # 只有多行时才设置 span，避免 single cell span 警告
-                        if end_row - start_row > 1:
-                            self._table.setSpan(start_row, col, end_row - start_row, 1)
-                        self._table.item(start_row, col).setTextAlignment(Qt.AlignTop)
-
-        self._table.blockSignals(False)
-        self._is_refreshing = False  # 刷新完成，启用鼠标跟随
+            for start, (delta, text) in sub_data.items():
+                all_subtitles.append((start, delta, text, col))
+        
+        # 按开始时间排序
+        all_subtitles.sort(key=lambda x: x[0])
+        
+        # 填充表格
+        for start, delta, text, col in all_subtitles:
+            row = self._table.rowCount()
+            self._table.insertRow(row)
+            
+            # 开始时间
+            start_item = QTableWidgetItem(ms_to_time_str(start))
+            start_item.setData(Qt.UserRole, (start, col))
+            self._table.setItem(row, 0, start_item)
+            
+            # 结束时间
+            end_item = QTableWidgetItem(ms_to_time_str(start + delta))
+            self._table.setItem(row, 1, end_item)
+            
+            # 持续时间
+            duration_item = QTableWidgetItem(f"{delta/1000:.2f}s")
+            self._table.setItem(row, 2, duration_item)
+            
+            # 文本
+            text_item = QTableWidgetItem(text)
+            self._table.setItem(row, 3, text_item)
+            
+            # 设置颜色
+            color = QColor(53, 84, 93)  # 正常
+            if delta < 100 or delta > 8000:
+                color = QColor(178, 34, 34)  # 异常
+            elif delta > 4500:
+                color = QColor(250, 128, 114)  # 过长
+            
+            for col_idx in range(4):
+                self._table.item(row, col_idx).setBackground(color)
 
     def _show_context_menu(self, pos):
-        """显示右键上下文菜单 - 完全照搬DD烤肉机的实现"""
+        """显示右键菜单"""
         menu = QMenu(self)
-        set_span = menu.addAction('合并')
-        cut_span = menu.addAction('切割')
-        clr_span = menu.addAction('拆分')
-        cut = menu.addAction('剪切')
-        _copy = menu.addAction('复制')
-        paste = menu.addAction('粘贴')
-        delete = menu.addAction('删除')
+        
+        # 获取选中的行
+        selected = self._table.selectedItems()
+        if selected:
+            row = selected[0].row()
+            start_item = self._table.item(row, 0)
+            if start_item:
+                start, col = start_item.data(Qt.UserRole)
+                
+                # 编辑字幕文本
+                edit_action = QAction("编辑字幕文本", self)
+                edit_action.triggered.connect(lambda: self._edit_subtitle_text(col, start))
+                menu.addAction(edit_action)
+                
+                # 删除字幕
+                delete_action = QAction("删除字幕", self)
+                delete_action.triggered.connect(lambda: self._delete_subtitle(col, start))
+                menu.addAction(delete_action)
+                
+                menu.addSeparator()
+        
+        # 创建新字幕
+        create_action = QAction("在当前位置创建字幕", self)
+        create_action.triggered.connect(self._create_subtitle_at_cursor)
+        menu.addAction(create_action)
+        
+        menu.addSeparator()
+        
+        # 撤销/重做
+        undo_action = QAction("撤销", self)
+        undo_action.triggered.connect(self._undo)
+        menu.addAction(undo_action)
+        
+        redo_action = QAction("重做", self)
+        redo_action.triggered.connect(self._redo)
+        menu.addAction(redo_action)
+        
+        menu.exec_(self._table.viewport().mapToGlobal(pos))
 
-        action = menu.exec_(self._table.viewport().mapToGlobal(pos))
+    def _on_double_click(self, index):
+        """双击跳转到字幕位置"""
+        row = index.row()
+        start_item = self._table.item(row, 0)
+        if start_item:
+            start, col = start_item.data(Qt.UserRole)
+            self.position_jump_requested.emit(start)
 
-        # 获取选区（与DD烤肉机一致）
-        selected = self._table.selectionModel().selection().indexes()
-        if not selected:
+    def _edit_subtitle_text(self, col, start):
+        """编辑字幕文本"""
+        if start not in self._subtitle_mgr.data[col]:
             return
-
-        x_list = []  # 选中列
-        for i in range(len(selected)):
-            x = selected[i].column()
-            if x not in x_list:
-                x_list.append(x)
-        y_list = [selected[0].row(), selected[-1].row()]
-
-        if action == cut:  # 剪切
-            select_range = [int((y + self._row) * self._global_interval) for y in range(y_list[0], y_list[1] + 1)]
-            self._clipboard = []
-            for x in x_list:
-                for start, sub_data in self._subtitle_mgr.data[x].items():
-                    end = sub_data[0] + start
-                    for position in select_range:
-                        if start < position and position < end:
-                            self._clipboard.append([start, sub_data])
-                            break
-                for i in self._clipboard:
-                    start = i[0]
-                    try:
-                        del self._subtitle_mgr.data[x][start]
-                    except:
-                        pass
-                for y in range(y_list[0], y_list[1] + 1):
-                    if self._table.item(y, x):
-                        self._table.setSpan(y, x, 1, 1)
-                        self._table.setItem(y, x, QTableWidgetItem(''))
-                        self._table.item(y, x).setBackground(QColor('#232629'))
-                break
+        
+        delta, text = self._subtitle_mgr.data[col][start]
+        new_text, ok = QInputDialog.getText(self, "编辑字幕", "字幕文本:", text=text)
+        
+        if ok and new_text != text:
+            self._subtitle_mgr.data[col][start] = [delta, new_text]
             self._update_backend()
+            self._update_table()
+            self.subtitle_changed.emit()
 
-        elif action == _copy:  # 复制
-            select_range = [int((y + self._row) * self._global_interval) for y in range(y_list[0], y_list[1] + 1)]
-            self._clipboard = []
-            for x in x_list:
-                for start, sub_data in self._subtitle_mgr.data[x].items():
-                    end = sub_data[0] + start
-                    for position in select_range:
-                        if start < position and position < end:
-                            self._clipboard.append([start, sub_data])
-                            break
-                break
-
-        elif action == paste:  # 粘贴
-            if self._clipboard:
-                clip_board = []
-                for i in self._clipboard:
-                    clip_board.append([i[0] - self._clipboard[0][0], i[1]])
-                start_offset = int((y_list[0] + self._row) * self._global_interval)
-                for x in x_list:
-                    for sub_data in clip_board:
-                        start, sub_data = sub_data
-                        delta, text = sub_data
-                        start += start_offset
-                        end = start + delta
-                        for sub_start in list(self._subtitle_mgr.data[x].keys()):
-                            sub_end = self._subtitle_mgr.data[x][sub_start][0] + sub_start
-                            if sub_start < end and end < sub_end or sub_start < start and start < sub_end:
-                                del self._subtitle_mgr.data[x][sub_start]
-                        self._subtitle_mgr.data[x][start] = [delta, text]
-                self._refresh_table()
-                self._update_backend()
-
-        elif action == delete:  # 删除选中
-            select_range = [int((y + self._row) * self._global_interval) for y in y_list]
-            for x in x_list:
-                start_list = sorted(self._subtitle_mgr.data[x].keys())
-                for start in start_list:
-                    end = self._subtitle_mgr.data[x][start][0] + start
-                    for position in range(select_range[0], select_range[-1] + 1):
-                        if start <= position and position < end:
-                            try:
-                                del self._subtitle_mgr.data[x][start]
-                            except:
-                                pass
-            for x in x_list:
-                for y in range(y_list[0], y_list[1] + 1):
-                    if self._table.item(y, x):
-                        self._table.setSpan(y, x, 1, 1)
-                        self._table.setItem(y, x, QTableWidgetItem(''))
-                        self._table.item(y, x).setBackground(QColor('#232629'))
+    def _delete_subtitle(self, col, start):
+        """删除字幕"""
+        if start not in self._subtitle_mgr.data[col]:
+            return
+        
+        reply = QMessageBox.question(
+            self, "删除字幕",
+            "确定要删除这条字幕吗？",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            del self._subtitle_mgr.data[col][start]
             self._update_backend()
+            self._update_table()
+            self.subtitle_changed.emit()
 
-        elif action == set_span:  # 合并（与DD烤肉机一致）
-            if y_list[0] < y_list[-1]:
-                for x in x_list:
-                    first_item = ''
-                    for y in range(y_list[0], y_list[1] + 1):
-                        if self._table.item(y, x):
-                            if self._table.item(y, x).text():
-                                first_item = self._table.item(y, x).text()
-                                break
-                    for y in range(y_list[0], y_list[1] + 1):
-                        if self._table.rowSpan(y, x) > 1:
-                            self._table.setSpan(y, x, 1, 1)
-                    self._table.setItem(y_list[0], x, QTableWidgetItem(first_item))
-                    self._table.item(y_list[0], x).setTextAlignment(Qt.AlignTop)
-                    self._table.setSpan(y_list[0], x, y_list[1] - y_list[0] + 1, 1)
-                    self._table.item(y_list[0], x).setBackground(SUBTITLE_COLORS["normal"])
-                    self._set_subtitle_dict(y_list[0], x, y_list[1] - y_list[0] + 1, first_item, concat=True)
-
-        elif action == cut_span:  # 切割（与DD烤肉机一致）
-            y = y_list[0]
-            cut_token = False
-            select_time = int((y + self._row) * self._global_interval)
-            copy_dict = copy.deepcopy(self._subtitle_mgr.data)
-            for x in copy_dict.keys():
-                for start, sub_data in copy_dict[x].items():
-                    delta, text = sub_data
-                    if select_time >= start and select_time <= start + delta:
-                        cut_token = True
-                        self._subtitle_mgr.data[x][start] = [select_time - start, text]
-                        self._subtitle_mgr.data[x][select_time] = [start + delta - select_time, text]
-            if cut_token:
-                self._refresh_table()
-                self._update_backend()
-
-        elif action == clr_span:  # 拆分（与DD烤肉机一致）
-            clear_token = False
-            for x in x_list:
-                start_list = sorted(self._subtitle_mgr.data[x].keys())
-                for cnt, start in enumerate(start_list):
-                    delta, text = self._subtitle_mgr.data[x][start]
-                    select_list = [int((y + self._row) * self._global_interval) for y in range(y_list[0], y_list[1] + 1)]
-                    for select in select_list:
-                        if select >= start and select < start + delta:
-                            clear_token = True
-                            for i in range(int(delta / self._global_interval)):
-                                self._subtitle_mgr.data[x][start] = [int(self._global_interval), text]
-                                start += int(self._global_interval)
-            if clear_token:
-                self._refresh_table()
-                self._update_backend()
-
-    def _set_subtitle_dict(self, row, col, repeat, text, concat=False, delete=False):
-        """更新字典 - 完全照搬DD烤肉机的实现"""
-        new_s_row = row + self._row
-        new_e_row = new_s_row + repeat
-        new_s = int(new_s_row * self._global_interval)
-        new_e = int(new_e_row * self._global_interval)
-        start_end = [99999999, 0]
-        old_start_end = [99999999, 0]
-        key_list = copy.deepcopy(list(self._subtitle_mgr.data[col].keys()))
-
-        for old_s in key_list:
-            old_e = self._subtitle_mgr.data[col][old_s][0] + old_s
-            if (new_s <= old_s and new_e > old_s + int(self._global_interval)) or \
-                    (new_s < old_e - int(self._global_interval) and new_e >= old_e):
-                del self._subtitle_mgr.data[col][old_s]
-                if old_s < old_start_end[0]:
-                    old_start_end[0] = old_s
-                if old_e > old_start_end[1]:
-                    old_start_end[1] = old_e
-            if concat:
-                if new_s > old_s and new_s < old_e - int(self._global_interval):
-                    new_s = old_s
-                    if old_s < start_end[0]:
-                        start_end[0] = old_s
-                if new_e > old_s + int(self._global_interval) and new_e < old_e:
-                    new_e = old_e
-                    if old_e > start_end[1]:
-                        start_end[1] = old_e
-
-        if concat:
-            if start_end[0] != 99999999 and start_end[1]:
-                self._subtitle_mgr.data[col][start_end[0]] = [start_end[1] - start_end[0], text]
-            else:
-                start = new_s
-                end = new_e
-                sub_start_list = sorted(self._subtitle_mgr.data[col].keys())
-                for sub_start in sub_start_list:
-                    sub_end = self._subtitle_mgr.data[col][sub_start][0] + sub_start
-                    if start < sub_end and end > sub_end:
-                        start = sub_end
-                    if end > sub_start and end < sub_end:
-                        end = sub_start
-                self._subtitle_mgr.data[col][int(start)] = [int(end - start), text]
-        elif old_start_end[0] != 99999999 and old_start_end[1]:
-            start, end = old_start_end
-            sub_start_list = sorted(self._subtitle_mgr.data[col].keys())
-            for sub_start in sub_start_list:
-                sub_end = self._subtitle_mgr.data[col][sub_start][0] + sub_start
-                if start < sub_end and end > sub_end:
-                    start = sub_end
-                if end > sub_start and end < sub_end:
-                    end = sub_start
-            self._subtitle_mgr.data[col][start] = [end - start, text]
-        else:
-            start = new_s
-            end = new_e
-            self._subtitle_mgr.data[col][round(start)] = [round(end - start), text]
-
-        if delete:
-            try:
-                del self._subtitle_mgr.data[col][new_s]
-            except:
-                pass
-
+    def _create_subtitle_at_cursor(self):
+        """在当前位置创建字幕"""
+        start_time = int(self._player_position / self._global_interval) * int(self._global_interval)
+        duration = int(self._global_interval * 10)
+        col = 0  # 默认在第一列创建
+        
+        # 检查是否重叠
+        for existing_start, (existing_delta, _) in self._subtitle_mgr.data[col].items():
+            existing_end = existing_start + existing_delta
+            if start_time < existing_end and start_time + duration > existing_start:
+                QMessageBox.warning(self, "重叠检测", "该位置已有字幕，无法创建")
+                return
+        
+        self._subtitle_mgr.data[col][start_time] = [duration, ""]
         self._update_backend()
+        self._update_table()
+        self.subtitle_changed.emit()
 
     def _update_backend(self):
-        """保存修改记录 - 完全照搬DD烤肉机的实现"""
-        selected = self._table.selectionModel().selection().indexes()
-        if selected:
-            y = selected[0].row()
-        else:
-            y = 0
-        scroll_value = self._scrollbar.value()
+        """保存修改记录"""
         self._subtitle_backend = self._subtitle_backend[:self._subtitle_backend_point + 1]
-        self._subtitle_backend.append([
-            copy.deepcopy(self._subtitle_mgr.data),
-            self._player_position,
-            y,
-            scroll_value
-        ])
+        self._subtitle_backend.append(copy.deepcopy(self._subtitle_mgr.data))
         self._subtitle_backend_point = len(self._subtitle_backend) - 1
         if len(self._subtitle_backend) > 100:
             self._subtitle_backend.pop(0)
-        self.subtitle_changed.emit()
+
+    def _undo(self):
+        """撤销"""
+        if self._subtitle_backend_point > 0:
+            self._subtitle_backend_point -= 1
+            self._subtitle_mgr.data = copy.deepcopy(self._subtitle_backend[self._subtitle_backend_point])
+            self._update_table()
+            self.subtitle_changed.emit()
+
+    def _redo(self):
+        """重做"""
+        if self._subtitle_backend_point < len(self._subtitle_backend) - 1:
+            self._subtitle_backend_point += 1
+            self._subtitle_mgr.data = copy.deepcopy(self._subtitle_backend[self._subtitle_backend_point])
+            self._update_table()
+            self.subtitle_changed.emit()
+
+    def _split_at_cursor(self):
+        """在光标位置切割字幕"""
+        # 找到当前位置所在的字幕
+        for col, sub_data in self._subtitle_mgr.data.items():
+            for start, (delta, text) in list(sub_data.items()):
+                end = start + delta
+                if start <= self._player_position < end:
+                    # 在当前位置切割
+                    split_time = int(self._player_position / self._global_interval) * int(self._global_interval)
+                    if split_time > start and split_time < end:
+                        # 创建两个字幕
+                        self._subtitle_mgr.data[col][start] = [split_time - start, text]
+                        self._subtitle_mgr.data[col][split_time] = [end - split_time, text]
+                        self._update_backend()
+                        self._update_table()
+                        self.subtitle_changed.emit()
+                        return
 
     # ========== 公有方法 ==========
 
     def set_player_position(self, ms: int):
-        """设置播放器位置 - 以当前播放位置为中心显示前50行后50行"""
-        print(f"[DEBUG] set_player_position: ms={ms}, follow_player={self._follow_player}, old_row={self._row}")
+        """设置播放器位置"""
         self._player_position = ms
-        
-        # 如果是单元格点击触发的，不更新视图位置
-        if self._cell_clicked_flag:
-            self._cell_clicked_flag = False
-            print(f"[DEBUG] set_player_position: cell clicked, skip view update")
-            return
-        
-        # 如果是拖动触发的，只更新播放位置，不更新视图
-        if self._drag_flag:
-            self._drag_flag = False
-            print(f"[DEBUG] set_player_position: drag, skip view update")
-            return
-        
-        # 以当前播放位置为中心，显示前50行后50行
-        current_row = int(ms / self._global_interval)
-        self._row = max(0, current_row - 50)
-        print(f"[DEBUG] set_player_position: new_row={self._row}, center_row={current_row}")
-        # 刷新表格
-        self._refresh_table()
-        # 重置滚动条到中心位置
-        self._scrollbar.blockSignals(True)
-        self._scrollbar.setValue(500)
-        self._scrollbar.blockSignals(False)
 
     def set_interval(self, interval_ms: float):
         """设置间隔"""
         self._global_interval = interval_ms
-        # 重新计算总行数
-        if self._duration_ms > 0:
-            self._total_logical_rows = int(self._duration_ms / self._global_interval) + 1
-        # 根据当前播放位置重新计算 _row
-        if self._player_position > 0:
-            current_row = int(self._player_position / self._global_interval)
-            self._row = max(0, current_row - 50)  # 以当前播放位置为中心
-        self._refresh_table()
-        # 重置滚动条到中心位置
-        self._scrollbar.blockSignals(True)
-        self._scrollbar.setValue(500)
-        self._scrollbar.blockSignals(False)
 
     def get_interval(self) -> float:
         """获取当前间隔"""
@@ -690,8 +314,6 @@ class TimelineCard(QDockWidget):
     def set_duration(self, duration_ms: int):
         """设置视频时长"""
         self._duration_ms = duration_ms
-        self._total_logical_rows = int(duration_ms / self._global_interval) + 1
-        self._refresh_table()
 
     def get_subtitle_data(self) -> dict:
         """获取字幕数据"""
@@ -703,208 +325,49 @@ class TimelineCard(QDockWidget):
 
     def set_follow_player(self, follow: bool):
         """设置是否跟随播放位置"""
-        self._follow_player = follow
+        pass  # 简化版不需要这个功能
 
     def is_following_player(self) -> bool:
         """是否跟随播放位置"""
-        return self._follow_player
+        return False
 
     def jump_to_position(self, ms: int):
         """跳转到指定时间位置"""
-        self._row = int(ms / self._global_interval)
-        max_row = max(0, self._total_logical_rows - VISIBLE_ROWS)
-        self._row = min(self._row, max_row)
-        self._row = max(0, self._row)
-        self._refresh_table()
+        self._player_position = ms
+
+    def jump_to_position_at_top(self, ms: int):
+        """跳转到指定时间位置"""
+        self._player_position = ms
 
     # ========== 快捷键操作 ==========
 
     def keyPressEvent(self, event):
-        """处理快捷键 - 完全照搬DD烤肉机的实现"""
+        """处理快捷键"""
         key = event.key()
         modifiers = event.modifiers()
 
-        if key == Qt.Key_Left:
-            # ←键倒退1行
-            position = self._player_position - self._global_interval
-            if position < 0:
-                position = 0
-            self.position_jump_requested.emit(int(position))
-        elif key == Qt.Key_Right:
-            # →键前进1行
-            position = self._player_position + self._global_interval
-            if position > self._total_logical_rows * self._global_interval:
-                position = self._total_logical_rows * self._global_interval
-            self.position_jump_requested.emit(int(position))
-        elif key == Qt.Key_Space:
-            event.ignore()
+        if modifiers == Qt.ControlModifier and key == Qt.Key_Z:
+            self._undo()
+            event.accept()
             return
-        elif key == Qt.Key_Delete:
-            # 删除选中字幕
-            selected = self._table.selectionModel().selection().indexes()
-            if selected:
-                x_list = []
-                for i in range(len(selected)):
-                    x = selected[i].column()
-                    if x not in x_list:
-                        x_list.append(x)
-                y_list = [selected[0].row(), selected[-1].row()]
-                select_range = [int((y + self._row) * self._global_interval) for y in y_list]
-                for x in x_list:
-                    start_list = sorted(self._subtitle_mgr.data[x].keys())
-                    for start in start_list:
-                        end = self._subtitle_mgr.data[x][start][0] + start
-                        for position in range(select_range[0], select_range[-1] + 1):
-                            if start <= position and position < end:
-                                try:
-                                    del self._subtitle_mgr.data[x][start]
-                                except:
-                                    pass
-                for x in x_list:
-                    for y in range(y_list[0], y_list[1] + 1):
-                        if self._table.item(y, x):
-                            self._table.setSpan(y, x, 1, 1)
-                            self._table.setItem(y, x, QTableWidgetItem(''))
-                            self._table.item(y, x).setBackground(QColor('#232629'))
-                self._update_backend()
-        elif modifiers == Qt.ControlModifier and key == Qt.Key_Z:
-            # 撤回
-            if self._subtitle_backend_point > 0:
-                self._subtitle_backend_point -= 1
-                backup_data = copy.deepcopy(self._subtitle_backend[self._subtitle_backend_point])
-                self._subtitle_mgr.data, self._player_position, y, scroll_value = backup_data
-                self._refresh_table(int(self._player_position), y, scroll_value)
         elif modifiers == Qt.ControlModifier and key == Qt.Key_Y:
-            # 取消撤回
-            if self._subtitle_backend_point < len(self._subtitle_backend) - 1:
-                self._subtitle_backend_point += 1
-                backup_data = copy.deepcopy(self._subtitle_backend[self._subtitle_backend_point])
-                self._subtitle_mgr.data, self._player_position, y, scroll_value = backup_data
-                self._refresh_table(int(self._player_position), y, scroll_value)
-        elif key in [Qt.Key_Q, Qt.Key_W, Qt.Key_E, Qt.Key_R, Qt.Key_1, Qt.Key_2, Qt.Key_3, Qt.Key_4]:
-            # 调整轴端点
-            try:
-                selected = self._table.selectionModel().selection().indexes()
-                if selected:
-                    x = selected[0].column()
-                    if len(selected) == 1:
-                        y = selected[0].row()
-                        y_list = [y, y + self._table.rowSpan(y, x) - 1]
-                    else:
-                        y_list = [selected[0].row(), selected[-1].row()]
-                    select = (y_list[0] + self._row) * self._global_interval
-                    start_list = sorted(self._subtitle_mgr.data[x].keys())
-                    for cnt, start in enumerate(start_list):
-                        delta, text = self._subtitle_mgr.data[x][start]
-                        if select >= start and select < start + delta:
-                            if key in [Qt.Key_Q, Qt.Key_1]:
-                                # 左端左移
-                                if start >= self._global_interval:
-                                    self._subtitle_mgr.data[x][start] = [int(delta + self._global_interval), text]
-                                    del self._subtitle_mgr.data[x][start]
-                                    start -= int(self._global_interval)
-                                    self._subtitle_mgr.data[x][start] = [int(delta + self._global_interval), text]
-                            elif key in [Qt.Key_W, Qt.Key_2]:
-                                # 左端右移
-                                if delta > self._global_interval:
-                                    del self._subtitle_mgr.data[x][start]
-                                    start += int(self._global_interval)
-                                    self._subtitle_mgr.data[x][start] = [int(delta - self._global_interval), text]
-                            elif key in [Qt.Key_E, Qt.Key_3]:
-                                # 右端左移
-                                if delta > self._global_interval:
-                                    self._subtitle_mgr.data[x][start] = [delta - int(self._global_interval), text]
-                            elif key in [Qt.Key_R, Qt.Key_4]:
-                                # 右端右移
-                                self._subtitle_mgr.data[x][start] = [int(delta + self._global_interval), text]
-                            self._update_backend()
-                            self._refresh_table()
-                            break
-            except Exception as e:
-                print(str(e))
-        elif key == Qt.Key_5:
-            # 切割
-            selected = self._table.selectionModel().selection().indexes()
-            if selected:
-                y = selected[0].row()
-                cut_token = False
-                select_time = int((y + self._row) * self._global_interval)
-                copy_dict = copy.deepcopy(self._subtitle_mgr.data)
-                for x in copy_dict.keys():
-                    for start, sub_data in copy_dict[x].items():
-                        delta, text = sub_data
-                        if select_time >= start and select_time <= start + delta:
-                            cut_token = True
-                            self._subtitle_mgr.data[x][start] = [select_time - start, text]
-                            self._subtitle_mgr.data[x][select_time] = [start + delta - select_time, text]
-                if cut_token:
-                    self._refresh_table(int(self._row * self._global_interval), y, self._scrollbar.value())
-                    self._update_backend()
-
+            self._redo()
+            event.accept()
+            return
+        
         super().keyPressEvent(event)
 
-    # ========== 字幕条操作 ==========
+    # ========== 工具栏集成方法 ==========
 
     def create_subtitle_at_cursor(self):
         """在光标位置创建新字幕条"""
-        selected = self._table.selectionModel().selection().indexes()
-        if not selected:
-            return
-        row = selected[0].row()
-        col = selected[0].column()
-        start_time = int((row + self._row) * self._global_interval)
-        duration = int(self._global_interval * 10)
-        self._subtitle_mgr.data[col][start_time] = [duration, ""]
-        self._refresh_table()
-        self._update_backend()
+        self._create_subtitle_at_cursor()
 
     def set_subtitle_text(self, col: int, start: int, text: str):
         """设置字幕文本"""
         if start in self._subtitle_mgr.data[col]:
-            self._subtitle_mgr.data[col][start][1] = text
-            self._refresh_table()
+            delta = self._subtitle_mgr.data[col][start][0]
+            self._subtitle_mgr.data[col][start] = [delta, text]
             self._update_backend()
-
-    def _split_at_cursor(self):
-        """在光标位置切割字幕条"""
-        selected = self._table.selectionModel().selection().indexes()
-        if not selected:
-            return
-        y = selected[0].row()
-        cut_token = False
-        select_time = int((y + self._row) * self._global_interval)
-        copy_dict = copy.deepcopy(self._subtitle_mgr.data)
-        for x in copy_dict.keys():
-            for start, sub_data in copy_dict[x].items():
-                delta, text = sub_data
-                if select_time >= start and select_time <= start + delta:
-                    cut_token = True
-                    self._subtitle_mgr.data[x][start] = [select_time - start, text]
-                    self._subtitle_mgr.data[x][select_time] = [start + delta - select_time, text]
-        if cut_token:
-            self._refresh_table(int(self._row * self._global_interval), y, self._scrollbar.value())
-            self._update_backend()
-
-    def _undo(self):
-        """撤销"""
-        if self._subtitle_backend_point > 0:
-            self._subtitle_backend_point -= 1
-            backup_data = copy.deepcopy(self._subtitle_backend[self._subtitle_backend_point])
-            self._subtitle_mgr.data, self._player_position, y, scroll_value = backup_data
-            self._refresh_table(int(self._player_position), y, scroll_value)
-
-    def _redo(self):
-        """重做"""
-        if self._subtitle_backend_point < len(self._subtitle_backend) - 1:
-            self._subtitle_backend_point += 1
-            backup_data = copy.deepcopy(self._subtitle_backend[self._subtitle_backend_point])
-            self._subtitle_mgr.data, self._player_position, y, scroll_value = backup_data
-            self._refresh_table(int(self._player_position), y, scroll_value)
-
-    def jump_to_position_at_top(self, ms: int):
-        """跳转到指定时间位置，显示在可视行顶部"""
-        self._row = int(ms / self._global_interval)
-        max_row = max(0, self._total_logical_rows - VISIBLE_ROWS)
-        self._row = min(self._row, max_row)
-        self._row = max(0, self._row)
-        self._refresh_table()
+            self._update_table()
+            self.subtitle_changed.emit()
