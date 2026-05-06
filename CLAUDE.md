@@ -8,12 +8,12 @@
 
 Chestnut Studio 是一款面向字幕组/烤肉组的现代化字幕工具，基于 PySide6 开发。
 
-**当前进度**: Phase 3 进行中（打轴编辑）
+**当前进度**: Phase 3 进行中（打轴功能）
 
 **核心特性**: 
-- 时间轴卡片负责打轴（设置字幕的开始/结束时间）
-- 翻译面板分为源语言区和目标语言区
-- 源语言和目标语言共享相同的时间点
+- 音频波形区：用户通过快捷键打轴（标记开始/结束点）
+- 时间轴列表：显示已打轴的字幕条（编号 + 起止时间）
+- 翻译面板：填写源语言和目标语言内容
 
 ---
 
@@ -60,6 +60,8 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 | `]` | 设置 AB 循环 B 点 | `main_window.py` |
 | `\` | 清除 AB 循环 | `main_window.py` |
 | `Ctrl+O` | 打开视频 | `menubar.py` |
+| `I` | 标记字幕开始点 | `waveform_card.py` |
+| `O` | 标记字幕结束点 | `waveform_card.py` |
 
 ---
 
@@ -78,14 +80,17 @@ ToolBar                          MainWindow                         PlayerCard
                               │
                               ├──→ WaveformCard.update_position
                               ├──→ WaveformCard.set_ab_loop_region
+                              ├──→ TimelineCard.set_player_position
                               └──→ StatusBar.set_time
 
 WaveformCard
   │ position_clicked ──────────→ PlayerCard.set_position
+  │ subtitle_created ──────────→ TimelineCard.add_subtitle
 
 TimelineCard
   │ subtitle_selected ─────────→ TranslateCard.show_subtitle
   │ subtitle_changed ──────────→ WaveformCard.refresh_overlay
+  │ jump_to_position ──────────→ PlayerCard.set_position
 ```
 
 ---

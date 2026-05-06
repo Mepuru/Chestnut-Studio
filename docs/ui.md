@@ -49,16 +49,19 @@ ToolBar                          MainWindow                         PlayerCard
                               ├──→ WaveformCard.update_position
                               ├──→ WaveformCard.set_duration
                               ├──→ WaveformCard.set_ab_loop_region
+                              ├──→ TimelineCard.set_player_position
                               ├──→ StatusBar.set_time (位置变化)
                               ├──→ StatusBar.set_status (时长变化)
                               └──→ StatusBar.set_video_info (FFmpeg 解析)
 
 WaveformCard
   │ position_clicked ──────────→ PlayerCard.set_position
+  │ subtitle_created ──────────→ TimelineCard.add_subtitle
 
 TimelineCard
   │ subtitle_selected ─────────→ TranslateCard.show_subtitle
   │ subtitle_changed ──────────→ WaveformCard.refresh_overlay
+  │ jump_to_position ──────────→ PlayerCard.set_position
 ```
 
 ### 全局快捷键
@@ -277,13 +280,20 @@ frame = int(ms * fps / 1000)
 
 ## 六、音频波形卡片 (`cards/waveform_card.py`)
 
-`WaveformCard(QDockWidget)` — 音频波形显示，支持交互操作。
+`WaveformCard(QDockWidget)` — 音频波形显示，支持打轴操作。
 
 ### 信号
 
 | 信号 | 参数 | 说明 |
 |------|------|------|
 | `position_clicked(ms)` | `int` | 点击波形位置 (ms) |
+| `subtitle_created(start_ms, end_ms)` | `int, int` | 打轴完成，创建新字幕 |
+
+### 打轴功能
+
+- `I` 键 或 点击 [标记开始] → 标记字幕开始点
+- `O` 键 或 点击 [标记结束] → 标记字幕结束点
+- 标记完成后，字幕条自动添加到时间轴列表
 
 ### 布局
 
@@ -301,6 +311,8 @@ frame = int(ms * fps / 1000)
 │     ░░░░░░░     ░░░░░░░░░                   │
 │                                             │
 │   0:00  0:05  0:10  0:15  0:20  0:25  0:30  │  ← 时间刻度
+├─────────────────────────────────────────────┤
+│  [主音轨] [人声] [BGM]     打轴: [开始] [结束] │  ← 切换按钮 + 打轴按钮
 └─────────────────────────────────────────────┘
 ```
 
@@ -314,6 +326,8 @@ frame = int(ms * fps / 1000)
 | `set_subtitle_regions(regions)` | `dict[int, int]` | 设置字幕条覆盖区域 |
 | `clear_subtitle_regions()` | 无 | 清除字幕条覆盖 |
 | `set_ab_loop_region(a, b)` | `int, int` | 设置 AB 循环区域显示 |
+| `mark_subtitle_start()` | 无 | 标记字幕开始点 |
+| `mark_subtitle_end()` | 无 | 标记字幕结束点 |
 
 ### 交互操作
 
@@ -322,6 +336,8 @@ frame = int(ms * fps / 1000)
 | `左键点击` | 跳转到点击位置 |
 | `Shift + 左键拖动` | 平移视窗 |
 | `滚轮` | 缩放视窗（以鼠标位置为中心） |
+| `I` 键 | 标记字幕开始点 |
+| `O` 键 | 标记字幕结束点 |
 
 ### 缩放范围
 
@@ -367,9 +383,9 @@ frame = int(ms * fps / 1000)
 
 ---
 
-## 七、字幕列表卡片 (`cards/timeline_card.py`)
+## 七、时间轴列表卡片 (`cards/timeline_card.py`)
 
-`TimelineCard(QDockWidget)` — 打轴编辑卡片。
+`TimelineCard(QDockWidget)` — 显示已打轴的字幕列表。
 
 ### 信号
 
@@ -377,25 +393,26 @@ frame = int(ms * fps / 1000)
 |------|------|------|
 | `subtitle_selected(start_ms)` | `int` | 字幕被选中 |
 | `subtitle_changed()` | 无 | 字幕数据变化 |
+| `jump_to_position(ms)` | `int` | 跳转到指定位置 |
 
 ### 设计理念
 
-- 时间轴卡片只负责**打轴**（设置字幕的开始/结束时间）
-- 不负责填写内容，内容在翻译面板中填写
-- 源语言和目标语言共享相同的时间点
+- 时间轴卡片**不负责打轴**，只负责**显示和管理**已打轴的字幕条
+- 打轴在音频波形区通过快捷键完成
+- 时间轴区显示打好轴的列表，提供查看、编辑、锁定功能
 
 ### 布局
 
 ```
 ┌─────────────────────────────────────────────┐
-│ 间隔 [33ms▾]                                │  ← 间隔设置
-├─────────────────────────────────────────────┤
-│ 00:15.2 │ ████████████████████████████████  │  ← 字幕条目
-│ 00:18.4 │ ██████████████████████████████    │
-│ 00:22.0 │ ██████████████████████████████████│
+│  #  │ 开始时间 │ 结束时间 │ 时长 │ 操作      │
+│─────┼──────────┼──────────┼──────┼───────────│
+│  1  │ 00:15.2  │ 00:18.4  │ 3.2s │ 👁 ✏️ 🔒 │
+│  2  │ 00:22.0  │ 00:23.8  │ 1.8s │ 👁 ✏️ 🔒 │
+│  3  │ 00:25.6  │ 00:29.2  │ 3.6s │ 👁 ✏️ 🔒 │
 │ ...                                         │
 ├─────────────────────────────────────────────┤
-│ [合并] [切割] [拆分] [导入]  [撤销] [重做]   │  ← 操作按钮栏
+│  共 3 条  │  [撤销] [重做]  │  [全部锁定]     │
 └─────────────────────────────────────────────┘
 ```
 
@@ -403,20 +420,19 @@ frame = int(ms * fps / 1000)
 
 | 方法 | 参数 | 说明 |
 |------|------|------|
-| `set_player_position(ms)` | `int` | 设置播放器位置 |
-| `set_interval(ms)` | `float` | 设置间隔 |
-| `set_duration(ms)` | `int` | 设置视频时长 |
-| `get_subtitle_data()` | 无 | 获取字幕数据 |
-| `get_subtitle_manager()` | 无 | 获取字幕管理器实例 |
-| `jump_to_position_at_top(ms)` | `int` | 跳转到指定时间位置 |
-| `create_subtitle_at_cursor()` | 无 | 在光标位置创建字幕 |
+| `add_subtitle(start_ms, end_ms)` | `int, int` | 添加新字幕条 |
+| `remove_subtitle(subtitle_id)` | `int` | 删除字幕条 |
+| `get_subtitles()` | 无 | 获取所有字幕列表 |
+| `jump_to_subtitle(subtitle_id)` | `int` | 跳转到指定字幕起始点 |
 
 ### 交互操作
 
 | 操作 | 功能 |
 |------|------|
-| `右键点击` | 显示编辑菜单（合并/切割/拆分/删除/撤销/重做） |
-| `双击` | 跳转到字幕位置 |
+| `点击 👁` | 跳转到字幕起始点 |
+| `点击 ✏️` | 弹出编辑对话框调整区间 |
+| `点击 🔒` | 切换锁定状态 |
+| `双击行` | 跳转到起始点 |
 | `Ctrl+Z` | 撤销 |
 | `Ctrl+Y` | 重做 |
 
@@ -427,3 +443,4 @@ frame = int(ms * fps / 1000)
 | 绿色 `#35545d` | 正常持续时间 |
 | 粉色 `#FA8072` | 持续时间 > 4.5s |
 | 红色 `#B22222` | 持续时间异常（< 100ms 或 > 8s） |
+| 灰色 `#52525b` | 已锁定 |
