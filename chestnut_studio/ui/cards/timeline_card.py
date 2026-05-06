@@ -76,6 +76,7 @@ class TimelineCard(QDockWidget):
         self._is_refreshing = False  # 标记是否正在刷新，用于禁用鼠标跟随
         self._is_wheel_scrolling = False  # 标记是否正在滚轮滚动，用于禁用鼠标跟随
         self._cell_clicked_flag = False  # 标记是否是单元格点击触发的位置更新
+        self._duration_ms = 0  # 视频时长（毫秒）
 
         # 撤销/重做后端
         self._subtitle_backend = []
@@ -567,6 +568,9 @@ class TimelineCard(QDockWidget):
     def set_interval(self, interval_ms: float):
         """设置间隔"""
         self._global_interval = interval_ms
+        # 重新计算总行数
+        if self._duration_ms > 0:
+            self._total_logical_rows = int(self._duration_ms / self._global_interval) + 1
         self._refresh_table()
 
     def get_interval(self) -> float:
@@ -575,6 +579,7 @@ class TimelineCard(QDockWidget):
 
     def set_duration(self, duration_ms: int):
         """设置视频时长"""
+        self._duration_ms = duration_ms
         self._total_logical_rows = int(duration_ms / self._global_interval) + 1
         self._refresh_table()
 
