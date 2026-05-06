@@ -227,7 +227,7 @@ class TimelineCard(QDockWidget):
         self._row = value
         self._refresh_table()
 
-    def _refresh_table(self, position=0, select=0, scroll=0):
+    def _refresh_table(self, position=None, select=0, scroll=0):
         """实时刷新表格 - 完全照搬DD烤肉机的实现"""
         self._is_refreshing = True  # 标记正在刷新，禁用鼠标跟随
         self._table.blockSignals(True)
@@ -235,10 +235,10 @@ class TimelineCard(QDockWidget):
         self._table.clear()
 
         # 设置当前行号（与DD烤肉机一致）
-        if not position:
-            position = self._player_position
-        self._player_position = position
-        self._row = int(position / self._global_interval)
+        # 只有明确传入 position 时才更新 _row，否则保持当前 _row
+        if position is not None:
+            self._player_position = position
+            self._row = int(position / self._global_interval)
 
         # 设置行头时间戳（与DD烤肉机一致）
         self._table.setVerticalHeaderLabels(
@@ -542,9 +542,7 @@ class TimelineCard(QDockWidget):
         self._player_position = ms
         if self._follow_player:
             self._row = int(ms / self._global_interval)
-            max_row = max(0, self._total_logical_rows - VISIBLE_ROWS)
-            self._row = min(self._row, max_row)
-            self._row = max(0, self._row)
+        # 刷新表格但不改变 _row（如果跟随播放器，_row 已经更新）
         self._refresh_table()
 
     def set_interval(self, interval_ms: float):
