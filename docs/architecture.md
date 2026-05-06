@@ -40,9 +40,9 @@
 | `menubar.py` | 菜单栏，文件/视图/帮助菜单 |
 | `statusbar.py` | 状态栏，三段式显示（状态/视频参数/当前时间/总时间） |
 | `cards/player_card.py` | 视频播放卡片，QMediaPlayer + 拖放打开 + 字幕叠加 + AB 循环 |
-| `cards/timeline_card.py` | 字幕列表卡片，显示和编辑字幕 |
-| `cards/waveform_card.py` | 音频波形卡片，波形显示 + 包络线 + AB 循环区域 + 滚轮缩放 + Shift 拖动 |
-| `cards/translate_card.py` | 翻译面板卡片（Phase 4 实现） |
+| `cards/timeline_card.py` | 时间轴列表卡片，显示已打轴的字幕条（编号 + 起止时间 + 查看/编辑/锁定） |
+| `cards/waveform_card.py` | 音频波形卡片，波形显示 + 包络线 + AB 循环区域 + 滚轮缩放 + Shift 拖动 + 打轴功能 |
+| `cards/translate_card.py` | 翻译面板卡片，填写源语言和目标语言内容（Phase 4 实现） |
 
 ### 2.2 核心层 (`chestnut_studio/core/`)
 
@@ -122,10 +122,20 @@ ToolBar                          MainWindow                         PlayerCard
                               │
                               ├──→ WaveformCard.update_position
                               ├──→ WaveformCard.set_ab_loop_region
+                              ├──→ TimelineCard.set_player_position
                               └──→ StatusBar.set_time
 
 WaveformCard
   │ position_clicked ──────────→ PlayerCard.set_position
+  │ subtitle_created ──────────→ TimelineCard.add_subtitle
+
+TimelineCard
+  │ subtitle_selected ─────────→ TranslateCard.show_subtitle
+  │ subtitle_changed ──────────→ WaveformCard.refresh_overlay
+  │ jump_to_position ──────────→ PlayerCard.set_position
+
+TranslateCard
+  │ translation_saved ─────────→ TimelineCard.update_translation
 ```
 
 ### 4.3 AB 循环流程

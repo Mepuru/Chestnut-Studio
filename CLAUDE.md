@@ -44,7 +44,9 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 |------|------|
 | `chestnut_studio/ui/main_window.py` | 主窗口，信号连接中心 |
 | `chestnut_studio/ui/cards/player_card.py` | 视频播放 + AB 循环 |
-| `chestnut_studio/ui/cards/waveform_card.py` | 音频波形显示 |
+| `chestnut_studio/ui/cards/waveform_card.py` | 音频波形显示 + 打轴功能 |
+| `chestnut_studio/ui/cards/timeline_card.py` | 时间轴列表，显示已打轴的字幕 |
+| `chestnut_studio/ui/cards/translate_card.py` | 翻译面板，填写源语言和目标语言 |
 | `chestnut_studio/ui/toolbar.py` | 工具栏按钮 |
 | `chestnut_studio/core/audio.py` | 音频处理函数 |
 | `chestnut_studio/core/ffmpeg.py` | FFmpeg 封装 |
@@ -91,6 +93,9 @@ TimelineCard
   │ subtitle_selected ─────────→ TranslateCard.show_subtitle
   │ subtitle_changed ──────────→ WaveformCard.refresh_overlay
   │ jump_to_position ──────────→ PlayerCard.set_position
+
+TranslateCard
+  │ translation_saved ─────────→ TimelineCard.update_translation
 ```
 
 ---
