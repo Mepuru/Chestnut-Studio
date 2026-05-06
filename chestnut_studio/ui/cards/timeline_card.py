@@ -191,7 +191,8 @@ class TimelineCard(QDockWidget):
         # 计算点击的单元格对应的时间位置
         position = int((row + self._row) * self._global_interval)
         print(f"[DEBUG] _cell_clicked: row={row}, col={col}, position={position}, _row={self._row}")
-        # 不设置 _cell_clicked_flag，让 set_player_position 更新视图
+        # 标记是单元格点击，不更新视图位置
+        self._cell_clicked_flag = True
         self.position_jump_requested.emit(position)
 
     def _header_click(self, row):
@@ -305,22 +306,6 @@ class TimelineCard(QDockWidget):
         # 延迟重置标志
         QTimer.singleShot(100, lambda: setattr(self, '_is_wheel_scrolling', False))
         event.accept()
-
-    def _highlight_current_position(self, visual_row):
-        """高亮显示当前播放位置对应的单元格"""
-        print(f"[DEBUG] _highlight_current_position: visual_row={visual_row}")
-        # 使用 QTimer.singleShot 确保在 _refresh_table 完成后再设置高亮
-        QTimer.singleShot(0, lambda: self._do_highlight(visual_row))
-    
-    def _do_highlight(self, visual_row):
-        """执行高亮操作"""
-        # 清除之前的选择
-        self._table.clearSelection()
-        # 选择当前播放位置对应的单元格（第0列）
-        self._table.setCurrentCell(visual_row, 0)
-        # 设置选择模式，让用户可以看到选中的单元格
-        self._table.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        print(f"[DEBUG] _do_highlight: visual_row={visual_row}")
 
     def _refresh_table(self, position=None, select=0, scroll=0):
         """实时刷新表格 - 完全照搬DD烤肉机的实现"""
@@ -646,15 +631,10 @@ class TimelineCard(QDockWidget):
         
         # 以当前播放位置为中心，显示前50行后50行
         current_row = int(ms / self._global_interval)
-        # 计算视图起始行，确保不超过视频开头
         self._row = max(0, current_row - 50)
-        # 计算当前播放位置在视图中的实际行号
-        highlight_row = current_row - self._row
-        print(f"[DEBUG] set_player_position: new_row={self._row}, center_row={current_row}, highlight_row={highlight_row}")
+        print(f"[DEBUG] set_player_position: new_row={self._row}, center_row={current_row}")
         # 刷新表格
         self._refresh_table()
-        # 高亮显示当前播放位置对应的单元格
-        self._highlight_current_position(highlight_row)
         # 重置滚动条到中心位置
         self._scrollbar.blockSignals(True)
         self._scrollbar.setValue(500)
@@ -671,8 +651,6 @@ class TimelineCard(QDockWidget):
             current_row = int(self._player_position / self._global_interval)
             self._row = max(0, current_row - 50)  # 以当前播放位置为中心
         self._refresh_table()
-        # 高亮显示当前播放位置对应的单元格
-        self._highlight_current_position(50)
         # 重置滚动条到中心位置
         self._scrollbar.blockSignals(True)
         self._scrollbar.setValue(500)
