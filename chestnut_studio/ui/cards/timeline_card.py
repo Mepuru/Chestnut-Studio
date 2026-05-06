@@ -75,7 +75,7 @@ class TimelineCard(QDockWidget):
         self._user_clicked = False
         self._is_refreshing = False  # 标记是否正在刷新，用于禁用鼠标跟随
         self._is_wheel_scrolling = False  # 标记是否正在滚轮滚动，用于禁用鼠标跟随
-        self._last_mouse_pos = None  # 记录上次鼠标位置，用于判断是否真正移动
+        self._cell_clicked_flag = False  # 标记是否是单元格点击触发的位置更新
 
         # 撤销/重做后端
         self._subtitle_backend = []
@@ -182,6 +182,7 @@ class TimelineCard(QDockWidget):
         """点击单元格跳转到对应时间（与DD烤肉机一致）"""
         position = int((row + self._row) * self._global_interval)
         print(f"[DEBUG] _cell_clicked: row={row}, col={col}, position={position}")
+        self._cell_clicked_flag = True  # 标记是单元格点击，不更新视图位置
         self.position_jump_requested.emit(position)
 
     def _header_click(self, row):
@@ -549,15 +550,18 @@ class TimelineCard(QDockWidget):
         """设置播放器位置"""
         print(f"[DEBUG] set_player_position: ms={ms}, follow_player={self._follow_player}, old_row={self._row}")
         self._player_position = ms
+        
+        # 如果是单元格点击触发的，不更新视图位置
+        if self._cell_clicked_flag:
+            self._cell_clicked_flag = False
+            print(f"[DEBUG] set_player_position: cell clicked, skip view update")
+            return
+        
         if self._follow_player:
             self._row = int(ms / self._global_interval)
             print(f"[DEBUG] set_player_position: new_row={self._row}")
-        # 刷新表格，禁用鼠标跟随
-        self._is_wheel_scrolling = True
-        self._last_mouse_pos = None  # 重置鼠标位置，避免刷新后误触发
+        # 刷新表格
         self._refresh_table()
-        # 延迟重置标志，确保所有 pending 的 cellEntered 信号都被忽略
-        QTimer.singleShot(100, lambda: setattr(self, '_is_wheel_scrolling', False))
 
     def set_interval(self, interval_ms: float):
         """设置间隔"""
