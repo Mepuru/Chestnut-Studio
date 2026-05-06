@@ -330,12 +330,9 @@ class TimelineCard(QDockWidget):
         self._table.clearSelection()
         logical_row, col = selected_rows[0]  # 只恢复第一个选中的cell
         visual_row = logical_row - self._row
-        # 如果超出可视区域，选择最接近的边界
-        if visual_row < 0:
-            visual_row = 0
-        elif visual_row >= VISIBLE_ROWS:
-            visual_row = VISIBLE_ROWS - 1
-        self._table.setCurrentCell(visual_row, col)
+        # 只有在可视区域内才恢复选择
+        if 0 <= visual_row < VISIBLE_ROWS:
+            self._table.setCurrentCell(visual_row, col)
 
     def _refresh_table(self, position=None, select=0, scroll=0):
         """实时刷新表格 - 完全照搬DD烤肉机的实现"""
