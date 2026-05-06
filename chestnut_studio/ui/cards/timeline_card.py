@@ -150,6 +150,9 @@ class TimelineCard(QDockWidget):
         for row in range(VISIBLE_ROWS):
             self._table.setRowHeight(row, 15)
 
+        # 拖动选择状态
+        self._is_dragging = False
+
         # 连接信号
         self._table.customContextMenuRequested.connect(self._show_context_menu)
         self._table.cellClicked.connect(self._cell_clicked)
@@ -158,6 +161,9 @@ class TimelineCard(QDockWidget):
 
         # 重写事件
         self._table.wheelEvent = self._wheel_event
+        self._table.mousePressEvent = self._mouse_press_event
+        self._table.mouseMoveEvent = self._mouse_move_event
+        self._table.mouseReleaseEvent = self._mouse_release_event
 
         # 创建滚动条（范围0-1000，中心500）
         from PySide6.QtWidgets import QScrollBar
@@ -200,6 +206,41 @@ class TimelineCard(QDockWidget):
         col = selected[0].column()
         # 这里可以添加编辑逻辑
         pass
+
+    def _mouse_press_event(self, event):
+        """鼠标按下事件 - 开始拖动选择"""
+        if event.button() == Qt.LeftButton:
+            self._is_dragging = True
+            # 获取鼠标位置对应的单元格
+            index = self._table.indexAt(event.pos())
+            if index.isValid():
+                row = index.row()
+                position = int((row + self._row) * self._global_interval)
+                print(f"[DEBUG] _mouse_press_event: row={row}, position={position}")
+                self.position_jump_requested.emit(position)
+        # 调用原始的 mousePressEvent
+        QTableWidget.mousePressEvent(self._table, event)
+
+    def _mouse_move_event(self, event):
+        """鼠标移动事件 - 拖动时更新视频位置"""
+        if self._is_dragging:
+            # 获取鼠标位置对应的单元格
+            index = self._table.indexAt(event.pos())
+            if index.isValid():
+                row = index.row()
+                position = int((row + self._row) * self._global_interval)
+                print(f"[DEBUG] _mouse_move_event: row={row}, position={position}")
+                self.position_jump_requested.emit(position)
+        # 调用原始的 mouseMoveEvent
+        QTableWidget.mouseMoveEvent(self._table, event)
+
+    def _mouse_release_event(self, event):
+        """鼠标释放事件 - 结束拖动选择"""
+        if event.button() == Qt.LeftButton:
+            self._is_dragging = False
+            print(f"[DEBUG] _mouse_release_event: dragging ended")
+        # 调用原始的 mouseReleaseEvent
+        QTableWidget.mouseReleaseEvent(self._table, event)
 
     def _on_scrollbar_changed(self, value):
         """滚动条变化 - 以当前播放位置为中心偏移"""
