@@ -571,6 +571,7 @@ class TimelineCard(QDockWidget):
             print(f"[DEBUG] set_player_position: new_row={self._row}")
         # 刷新表格，禁用鼠标跟随
         self._is_wheel_scrolling = True
+        self._last_mouse_pos = None  # 重置鼠标位置，避免刷新后误触发
         self._refresh_table()
         # 延迟重置标志，确保所有 pending 的 cellEntered 信号都被忽略
         QTimer.singleShot(100, lambda: setattr(self, '_is_wheel_scrolling', False))
