@@ -159,21 +159,8 @@ class TimelineCard(QDockWidget):
         # 重写事件
         self._table.wheelEvent = self._wheel_event
 
-        # 创建自定义滚动条
-        from PySide6.QtWidgets import QScrollBar
-        self._scrollbar = QScrollBar(Qt.Vertical, self)
-        self._scrollbar.setRange(0, 0)
-        self._scrollbar.valueChanged.connect(self._on_scrollbar_changed)
-
         # 布局
-        from PySide6.QtWidgets import QHBoxLayout
-        h_layout = QHBoxLayout()
-        h_layout.setContentsMargins(0, 0, 0, 0)
-        h_layout.setSpacing(0)
-        h_layout.addWidget(self._table)
-        h_layout.addWidget(self._scrollbar)
-
-        layout.addLayout(h_layout)
+        layout.addWidget(self._table)
         self.setWidget(content)
 
         # 初始刷新
@@ -202,39 +189,9 @@ class TimelineCard(QDockWidget):
         pass
 
     def _wheel_event(self, event):
-        """处理滚轮事件 - 参考 DD_KaoRou2"""
-        delta = event.angleDelta().y()
-        scroll_speed = 3
-
-        self._is_wheel_scrolling = True  # 标记正在滚轮滚动
-        print(f"[DEBUG] _wheel_event: delta={delta}, current_row={self._row}")
-
-        if delta > 0:
-            # 向上滚动
-            new_row = self._row - scroll_speed
-            if new_row < 0:
-                new_row = 0
-            if new_row != self._row:
-                print(f"[DEBUG] _wheel_event: scroll UP, new_row={new_row}")
-                self._row = new_row
-                self._refresh_table()
-        elif delta < 0:
-            # 向下滚动，限制最大值
-            max_row = max(0, self._total_logical_rows - VISIBLE_ROWS)
-            new_row = min(self._row + scroll_speed, max_row)
-            if new_row != self._row:
-                print(f"[DEBUG] _wheel_event: scroll DOWN, new_row={new_row}")
-                self._row = new_row
-                self._refresh_table()
-
-        # 延迟重置标志，确保所有 pending 的 cellEntered 信号都被忽略
-        QTimer.singleShot(100, lambda: setattr(self, '_is_wheel_scrolling', False))
-        event.accept()
-
-    def _on_scrollbar_changed(self, value):
-        """滚动条变化"""
-        self._row = value
-        self._refresh_table()
+        """滚轮事件 - 打轴区域不处理滚轮，由音频图负责调整位置"""
+        # 不处理滚轮事件，让事件传递到父组件
+        event.ignore()
 
     def _refresh_table(self, position=None, select=0, scroll=0):
         """实时刷新表格 - 完全照搬DD烤肉机的实现"""
@@ -297,13 +254,6 @@ class TimelineCard(QDockWidget):
                         if end_row - start_row > 1:
                             self._table.setSpan(start_row, col, end_row - start_row, 1)
                         self._table.item(start_row, col).setTextAlignment(Qt.AlignTop)
-
-        # 更新滚动条
-        max_row = max(0, self._total_logical_rows - VISIBLE_ROWS)
-        self._scrollbar.setRange(0, max_row)
-        self._scrollbar.blockSignals(True)
-        self._scrollbar.setValue(self._row)
-        self._scrollbar.blockSignals(False)
 
         self._table.blockSignals(False)
         self._is_refreshing = False  # 刷新完成，启用鼠标跟随
@@ -549,7 +499,7 @@ class TimelineCard(QDockWidget):
     # ========== 公有方法 ==========
 
     def set_player_position(self, ms: int):
-        """设置播放器位置"""
+        """设置播放器位置 - 以当前播放位置为中心显示前50行后50行"""
         print(f"[DEBUG] set_player_position: ms={ms}, follow_player={self._follow_player}, old_row={self._row}")
         self._player_position = ms
         
@@ -559,9 +509,10 @@ class TimelineCard(QDockWidget):
             print(f"[DEBUG] set_player_position: cell clicked, skip view update")
             return
         
-        if self._follow_player:
-            self._row = int(ms / self._global_interval)
-            print(f"[DEBUG] set_player_position: new_row={self._row}")
+        # 以当前播放位置为中心，显示前50行后50行
+        current_row = int(ms / self._global_interval)
+        self._row = max(0, current_row - 50)  # 前50行
+        print(f"[DEBUG] set_player_position: new_row={self._row}, center_row={current_row}")
         # 刷新表格
         self._refresh_table()
 
