@@ -195,9 +195,10 @@ class TimelineCard(QDockWidget):
         if index.isValid():
             row = index.row()
             col = index.column()
-            if self._player_position and self._follow_player:
-                position = int(row * self._global_interval) + self._player_position
-                print(f"[DEBUG] _mouse_move_event: row={row}, col={col}, position={position}, player_position={self._player_position}")
+            if self._follow_player:
+                # 计算位置：视觉行号 * 间隔 + 视窗起始位置
+                position = int(row * self._global_interval) + int(self._row * self._global_interval)
+                print(f"[DEBUG] _mouse_move_event: row={row}, col={col}, position={position}, view_start={int(self._row * self._global_interval)}")
                 self.position_jump_requested.emit(position)
 
     def _header_click(self, row):
