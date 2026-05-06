@@ -259,6 +259,12 @@ class TimelineCard(QDockWidget):
 
     def _wheel_event(self, event):
         """滚轮事件 - 允许在当前位置附近滚动确认帧"""
+        # 拖动时禁用滚轮，避免可视框和逻辑框分家
+        if self._is_dragging:
+            print(f"[DEBUG] _wheel_event: blocked during dragging")
+            event.accept()
+            return
+
         delta = event.angleDelta().y()
         scroll_speed = 3
 
@@ -298,6 +304,16 @@ class TimelineCard(QDockWidget):
         # 延迟重置标志
         QTimer.singleShot(100, lambda: setattr(self, '_is_wheel_scrolling', False))
         event.accept()
+
+    def _highlight_current_position(self, visual_row):
+        """高亮显示当前播放位置对应的单元格"""
+        # 清除之前的选择
+        self._table.clearSelection()
+        # 选择当前播放位置对应的单元格（第0列）
+        self._table.setCurrentCell(visual_row, 0)
+        # 设置选择模式，让用户可以看到选中的单元格
+        self._table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        print(f"[DEBUG] _highlight_current_position: visual_row={visual_row}")
 
     def _refresh_table(self, position=None, select=0, scroll=0):
         """实时刷新表格 - 完全照搬DD烤肉机的实现"""
@@ -627,6 +643,8 @@ class TimelineCard(QDockWidget):
         print(f"[DEBUG] set_player_position: new_row={self._row}, center_row={current_row}")
         # 刷新表格
         self._refresh_table()
+        # 高亮显示当前播放位置对应的单元格（第50行，因为前50行后50行，中心在第50行）
+        self._highlight_current_position(50)
         # 重置滚动条到中心位置
         self._scrollbar.blockSignals(True)
         self._scrollbar.setValue(500)
