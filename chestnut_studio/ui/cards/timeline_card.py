@@ -228,7 +228,8 @@ class TimelineCard(QDockWidget):
             self._row = new_row
             self._refresh_table()
 
-        self._is_wheel_scrolling = False  # 滚轮滚动结束
+        # 延迟重置标志，确保所有 pending 的 cellEntered 信号都被忽略
+        QTimer.singleShot(100, lambda: setattr(self, '_is_wheel_scrolling', False))
         event.accept()
 
     def _on_scrollbar_changed(self, value):
@@ -555,10 +556,11 @@ class TimelineCard(QDockWidget):
         if self._follow_player:
             self._row = int(ms / self._global_interval)
             print(f"[DEBUG] set_player_position: new_row={self._row}")
-        # 刷新表格，使用 is_wheel_scrolling 标志禁用鼠标跟随
+        # 刷新表格，禁用鼠标跟随
         self._is_wheel_scrolling = True
         self._refresh_table()
-        self._is_wheel_scrolling = False
+        # 延迟重置标志，确保所有 pending 的 cellEntered 信号都被忽略
+        QTimer.singleShot(100, lambda: setattr(self, '_is_wheel_scrolling', False))
 
     def set_interval(self, interval_ms: float):
         """设置间隔"""
