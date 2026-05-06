@@ -555,8 +555,10 @@ class TimelineCard(QDockWidget):
         if self._follow_player:
             self._row = int(ms / self._global_interval)
             print(f"[DEBUG] set_player_position: new_row={self._row}")
-        # 刷新表格但不改变 _row（如果跟随播放器，_row 已经更新）
+        # 刷新表格，使用 is_wheel_scrolling 标志禁用鼠标跟随
+        self._is_wheel_scrolling = True
         self._refresh_table()
+        self._is_wheel_scrolling = False
 
     def set_interval(self, interval_ms: float):
         """设置间隔"""
