@@ -189,9 +189,36 @@ class TimelineCard(QDockWidget):
         pass
 
     def _wheel_event(self, event):
-        """滚轮事件 - 打轴区域不处理滚轮，由音频图负责调整位置"""
-        # 不处理滚轮事件，让事件传递到父组件
-        event.ignore()
+        """滚轮事件 - 允许在当前位置附近滚动确认帧"""
+        delta = event.angleDelta().y()
+        scroll_speed = 3
+
+        self._is_wheel_scrolling = True
+        print(f"[DEBUG] _wheel_event: delta={delta}, current_row={self._row}")
+
+        # 计算允许的滚动范围（以当前播放位置为中心，上下各500行）
+        center_row = int(self._player_position / self._global_interval)
+        min_row = max(0, center_row - 500)
+        max_row = center_row + 500
+
+        if delta > 0:
+            # 向上滚动
+            new_row = max(min_row, self._row - scroll_speed)
+            if new_row != self._row:
+                print(f"[DEBUG] _wheel_event: scroll UP, new_row={new_row}")
+                self._row = new_row
+                self._refresh_table()
+        elif delta < 0:
+            # 向下滚动
+            new_row = min(max_row, self._row + scroll_speed)
+            if new_row != self._row:
+                print(f"[DEBUG] _wheel_event: scroll DOWN, new_row={new_row}")
+                self._row = new_row
+                self._refresh_table()
+
+        # 延迟重置标志
+        QTimer.singleShot(100, lambda: setattr(self, '_is_wheel_scrolling', False))
+        event.accept()
 
     def _refresh_table(self, position=None, select=0, scroll=0):
         """实时刷新表格 - 完全照搬DD烤肉机的实现"""
