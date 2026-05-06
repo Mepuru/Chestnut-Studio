@@ -159,8 +159,21 @@ class TimelineCard(QDockWidget):
         # 重写事件
         self._table.wheelEvent = self._wheel_event
 
+        # 创建滚动条（范围0-1000，中心500）
+        from PySide6.QtWidgets import QScrollBar
+        self._scrollbar = QScrollBar(Qt.Vertical, self)
+        self._scrollbar.setRange(0, 1000)
+        self._scrollbar.setValue(500)  # 默认中心位置
+        self._scrollbar.valueChanged.connect(self._on_scrollbar_changed)
+
         # 布局
-        layout.addWidget(self._table)
+        from PySide6.QtWidgets import QHBoxLayout
+        h_layout = QHBoxLayout()
+        h_layout.setContentsMargins(0, 0, 0, 0)
+        h_layout.setSpacing(0)
+        h_layout.addWidget(self._table)
+        h_layout.addWidget(self._scrollbar)
+        layout.addLayout(h_layout)
         self.setWidget(content)
 
         # 初始刷新
@@ -188,6 +201,19 @@ class TimelineCard(QDockWidget):
         # 这里可以添加编辑逻辑
         pass
 
+    def _on_scrollbar_changed(self, value):
+        """滚动条变化 - 以当前播放位置为中心偏移"""
+        # 计算相对于中心位置（500）的偏移
+        offset = value - 500
+        # 计算新的行号（以当前播放位置为中心）
+        center_row = int(self._player_position / self._global_interval)
+        new_row = center_row + offset
+        
+        if new_row != self._row:
+            print(f"[DEBUG] _on_scrollbar_changed: value={value}, offset={offset}, new_row={new_row}")
+            self._row = new_row
+            self._refresh_table()
+
     def _wheel_event(self, event):
         """滚轮事件 - 允许在当前位置附近滚动确认帧"""
         delta = event.angleDelta().y()
@@ -208,6 +234,11 @@ class TimelineCard(QDockWidget):
                 print(f"[DEBUG] _wheel_event: scroll UP, new_row={new_row}")
                 self._row = new_row
                 self._refresh_table()
+                # 更新滚动条位置
+                offset = self._row - center_row
+                self._scrollbar.blockSignals(True)
+                self._scrollbar.setValue(500 + offset)
+                self._scrollbar.blockSignals(False)
         elif delta < 0:
             # 向下滚动
             new_row = min(max_row, self._row + scroll_speed)
@@ -215,6 +246,11 @@ class TimelineCard(QDockWidget):
                 print(f"[DEBUG] _wheel_event: scroll DOWN, new_row={new_row}")
                 self._row = new_row
                 self._refresh_table()
+                # 更新滚动条位置
+                offset = self._row - center_row
+                self._scrollbar.blockSignals(True)
+                self._scrollbar.setValue(500 + offset)
+                self._scrollbar.blockSignals(False)
 
         # 延迟重置标志
         QTimer.singleShot(100, lambda: setattr(self, '_is_wheel_scrolling', False))
@@ -542,6 +578,10 @@ class TimelineCard(QDockWidget):
         print(f"[DEBUG] set_player_position: new_row={self._row}, center_row={current_row}")
         # 刷新表格
         self._refresh_table()
+        # 重置滚动条到中心位置
+        self._scrollbar.blockSignals(True)
+        self._scrollbar.setValue(500)
+        self._scrollbar.blockSignals(False)
 
     def set_interval(self, interval_ms: float):
         """设置间隔"""
