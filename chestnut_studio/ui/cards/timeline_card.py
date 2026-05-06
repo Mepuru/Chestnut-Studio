@@ -152,6 +152,7 @@ class TimelineCard(QDockWidget):
 
         # 拖动选择状态
         self._is_dragging = False
+        self._drag_flag = False  # 标记是否是拖动触发的位置更新
 
         # 连接信号
         self._table.customContextMenuRequested.connect(self._show_context_menu)
@@ -230,6 +231,7 @@ class TimelineCard(QDockWidget):
                 row = index.row()
                 position = int((row + self._row) * self._global_interval)
                 print(f"[DEBUG] _mouse_move_event: row={row}, position={position}")
+                self._drag_flag = True  # 标记是拖动触发的
                 self.position_jump_requested.emit(position)
         # 调用原始的 mouseMoveEvent
         QTableWidget.mouseMoveEvent(self._table, event)
@@ -611,6 +613,12 @@ class TimelineCard(QDockWidget):
         if self._cell_clicked_flag:
             self._cell_clicked_flag = False
             print(f"[DEBUG] set_player_position: cell clicked, skip view update")
+            return
+        
+        # 如果是拖动触发的，只更新播放位置，不更新视图
+        if self._drag_flag:
+            self._drag_flag = False
+            print(f"[DEBUG] set_player_position: drag, skip view update")
             return
         
         # 以当前播放位置为中心，显示前50行后50行
