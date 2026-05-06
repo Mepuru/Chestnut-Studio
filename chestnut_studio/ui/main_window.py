@@ -44,7 +44,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Chestnut Studio - 打轴工具")
+        self.setWindowTitle("Chestnut Studio")
         self.resize(1280, 720)
 
         # 禁用 Tab 合并，只允许嵌套停靠
