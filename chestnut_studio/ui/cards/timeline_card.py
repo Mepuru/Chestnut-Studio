@@ -284,7 +284,9 @@ class TimelineCard(QDockWidget):
                         for y in range(start_row, end_row):
                             self._table.setItem(y, col, QTableWidgetItem(text))
                         self._table.item(start_row, col).setBackground(table_color)
-                        self._table.setSpan(start_row, col, end_row - start_row, 1)
+                        # 只有多行时才设置 span，避免 single cell span 警告
+                        if end_row - start_row > 1:
+                            self._table.setSpan(start_row, col, end_row - start_row, 1)
                         self._table.item(start_row, col).setTextAlignment(Qt.AlignTop)
 
         # 更新滚动条
