@@ -74,6 +74,7 @@ class TimelineCard(QDockWidget):
         self._total_logical_rows = 0
         self._user_clicked = False
         self._is_refreshing = False  # 标记是否正在刷新，用于禁用鼠标跟随
+        self._is_wheel_scrolling = False  # 标记是否正在滚轮滚动，用于禁用鼠标跟随
 
         # 撤销/重做后端
         self._subtitle_backend = []
@@ -178,9 +179,9 @@ class TimelineCard(QDockWidget):
 
     def _follow_mouse(self, row, col):
         """鼠标按住拖动时 全局进度跟随鼠标（与DD烤肉机一致）"""
-        # 正在刷新时禁用鼠标跟随，避免拆分等操作后视频进度跳动
-        if self._is_refreshing:
-            print(f"[DEBUG] _follow_mouse blocked: is_refreshing=True")
+        # 正在刷新或滚轮滚动时禁用鼠标跟随
+        if self._is_refreshing or self._is_wheel_scrolling:
+            print(f"[DEBUG] _follow_mouse blocked: is_refreshing={self._is_refreshing}, is_wheel_scrolling={self._is_wheel_scrolling}")
             return
         if self._player_position and self._follow_player:
             position = int(row * self._global_interval) + self._player_position
@@ -207,6 +208,7 @@ class TimelineCard(QDockWidget):
         delta = event.angleDelta().y()
         scroll_speed = 3
 
+        self._is_wheel_scrolling = True  # 标记正在滚轮滚动
         print(f"[DEBUG] _wheel_event: delta={delta}, current_row={self._row}")
 
         if delta > 0:
@@ -226,6 +228,7 @@ class TimelineCard(QDockWidget):
             self._row = new_row
             self._refresh_table()
 
+        self._is_wheel_scrolling = False  # 滚轮滚动结束
         event.accept()
 
     def _on_scrollbar_changed(self, value):
