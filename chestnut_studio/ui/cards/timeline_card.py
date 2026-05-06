@@ -1,4 +1,4 @@
-"""打轴编辑卡片模块 - 简化版，使用音频图+快捷键打轴"""
+"""打轴编辑卡片模块 - 简化版，只显示字幕列表"""
 
 import copy
 from PySide6.QtCore import Qt, Signal
@@ -24,16 +24,13 @@ class TimelineCard(QDockWidget):
 
     功能：
     - 显示字幕列表（只读）
-    - 通过音频图调整位置
-    - 通过快捷键打轴
     - 右键菜单编辑字幕
+    - 撤销/重做
     """
 
     # 信号
     subtitle_selected = Signal(int, str)  # 字幕被选中 (col, text)
     subtitle_changed = Signal()  # 字幕数据变化
-    position_jump_requested = Signal(int)  # 请求跳转并暂停
-    position_shift_requested = Signal(int)  # 请求移动位置（滚动边界时）
 
     # 默认停靠区域
     default_area = Qt.RightDockWidgetArea
@@ -42,7 +39,6 @@ class TimelineCard(QDockWidget):
         super().__init__("时间轴", parent)
         self._subtitle_mgr = SubtitleManager()
         self._global_interval = 33.33  # 间隔 (ms)
-        self._style_names = ["1", "2", "3", "4"]
         self._duration_ms = 0
         self._player_position = 0
         
@@ -204,7 +200,7 @@ class TimelineCard(QDockWidget):
         start_item = self._table.item(row, 0)
         if start_item:
             start, col = start_item.data(Qt.UserRole)
-            self.position_jump_requested.emit(start)
+            self.subtitle_selected.emit(col, self._subtitle_mgr.data[col][start][1])
 
     def _edit_subtitle_text(self, col, start):
         """编辑字幕文本"""
@@ -279,24 +275,6 @@ class TimelineCard(QDockWidget):
             self._update_table()
             self.subtitle_changed.emit()
 
-    def _split_at_cursor(self):
-        """在光标位置切割字幕"""
-        # 找到当前位置所在的字幕
-        for col, sub_data in self._subtitle_mgr.data.items():
-            for start, (delta, text) in list(sub_data.items()):
-                end = start + delta
-                if start <= self._player_position < end:
-                    # 在当前位置切割
-                    split_time = int(self._player_position / self._global_interval) * int(self._global_interval)
-                    if split_time > start and split_time < end:
-                        # 创建两个字幕
-                        self._subtitle_mgr.data[col][start] = [split_time - start, text]
-                        self._subtitle_mgr.data[col][split_time] = [end - split_time, text]
-                        self._update_backend()
-                        self._update_table()
-                        self.subtitle_changed.emit()
-                        return
-
     # ========== 公有方法 ==========
 
     def set_player_position(self, ms: int):
@@ -322,18 +300,6 @@ class TimelineCard(QDockWidget):
     def get_subtitle_manager(self) -> SubtitleManager:
         """获取字幕管理器实例"""
         return self._subtitle_mgr
-
-    def set_follow_player(self, follow: bool):
-        """设置是否跟随播放位置"""
-        pass  # 简化版不需要这个功能
-
-    def is_following_player(self) -> bool:
-        """是否跟随播放位置"""
-        return False
-
-    def jump_to_position(self, ms: int):
-        """跳转到指定时间位置"""
-        self._player_position = ms
 
     def jump_to_position_at_top(self, ms: int):
         """跳转到指定时间位置"""

@@ -220,13 +220,6 @@ class MainWindow(QMainWindow):
         self.toolbar.ab_loop_b_clicked.connect(self._on_ab_loop_set_b)
         self.toolbar.ab_loop_clear_clicked.connect(self._on_ab_loop_clear)
 
-        # --- 打轴工具栏信号 ---
-        self.toolbar.interval_changed.connect(self.timeline_card.set_interval)
-        self.toolbar.create_subtitle_clicked.connect(self.timeline_card.create_subtitle_at_cursor)
-        self.toolbar.split_clicked.connect(self.timeline_card._split_at_cursor)
-        self.toolbar.undo_clicked.connect(self.timeline_card._undo)
-        self.toolbar.redo_clicked.connect(self.timeline_card._redo)
-
         # --- 播放卡片 → 工具栏 ---
         self.player_card.position_changed.connect(self.toolbar.update_position)
         self.player_card.duration_changed.connect(self.toolbar.set_duration)
@@ -240,10 +233,6 @@ class MainWindow(QMainWindow):
         self.player_card.position_changed.connect(self.waveform_card.update_position)
         self.player_card.duration_changed.connect(self.waveform_card.set_duration)
 
-        # --- 播放卡片 → 时间轴卡片 ---
-        self.player_card.position_changed.connect(self.timeline_card.set_player_position)
-        self.player_card.duration_changed.connect(self.timeline_card.set_duration)
-
         # --- 播放卡片 AB 循环 → 工具栏和波形卡片 ---
         self.player_card.ab_loop_changed.connect(self.toolbar.update_ab_loop_state)
         self.player_card.ab_loop_changed.connect(self.waveform_card.set_ab_loop_region)
@@ -251,17 +240,7 @@ class MainWindow(QMainWindow):
         # --- 波形卡片 → 播放卡片（点击跳转） ---
         self.waveform_card.position_clicked.connect(self.player_card.set_position)
 
-        # --- 波形卡片 → 时间轴卡片（点击跳转到可视行1） ---
-        self.waveform_card.position_clicked.connect(self.timeline_card.jump_to_position_at_top)
 
-        # --- 时间轴卡片 → 播放卡片（位置跳转并暂停） ---
-        self.timeline_card.position_jump_requested.connect(self._on_timeline_jump)
-
-        # --- 时间轴卡片 → 播放卡片（滚动边界时移动位置） ---
-        self.timeline_card.position_shift_requested.connect(self._on_timeline_shift)
-
-        # --- 时间轴卡片 → 状态栏 ---
-        self.timeline_card.subtitle_selected.connect(self._on_subtitle_selected)
 
     # ========== 布局管理 ==========
 
@@ -479,20 +458,4 @@ class MainWindow(QMainWindow):
         self.status_bar.set_time("00:00", split_time(ms))
         self.status_bar.set_status(f"视频时长: {split_time(ms)}")
 
-    def _on_subtitle_selected(self, col: int, text: str):
-        """字幕被选中 → 更新状态栏"""
-        if text:
-            self.status_bar.set_status(f"轨道 {col + 1}: {text}")
-        else:
-            self.status_bar.set_status(f"轨道 {col + 1}: (空)")
 
-    def _on_timeline_jump(self, ms: int):
-        """时间轴点击 → 跳转并暂停播放"""
-        self.player_card.pause()
-        self.player_card.set_position(ms)
-
-    def _on_timeline_shift(self, ms: int):
-        """时间轴滚动边界 → 移动播放位置"""
-        current = self.player_card.get_position()
-        new_pos = max(0, min(current + ms, self.player_card.get_duration()))
-        self.player_card.set_position(new_pos)
