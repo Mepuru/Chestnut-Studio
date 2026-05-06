@@ -8,7 +8,9 @@
 
 Chestnut Studio 是一款面向字幕组/烤肉组的现代化字幕工具，基于 PySide6 开发。
 
-**当前进度**: Phase 3 进行中（字幕列表）
+**当前进度**: Phase 3 进行中（双轴时间轴）
+
+**核心特性**: 双轴时间轴系统（源轴 + 译文轴），支持同步调整，ASS 双轴导出
 
 ---
 
@@ -55,6 +57,7 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 | `]` | 设置 AB 循环 B 点 | `main_window.py` |
 | `\` | 清除 AB 循环 | `main_window.py` |
 | `Ctrl+O` | 打开视频 | `menubar.py` |
+| `Tab` | 切换轴（源轴↔译文轴） | `timeline_card.py` |
 
 ---
 
@@ -70,6 +73,8 @@ ToolBar                          MainWindow                         PlayerCard
   │ ←───────────────────────── update_position ←──────────────── position_changed
   │ ←───────────────────────── set_duration ←─────────────────── duration_changed
   │ ←───────────────────── update_ab_loop_state ←─────────────── ab_loop_changed
+  │ axis_selected ─────────────→ set_current_axis ──────────────→ TimelineCard
+  │ sync_toggled ──────────────→ toggle_sync ───────────────────→ TimelineCard
                               │
                               ├──→ WaveformCard.update_position
                               ├──→ WaveformCard.set_ab_loop_region
@@ -77,6 +82,10 @@ ToolBar                          MainWindow                         PlayerCard
 
 WaveformCard
   │ position_clicked ──────────→ PlayerCard.set_position
+
+TimelineCard
+  │ subtitle_selected ─────────→ TranslateCard.show_subtitle
+  │ subtitle_changed ──────────→ WaveformCard.refresh_overlay
 ```
 
 ---
