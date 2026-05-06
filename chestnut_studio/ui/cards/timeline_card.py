@@ -211,29 +211,35 @@ class TimelineCard(QDockWidget):
         pass
 
     def _mouse_press_event(self, event):
-        """鼠标按下事件 - 开始拖动选择"""
+        """鼠标按下事件"""
         if event.button() == Qt.LeftButton:
-            self._is_dragging = True
-            # 获取鼠标位置对应的单元格
-            index = self._table.indexAt(event.pos())
-            if index.isValid():
-                row = index.row()
-                position = int((row + self._row) * self._global_interval)
-                print(f"[DEBUG] _mouse_press_event: row={row}, position={position}")
-                self.position_jump_requested.emit(position)
+            modifiers = event.modifiers()
+            if modifiers & Qt.ShiftModifier:
+                # Shift+左键：开始拖动选择，视频跟随
+                self._is_dragging = True
+                index = self._table.indexAt(event.pos())
+                if index.isValid():
+                    row = index.row()
+                    position = int((row + self._row) * self._global_interval)
+                    print(f"[DEBUG] _mouse_press_event: Shift+click, row={row}, position={position}")
+                    self._drag_flag = True
+                    self.position_jump_requested.emit(position)
+            else:
+                # 普通左键：只选择cell，不触发视频跳转
+                self._is_dragging = False
+                print(f"[DEBUG] _mouse_press_event: normal click")
         # 调用原始的 mousePressEvent
         QTableWidget.mousePressEvent(self._table, event)
 
     def _mouse_move_event(self, event):
-        """鼠标移动事件 - 拖动时更新视频位置"""
+        """鼠标移动事件 - Shift+左键拖动时更新视频位置"""
         if self._is_dragging:
-            # 获取鼠标位置对应的单元格
             index = self._table.indexAt(event.pos())
             if index.isValid():
                 row = index.row()
                 position = int((row + self._row) * self._global_interval)
                 print(f"[DEBUG] _mouse_move_event: row={row}, position={position}")
-                self._drag_flag = True  # 标记是拖动触发的
+                self._drag_flag = True
                 self.position_jump_requested.emit(position)
         # 调用原始的 mouseMoveEvent
         QTableWidget.mouseMoveEvent(self._table, event)
