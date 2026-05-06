@@ -41,8 +41,6 @@ ToolBar                          MainWindow                         PlayerCard
   │ ab_loop_a_clicked ─────────→ _on_ab_loop_set_a ────────────→ set_ab_loop_a
   │ ab_loop_b_clicked ─────────→ _on_ab_loop_set_b ────────────→ set_ab_loop_b
   │ ab_loop_clear_clicked ─────→ _on_ab_loop_clear ────────────→ clear_ab_loop
-  │ axis_selected ─────────────→ set_current_axis ──────────────→ TimelineCard
-  │ sync_toggled ──────────────→ toggle_sync ───────────────────→ TimelineCard
   │ ←───────────────────────── update_position ←──────────────── position_changed
   │ ←───────────────────────── set_duration ←─────────────────── duration_changed
   │ ←───────────────────────── set_playing ←──────────────────── playback_state_changed
@@ -90,13 +88,13 @@ TimelineCard
 ### 布局
 
 ```
-[帧号] | [后退5秒] [播放/暂停] [前进5秒] | 循环 [A] [B] [×] | 轴 [1] [2] [🔒] | [倍速]
+[帧号] | [后退5秒] [播放/暂停] [前进5秒] | 循环 [A] [B] [×] | [倍速]
 ```
 
 - 左侧：当前帧号（`Frame: 123` 格式，等宽字体）
 - 中央：播放控制按钮组（弹性空间居中）
 - 中右：AB 循环按钮组
-- 右侧：轴选择按钮组 + 倍速下拉选择
+- 右侧：倍速下拉选择
 
 ### 信号
 
@@ -109,8 +107,6 @@ TimelineCard
 | `ab_loop_a_clicked` | 无 | 设置 A 点 |
 | `ab_loop_b_clicked` | 无 | 设置 B 点 |
 | `ab_loop_clear_clicked` | 无 | 清除 AB 循环 |
-| `axis_selected(axis)` | `int` | 轴选择 (1 或 2) |
-| `sync_toggled(enabled)` | `bool` | 同步开关 |
 
 ### 公有方法
 
@@ -122,8 +118,6 @@ TimelineCard
 | `set_playing(playing)` | `bool` | 切换播放/暂停按钮文字 |
 | `set_playback_rate(rate)` | `float` | 设置倍速下拉框选中项 |
 | `update_ab_loop_state(a, b)` | `int, int` | 更新 AB 循环按钮状态和样式 |
-| `set_current_axis(axis)` | `int` | 设置当前活动轴按钮高亮 |
-| `set_sync_state(enabled)` | `bool` | 设置同步按钮状态 |
 
 ### AB 循环按钮
 
@@ -131,13 +125,6 @@ TimelineCard
 - 未激活：灰色背景
 - 激活后：蓝色高亮背景，鼠标悬停显示时间点
 - 清除按钮初始禁用，设置循环后启用
-
-### 轴选择按钮
-
-- 按钮文本：`1` / `2`（28×28 像素）
-- 选中轴：蓝色高亮背景
-- 未选中轴：灰色背景
-- 同步按钮：`🔒` 图标，锁定时蓝色，解锁时灰色
 
 ### 帧号计算
 
@@ -382,37 +369,33 @@ frame = int(ms * fps / 1000)
 
 ## 七、字幕列表卡片 (`cards/timeline_card.py`)
 
-`TimelineCard(QDockWidget)` — 双轴时间轴系统（源轴 + 译文轴）。
+`TimelineCard(QDockWidget)` — 打轴编辑卡片。
 
 ### 信号
 
 | 信号 | 参数 | 说明 |
 |------|------|------|
-| `subtitle_selected(col, text)` | `int, str` | 字幕被选中 |
+| `subtitle_selected(start_ms)` | `int` | 字幕被选中 |
 | `subtitle_changed()` | 无 | 字幕数据变化 |
-| `axis_switched(axis)` | `int` | 轴切换信号 (1 或 2) |
-| `sync_state_changed(enabled)` | `bool` | 同步状态变化 |
 
-### 双轴系统
+### 设计理念
 
-| 轴 | 名称 | 用途 | ASS 样式 |
-|---|------|------|----------|
-| 轴1 | 源轴 | 输入源语言字幕 | `Default` |
-| 轴2 | 译文轴 | 输入翻译后的字幕 | `Translation` |
+- 时间轴卡片只负责**打轴**（设置字幕的开始/结束时间）
+- 不负责填写内容，内容在翻译面板中填写
+- 源语言和目标语言共享相同的时间点
 
 ### 布局
 
 ```
 ┌─────────────────────────────────────────────┐
-│ [源轴] [译文轴]    [🔒同步]    间隔 [33ms▾] │  ← 轴选择 + 同步 + 间隔
+│ 间隔 [33ms▾]                                │  ← 间隔设置
 ├─────────────────────────────────────────────┤
-│ 时间        │  源轴           │  译文轴      │  ← 双轴表格
-│ 0:00.0      │  你好           │  Hello       │
-│ 0:05.0      │  世界           │  World       │
+│ 00:15.2 │ ████████████████████████████████  │  ← 字幕条目
+│ 00:18.4 │ ██████████████████████████████    │
+│ 00:22.0 │ ██████████████████████████████████│
 │ ...                                         │
 ├─────────────────────────────────────────────┤
-│ [合并] [切割] [拆分] [导入] [导出ASS]        │  ← 操作按钮栏
-│ [撤销] [重做]                               │
+│ [合并] [切割] [拆分] [导入]  [撤销] [重做]   │  ← 操作按钮栏
 └─────────────────────────────────────────────┘
 ```
 
@@ -427,25 +410,15 @@ frame = int(ms * fps / 1000)
 | `get_subtitle_manager()` | 无 | 获取字幕管理器实例 |
 | `jump_to_position_at_top(ms)` | `int` | 跳转到指定时间位置 |
 | `create_subtitle_at_cursor()` | 无 | 在光标位置创建字幕 |
-| `set_current_axis(axis)` | `int` | 设置当前活动轴 (1 或 2) |
-| `toggle_sync(enabled)` | `bool` | 切换同步状态 |
-| `generate_ass(output_path, include_axis1, include_axis2)` | `str, bool, bool` | 生成 ASS 文件 |
 
 ### 交互操作
 
 | 操作 | 功能 |
 |------|------|
-| `右键点击` | 显示编辑菜单（编辑/删除/创建/撤销/重做/导出ASS） |
+| `右键点击` | 显示编辑菜单（合并/切割/拆分/删除/撤销/重做） |
 | `双击` | 跳转到字幕位置 |
 | `Ctrl+Z` | 撤销 |
 | `Ctrl+Y` | 重做 |
-| `Tab` | 切换当前活动轴（源轴↔译文轴） |
-
-### 同步机制
-
-- **默认同步**：调整轴1的开始/结束时间时，轴2自动同步调整
-- **独立模式**：可选择解除同步，独立调整各轴时间
-- **同步指示器**：UI 上显示同步状态（锁定/解锁图标）
 
 ### 字幕颜色
 

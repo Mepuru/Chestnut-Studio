@@ -1,4 +1,4 @@
-# M04 — 打轴编辑卡片（双轴版）
+# M04 — 打轴编辑卡片
 
 > `src/ui/cards/timeline_card.py`　｜　Phase 3　｜　核心模块，最复杂
 
@@ -6,30 +6,39 @@
 
 ## 职责
 
-- 双轴时间轴系统（源轴 + 译文轴）
+- 时间轴表格（101行×1列）
 - 字幕条的创建、编辑、合并、拆分、切割
 - 快捷键微调轴端
 - 撤销/重做
 - 右键菜单
 - 字幕导入/导出联动
-- ASS 文件生成
 
 ---
 
-## 双轴设计理念
+## 设计理念
 
 ### 核心概念
 
-| 轴 | 名称 | 用途 | ASS 样式 |
-|---|------|------|----------|
-| 轴1 | 源轴 | 输入源语言字幕 | `Default` 或自定义 |
-| 轴2 | 译文轴 | 输入翻译后的字幕 | `Translation` 或自定义 |
+时间轴卡片只负责**打轴**（设置字幕的开始/结束时间），不负责填写内容。
 
-### 同步机制
+- **时间轴区域**：只显示一个轴，用户在这里打轴
+- **翻译面板**：分为源语言区和目标语言区，用户在这里填写内容
+- **数据同步**：打轴时，源语言和目标语言共享相同的时间点
 
-- **默认同步**：调整轴1的开始/结束时间时，轴2自动同步调整
-- **独立模式**：可选择解除同步，独立调整各轴时间
-- **同步指示器**：UI 上显示同步状态（锁定/解锁图标）
+### 数据流
+
+```
+┌─────────────┐    打轴（设置时间）    ┌─────────────┐
+│  TimelineCard│ ────────────────────→ │  数据存储    │
+│  （时间轴）   │                       │  axis_data  │
+└─────────────┘                       └─────────────┘
+                                            │
+                                            ▼
+┌─────────────┐    填写内容            ┌─────────────┐
+│ TranslateCard│ ←──────────────────── │  数据存储    │
+│ （翻译面板）  │    源语言 + 目标语言   │  axis_data  │
+└─────────────┘                       └─────────────┘
+```
 
 ---
 
@@ -37,21 +46,15 @@
 
 ```python
 class TimelineCard(QDockWidget):
-    """打轴编辑卡片 - 双轴版"""
+    """打轴编辑卡片"""
     
     # 信号
-    subtitle_selected = Signal(int, str)  # 字幕被选中 (index, text)
-    subtitle_changed = Signal()           # 字幕数据变化（用于刷新波形覆盖）
-    axis_switched = Signal(int)           # 轴切换信号 (1 或 2)
-    sync_state_changed = Signal(bool)     # 同步状态变化
+    subtitle_selected = Signal(int)  # 字幕被选中 (start_ms)
+    subtitle_changed = Signal()      # 字幕数据变化（用于刷新波形覆盖）
     
     def __init__(self, parent=None):
         super().__init__("时间轴", parent)
-        # 双轴数据结构
-        self._axis1_data = {}  # 源轴数据
-        self._axis2_data = {}  # 译文轴数据
-        self._current_axis = 1  # 当前活动轴 (1 或 2)
-        self._sync_enabled = True  # 是否同步
+        self._axis_data = {}  # 字幕数据 {start_ms: [duration_ms, ""]}
         self._global_interval = 33.33  # ms
         self._current_row = 0
         self._undo_stack = []
@@ -65,24 +68,26 @@ class TimelineCard(QDockWidget):
 ## 数据结构
 
 ```python
-# 双轴数据结构
+# 字幕数据结构
 axis_data = {
-    1: {  # 源轴
-        start_ms: [duration_ms, "text"],
-        15200: [3200, "你好"],
-        22000: [1800, "谢谢"],
-    },
-    2: {  # 译文轴
-        start_ms: [duration_ms, "text"],
-        15200: [3200, "Hello"],
-        22000: [1800, "Thank you"],
-    },
+    start_ms: [duration_ms, ""],  # 文本字段留空，由翻译面板填写
+    15200: [3200, ""],
+    22000: [1800, ""],
 }
 
-# 同步状态下的数据关联
-# 当 sync_enabled = True 时：
-# axis1[start_ms] 和 axis2[start_ms] 共享相同的时间点
-# 调整 axis1 的时间 → axis2 自动跟随
+# 完整数据结构（包含源语言和目标语言）
+subtitle_data = {
+    15200: {
+        "duration": 3200,
+        "source": "你好",      # 源语言（由翻译面板填写）
+        "target": "Hello",     # 目标语言（由翻译面板填写）
+    },
+    22000: {
+        "duration": 1800,
+        "source": "谢谢",
+        "target": "Thank you",
+    },
+}
 ```
 
 ---
@@ -92,65 +97,25 @@ axis_data = {
 | 属性 | 值 | 说明 |
 |------|-----|------|
 | 行数 | 101 | 固定可视窗口 |
-| 列数 | 2 | 源轴 + 译文轴 |
+| 列数 | 1 | 只显示时间轴 |
 | 行高 | 15px | |
 | 行头 | 动态时间戳 | `m:s.ms` 格式 |
-| 列头 | "源轴" / "译文轴" | 双击可编辑样式名 |
+| 列头 | "时间轴" | 固定 |
 | 间隔 | 可选 | 10ms ~ 1s |
 
 ### 表格布局
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  时间        │  源轴 (轴1)        │  译文轴 (轴2)           │
-├──────────────┼────────────────────┼─────────────────────────┤
-│  00:15.200   │  ████████ 你好      │  ████████ Hello         │
-│  00:18.400   │  ██████   谢谢      │  ██████   Thank you     │
-│  00:22.000   │  ████████████████   │  ████████████████       │
-│  00:25.600   │                    │                         │
-│  00:29.200   │  ██ 对             │  ██ sorry               │
-│  00:32.800   │  ████████████ 不起  │  ████████████ about     │
-└──────────────┴────────────────────┴─────────────────────────┘
-```
-
----
-
-## 播放控制区域集成
-
-### 工具栏按钮布局
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│  [帧号] | [<<5s] [播放] [5s>>] | [A] [B] [×] | [1] [2] | [🔒] | [倍速] │
-└──────────────────────────────────────────────────────────────────────┘
-```
-
-### 按钮说明
-
-| 按钮 | 功能 | 样式 |
-|------|------|------|
-| `[1]` | 选择源轴（轴1） | 选中时高亮蓝色 |
-| `[2]` | 选择译文轴（轴2） | 选中时高亮蓝色 |
-| `[🔒]` | 同步锁定开关 | 锁定蓝色，解锁灰色 |
-
-### 按钮交互
-
-```python
-# 工具栏信号
-axis_selected = Signal(int)      # 轴选择 (1 或 2)
-sync_toggled = Signal(bool)      # 同步开关
-
-# TimelineCard 槽函数
-def set_current_axis(self, axis: int):
-    """设置当前活动轴"""
-    self._current_axis = axis
-    self._refresh_table()
-    self.axis_switched.emit(axis)
-
-def toggle_sync(self, enabled: bool):
-    """切换同步状态"""
-    self._sync_enabled = enabled
-    self.sync_state_changed.emit(enabled)
+┌─────────────────────────────────────────┐
+│  时间轴                                 │
+├─────────────────────────────────────────┤
+│  00:15.200   │  ████████████████████    │
+│  00:18.400   │  ██████████████████      │
+│  00:22.000   │  ████████████████████████│
+│  00:25.600   │                          │
+│  00:29.200   │  ████                    │
+│  00:32.800   │  ██████████████████████  │
+└──────────────┴──────────────────────────┘
 ```
 
 ---
@@ -171,7 +136,6 @@ KEY_MAP = {
     Qt.Key_Delete: "delete_selected",     # 删除
     Qt.Key_Space:  "toggle_play",         # 播放/暂停
     Qt.Key_S:      "play_selection",      # 试听选区
-    Qt.Key_Tab:    "switch_axis",         # 切换轴 (1↔2)
 }
 
 CTRL_KEY_MAP = {
@@ -188,34 +152,6 @@ CTRL_KEY_MAP = {
 
 ## 核心操作
 
-### 同步调整
-
-```python
-def _adjust_subtitle_time(self, axis: int, start_ms: int, delta_ms: int):
-    """调整字幕时间（支持同步）
-    
-    Args:
-        axis: 轴编号 (1 或 2)
-        start_ms: 字幕开始时间
-        delta_ms: 时间变化量
-    """
-    # 调整当前轴
-    if start_ms in self._get_axis_data(axis):
-        duration, text = self._get_axis_data(axis)[start_ms]
-        new_start = start_ms + delta_ms
-        self._get_axis_data(axis)[new_start] = [duration, text]
-        del self._get_axis_data(axis)[start_ms]
-    
-    # 如果启用同步，调整另一个轴
-    if self._sync_enabled:
-        other_axis = 2 if axis == 1 else 1
-        if start_ms in self._get_axis_data(other_axis):
-            duration, text = self._get_axis_data(other_axis)[start_ms]
-            new_start = start_ms + delta_ms
-            self._get_axis_data(other_axis)[new_start] = [duration, text]
-            del self._get_axis_data(other_axis)[start_ms]
-```
-
 ### 合并 (Merge)
 
 ```python
@@ -223,14 +159,17 @@ def merge_selected(self):
     """合并选中的多行为一条字幕"""
     selected = self._get_selected_range()
     if selected.y_start < selected.y_end:
-        # 合并当前轴
-        self._merge_axis(self._current_axis, selected)
-        
-        # 如果启用同步，合并另一个轴
-        if self._sync_enabled:
-            other_axis = 2 if self._current_axis == 1 else 1
-            self._merge_axis(other_axis, selected)
-        
+        # 取第一个非空文本
+        text = self._find_first_text(selected.y_start, selected.y_end)
+        # 合并时间范围
+        start = int((selected.y_start + self._current_row) * self._global_interval)
+        end = int((selected.y_end + self._current_row + 1) * self._global_interval)
+        # 删除旧数据
+        self._remove_range(start, end)
+        # 写入合并后的数据
+        self._axis_data[start] = [end - start, ""]
+        # 设置表格合并
+        self._table.setSpan(selected.y_start, 0, selected.y_end - selected.y_start + 1, 1)
         self._push_undo()
         self._refresh_table()
 ```
@@ -242,15 +181,12 @@ def split_at_cursor(self):
     """在光标位置切割字幕条"""
     selected = self._get_selected_range()
     split_time = int((selected.y_start + self._current_row) * self._global_interval)
-    
-    # 切割当前轴
-    self._split_axis(self._current_axis, split_time)
-    
-    # 如果启用同步，切割另一个轴
-    if self._sync_enabled:
-        other_axis = 2 if self._current_axis == 1 else 1
-        self._split_axis(other_axis, split_time)
-    
+    for start, (delta, text) in list(self._axis_data.items()):
+        end = start + delta
+        if start < split_time < end:
+            # 切割为两段
+            self._axis_data[start] = [split_time - start, text]
+            self._axis_data[split_time] = [end - split_time, text]
     self._push_undo()
     self._refresh_table()
 ```
@@ -262,11 +198,8 @@ def _push_undo(self):
     """保存当前状态到撤销栈"""
     import copy
     state = {
-        'axis1_data': copy.deepcopy(self._axis1_data),
-        'axis2_data': copy.deepcopy(self._axis2_data),
+        'axis_data': copy.deepcopy(self._axis_data),
         'position': self._current_row,
-        'current_axis': self._current_axis,
-        'sync_enabled': self._sync_enabled,
     }
     # 清除当前位置之后的历史
     self._undo_stack = self._undo_stack[:self._undo_index + 1]
@@ -306,11 +239,6 @@ CONTEXT_MENU_ITEMS = [
     ("删除", "delete_selected"),
     None,
     ("导入字幕", "import_subtitle"),
-    ("导出 ASS", "export_ass"),
-    None,
-    ("切换到源轴", "switch_to_axis1"),
-    ("切换到译文轴", "switch_to_axis2"),
-    ("切换同步状态", "toggle_sync"),
     None,
     ("循环播放", "loop_selection"),
     ("取消循环", "cancel_loop"),
@@ -322,21 +250,15 @@ CONTEXT_MENU_ITEMS = [
 ## 叠轴检测
 
 ```python
-def _check_overlap(self, axis: int, start: int, end: int) -> int:
+def _check_overlap(self, start: int, end: int) -> int:
     """检测叠轴
-    
-    Args:
-        axis: 轴编号 (1 或 2)
-        start: 开始时间
-        end: 结束时间
     
     Returns:
         0: 有重叠，阻止操作
         1: 安全，可操作
         2: 有重叠但可调整
     """
-    axis_data = self._get_axis_data(axis)
-    for s, (d, _) in axis_data.items():
+    for s, (d, _) in self._axis_data.items():
         e = s + d
         if start < e and end > s:  # 有重叠
             if start >= e - self._global_interval:
@@ -365,92 +287,16 @@ def _refresh_table(self, position: int = 0, select: int = 0, scroll: int = 0):
                for i in range(101)]
     self._table.setVerticalHeaderLabels(headers)
     
-    # 填充源轴（轴1）
-    self._fill_axis_column(0, self._axis1_data, position)
-    
-    # 填充译文轴（轴2）
-    self._fill_axis_column(1, self._axis2_data, position)
-    
-    # 高亮当前活动轴的列头
-    self._highlight_active_axis()
-
-def _fill_axis_column(self, col: int, axis_data: dict, position: int):
-    """填充指定轴的数据"""
+    # 填充字幕条
     view_start = position
     view_end = position + 101 * self._global_interval
-    
-    for start in sorted(axis_data):
-        delta, text = axis_data[start]
+    for start in sorted(self._axis_data):
+        delta, text = self._axis_data[start]
         if start >= view_end:
             break
         end = start + delta
         if end >= view_start:
-            self._render_subtitle(col, start, delta, text, position)
-```
-
----
-
-## ASS 文件生成
-
-```python
-def generate_ass(self, output_path: str, include_axis1: bool = True, include_axis2: bool = True):
-    """生成 ASS 文件
-    
-    Args:
-        output_path: 输出文件路径
-        include_axis1: 是否包含源轴
-        include_axis2: 是否包含译文轴
-    """
-    ass_content = self._generate_ass_header()
-    
-    if include_axis1:
-        ass_content += self._generate_ass_events(self._axis1_data, "Default")
-    
-    if include_axis2:
-        ass_content += self._generate_ass_events(self._axis2_data, "Translation")
-    
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write(ass_content)
-
-def _generate_ass_header(self) -> str:
-    """生成 ASS 文件头"""
-    return """[Script Info]
-Title: Chestnut Studio Export
-ScriptType: v4.00+
-PlayResX: 1920
-PlayResY: 1080
-WrapStyle: 0
-
-[V4+ Styles]
-Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Arial,48,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,10,1
-Style: Translation,Arial,48,&H0000FFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,8,10,10,10,1
-
-[Events]
-Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-"""
-
-def _generate_ass_events(self, axis_data: dict, style: str) -> str:
-    """生成 ASS 事件行"""
-    events = []
-    for start_ms in sorted(axis_data):
-        duration_ms, text = axis_data[start_ms]
-        end_ms = start_ms + duration_ms
-        
-        start_str = self._ms_to_ass_time(start_ms)
-        end_str = self._ms_to_ass_time(end_ms)
-        
-        events.append(f"Dialogue: 0,{start_str},{end_str},{style},,0,0,0,,{text}")
-    
-    return "\n".join(events) + "\n"
-
-def _ms_to_ass_time(self, ms: int) -> str:
-    """将毫秒转换为 ASS 时间格式 (H:MM:SS.CC)"""
-    hours = ms // 3600000
-    minutes = (ms % 3600000) // 60000
-    seconds = (ms % 60000) // 1000
-    centiseconds = (ms % 1000) // 10
-    return f"{hours}:{minutes:02d}:{seconds:02d}.{centiseconds:02d}"
+            self._render_subtitle(start, delta, text, position)
 ```
 
 ---
@@ -470,17 +316,21 @@ def _ms_to_ass_time(self, ms: int) -> str:
 
 ```
 ToolBar                          MainWindow                         TimelineCard
-  │ axis_selected ──────────────→ set_current_axis ──────────────→ 切换活动轴
-  │ sync_toggled ───────────────→ toggle_sync ───────────────────→ 切换同步状态
-  │ ←───────────────────────── axis_switched ←──────────────────── 轴切换完成
-  │ ←───────────────────────── sync_state_changed ←────────────── 同步状态变化
-
-PlayerCard                       MainWindow                         TimelineCard
-  │ position_changed ───────────→ set_player_position ────────────→ 更新播放位置
-  │ duration_changed ───────────→ set_duration ───────────────────→ 更新视频时长
+  │ play_clicked ──────────────→ play_pause ───────────────────→ QMediaPlayer
+  │ skip_forward ──────────────→ _on_skip_forward ──────────────→ set_position
+  │ ab_loop_a_clicked ─────────→ _on_ab_loop_set_a ────────────→ set_ab_loop_a
+  │ ab_loop_b_clicked ─────────→ _on_ab_loop_set_b ────────────→ set_ab_loop_b
+  │ ab_loop_clear_clicked ─────→ _on_ab_loop_clear ────────────→ clear_ab_loop
+  │ ←───────────────────────── update_position ←──────────────── position_changed
+  │ ←───────────────────────── set_duration ←─────────────────── duration_changed
+  │ ←───────────────────── update_ab_loop_state ←─────────────── ab_loop_changed
+                              │
+                              ├──→ WaveformCard.update_position
+                              ├──→ WaveformCard.set_ab_loop_region
+                              └──→ StatusBar.set_time
 
 TimelineCard                     MainWindow                         TranslateCard
-  │ subtitle_selected ──────────→ show_subtitle ──────────────────→ 显示原文
+  │ subtitle_selected ──────────→ show_subtitle ──────────────────→ 显示源语言和目标语言
   │ subtitle_changed ───────────→ refresh_waveform ───────────────→ 刷新波形覆盖
 ```
 
@@ -490,16 +340,16 @@ TimelineCard                     MainWindow                         TranslateCar
 
 ```
 ┌─ ✂️ 时间轴 ────────────────────────────── [_][□][×] ┐
-│  [源轴] [译文轴]    [🔒同步]    间隔 [33ms▾]          │  ← 轴选择 + 同步 + 间隔
+│  间隔 [33ms▾]                                        │  ← 间隔设置
 ├─────────────────────────────────────────────────────┤
-│  时间        │  源轴              │  译文轴           │
-│  00:15.200   │  ████████ 你好      │  ████████ Hello   │
-│  00:18.400   │  ██████   谢谢      │  ██████ Thank you │
-│  00:22.000   │  ████████████████   │  ████████████████ │
-│  00:25.600   │                    │                   │
-│  00:29.200   │  ██ 对             │  ██ sorry         │
-│  00:32.800   │  ████████████ 不起  │  ████████████ about│
+│  时间轴                                              │
+│  00:15.200   │  ████████████████████                 │
+│  00:18.400   │  ██████████████████                   │
+│  00:22.000   │  ████████████████████████████████████ │
+│  00:25.600   │                                      │
+│  00:29.200   │  ████                                │
+│  00:32.800   │  ██████████████████████████████       │
 ├─────────────────────────────────────────────────────┤
-│  [合并] [切割] [拆分] [导入] [导出ASS]  [撤销] [重做] │  ← 操作按钮栏
+│  [合并] [切割] [拆分] [导入]         [撤销] [重做]    │  ← 操作按钮栏
 └─────────────────────────────────────────────────────┘
 ```
