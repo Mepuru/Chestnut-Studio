@@ -177,52 +177,91 @@ class HotkeyDialog(QDialog):
         """创建全局快捷键标签页"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(4)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # 创建滚动区域
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                background: transparent;
+                border: none;
+            }
+            QScrollBar:vertical {
+                background: #18181b;
+                width: 8px;
+                margin: 0;
+            }
+            QScrollBar::handle:vertical {
+                background: #3f3f46;
+                min-height: 20px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #52525b;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
+            }
+        """)
+
+        # 内容容器
+        content = QWidget()
+        content.setStyleSheet("background: transparent;")
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(12, 12, 12, 12)
+        content_layout.setSpacing(4)
 
         # 播放控制
-        layout.addWidget(self._create_section_title("播放控制"))
-        layout.addWidget(self._create_hotkey_row("Space", "播放 / 暂停"))
+        content_layout.addWidget(self._create_section_title("播放控制"))
+        content_layout.addWidget(self._create_hotkey_row("Space", "播放 / 暂停"))
 
-        layout.addSpacing(8)
+        content_layout.addSpacing(8)
 
         # AB 循环
-        layout.addWidget(self._create_section_title("AB 循环"))
-        layout.addWidget(self._create_hotkey_row("[", "设置 A 点（循环起点）"))
-        layout.addWidget(self._create_hotkey_row("]", "设置 B 点（循环终点）"))
-        layout.addWidget(self._create_hotkey_row("\\", "清除 AB 循环"))
+        content_layout.addWidget(self._create_section_title("AB 循环"))
+        content_layout.addWidget(self._create_hotkey_row("[", "设置 A 点（循环起点）"))
+        content_layout.addWidget(self._create_hotkey_row("]", "设置 B 点（循环终点）"))
+        content_layout.addWidget(self._create_hotkey_row("\\", "清除 AB 循环"))
 
-        layout.addSpacing(8)
+        content_layout.addSpacing(8)
 
         # 打轴
-        layout.addWidget(self._create_section_title("打轴"))
-        layout.addWidget(self._create_hotkey_row("I", "标记字幕开始点"))
-        layout.addWidget(self._create_hotkey_row("O", "标记字幕结束点"))
+        content_layout.addWidget(self._create_section_title("打轴"))
+        content_layout.addWidget(self._create_hotkey_row("I", "标记字幕开始点"))
+        content_layout.addWidget(self._create_hotkey_row("O", "标记字幕结束点"))
 
-        layout.addSpacing(8)
+        content_layout.addSpacing(8)
 
         # 轨道切换
-        layout.addWidget(self._create_section_title("轨道切换"))
-        layout.addWidget(self._create_hotkey_row("1 / 2 / 3 / 4", "快速切换到对应轨道"))
+        content_layout.addWidget(self._create_section_title("轨道切换"))
+        content_layout.addWidget(self._create_hotkey_row("1 / 2 / 3 / 4", "快速切换到对应轨道"))
 
-        layout.addSpacing(8)
+        content_layout.addSpacing(8)
 
         # 编辑模式
-        layout.addWidget(self._create_section_title("编辑模式"))
-        layout.addWidget(self._create_hotkey_row("Enter", "确认编辑"))
-        layout.addWidget(self._create_hotkey_row("Escape", "取消编辑"))
+        content_layout.addWidget(self._create_section_title("编辑模式"))
+        content_layout.addWidget(self._create_hotkey_row("Enter", "确认编辑"))
+        content_layout.addWidget(self._create_hotkey_row("Escape", "取消编辑"))
 
-        layout.addSpacing(8)
+        content_layout.addSpacing(8)
 
         # 文件操作
-        layout.addWidget(self._create_section_title("文件操作"))
-        layout.addWidget(self._create_hotkey_row("Ctrl+O", "打开视频文件"))
-        layout.addWidget(self._create_hotkey_row("Ctrl+I", "导入字幕文件"))
-        layout.addWidget(self._create_hotkey_row("Ctrl+S", "导出字幕文件"))
-        layout.addWidget(self._create_hotkey_row("Ctrl+Q", "退出应用"))
-        layout.addWidget(self._create_hotkey_row("F11", "切换全屏"))
+        content_layout.addWidget(self._create_section_title("文件操作"))
+        content_layout.addWidget(self._create_hotkey_row("Ctrl+O", "打开视频文件"))
+        content_layout.addWidget(self._create_hotkey_row("Ctrl+I", "导入字幕文件"))
+        content_layout.addWidget(self._create_hotkey_row("Ctrl+S", "导出字幕文件"))
+        content_layout.addWidget(self._create_hotkey_row("Ctrl+Q", "退出应用"))
+        content_layout.addWidget(self._create_hotkey_row("F11", "切换全屏"))
 
-        layout.addStretch()
+        content_layout.addStretch()
+
+        scroll_area.setWidget(content)
+        layout.addWidget(scroll_area)
+
         return widget
 
     def _create_waveform_tab(self) -> QWidget:
