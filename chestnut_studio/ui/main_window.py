@@ -116,8 +116,7 @@ class MainWindow(QMainWindow):
         └──────────────────┴───────────────────────────────┘
         """
         # 清除固定尺寸约束
-        for card in [self.player_card, self.timeline_card,
-                     self.waveform_card, self.translate_card]:
+        for card in [self.player_card, self.timeline_card, self.waveform_card, self.translate_card]:
             card.setMinimumSize(200, 150)
             card.setMaximumSize(16777215, 16777215)
 
@@ -144,12 +143,12 @@ class MainWindow(QMainWindow):
 
         # 延迟确保卡片可见
         from PySide6.QtCore import QTimer
+
         QTimer.singleShot(0, self._show_all_cards)
 
     def _show_all_cards(self):
         """确保所有卡片可见"""
-        for card in [self.player_card, self.timeline_card,
-                     self.waveform_card, self.translate_card]:
+        for card in [self.player_card, self.timeline_card, self.waveform_card, self.translate_card]:
             card.show()
             card.setVisible(True)
 
@@ -163,14 +162,12 @@ class MainWindow(QMainWindow):
         bottom_h = win_h - top_h - 4
 
         self.resizeDocks(
-            [self.player_card, self.timeline_card,
-             self.waveform_card, self.translate_card],
+            [self.player_card, self.timeline_card, self.waveform_card, self.translate_card],
             [left_w, right_w, left_w, right_w],
             Qt.Horizontal,
         )
         self.resizeDocks(
-            [self.player_card, self.waveform_card,
-             self.timeline_card, self.translate_card],
+            [self.player_card, self.waveform_card, self.timeline_card, self.translate_card],
             [top_h, bottom_h, top_h, bottom_h],
             Qt.Vertical,
         )
@@ -233,6 +230,9 @@ class MainWindow(QMainWindow):
         self.player_card.position_changed.connect(self.waveform_card.update_position)
         self.player_card.duration_changed.connect(self.waveform_card.set_duration)
 
+        # --- 播放卡片 → 时间轴卡片 ---
+        self.player_card.duration_changed.connect(self.timeline_card.set_duration)
+
         # --- 播放卡片 AB 循环 → 工具栏和波形卡片 ---
         self.player_card.ab_loop_changed.connect(self.toolbar.update_ab_loop_state)
         self.player_card.ab_loop_changed.connect(self.waveform_card.set_ab_loop_region)
@@ -240,7 +240,14 @@ class MainWindow(QMainWindow):
         # --- 波形卡片 → 播放卡片（点击跳转） ---
         self.waveform_card.position_clicked.connect(self.player_card.set_position)
 
+        # --- 波形卡片 → 时间轴卡片（打轴完成） ---
+        self.waveform_card.subtitle_created.connect(self._on_subtitle_created)
 
+        # --- 时间轴卡片 → 播放卡片（跳转到字幕起始点） ---
+        self.timeline_card.jump_to_position.connect(self.player_card.set_position)
+
+        # --- 时间轴卡片 → 波形卡片（字幕数据变化，同步覆盖） ---
+        self.timeline_card.subtitle_changed.connect(self._sync_subtitle_overlay)
 
     # ========== 布局管理 ==========
 
@@ -314,10 +321,23 @@ class MainWindow(QMainWindow):
     def keyPressEvent(self, event):
         """全局快捷键处理"""
         key = event.key()
+        modifiers = event.modifiers()
 
         # 空格：播放/暂停
         if key == Qt.Key_Space:
             self.player_card.play_pause()
+            event.accept()
+            return
+
+        # I：标记字幕开始点
+        if key == Qt.Key_I and modifiers == Qt.NoModifier:
+            self.waveform_card.mark_start()
+            event.accept()
+            return
+
+        # O：标记字幕结束点
+        if key == Qt.Key_O and modifiers == Qt.NoModifier:
+            self.waveform_card.mark_end()
             event.accept()
             return
 
@@ -375,6 +395,7 @@ class MainWindow(QMainWindow):
 
             # 加载波形（异步处理，避免阻塞 UI）
             from PySide6.QtCore import QTimer
+
             QTimer.singleShot(100, lambda: self._load_waveform(path))
 
     def _on_open_subtitle(self):
@@ -444,6 +465,18 @@ class MainWindow(QMainWindow):
         else:
             self.status_bar.set_status("波形加载失败")
 
+    # ========== 打轴功能 ==========
+
+    def _on_subtitle_created(self, start_ms: int, end_ms: int):
+        """打轴完成 → 添加字幕到时间轴 + 同步波形覆盖"""
+        self.timeline_card.add_subtitle(start_ms, end_ms)
+        self.status_bar.set_status(f"已打轴: {split_time(start_ms)} - {split_time(end_ms)}")
+
+    def _sync_subtitle_overlay(self):
+        """同步字幕数据到波形卡片的覆盖显示"""
+        subtitle_data = self.timeline_card.get_subtitle_data()
+        self.waveform_card.update_subtitle_overlay_from_data(subtitle_data)
+
     # ========== 状态栏更新 ==========
 
     def _on_position_changed(self, ms: int):
@@ -457,5 +490,3 @@ class MainWindow(QMainWindow):
 
         self.status_bar.set_time("00:00", split_time(ms))
         self.status_bar.set_status(f"视频时长: {split_time(ms)}")
-
-

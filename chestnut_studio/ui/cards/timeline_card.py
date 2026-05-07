@@ -1,14 +1,22 @@
-"""打轴编辑卡片模块 - 简化版，只显示字幕列表"""
+"""打轴编辑卡片模块
+
+功能：
+- 显示已打轴的字幕列表（编号 + 起止时间 + 时长 + 操作按钮）
+- 提供查看（跳转起始点）、编辑（调整区间）、锁定功能
+- 支持撤销/重做
+- 与音频波形区联动
+"""
 
 import copy
+
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QAction, QColor
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QDockWidget,
+    QHBoxLayout,
     QHeaderView,
-    QInputDialog,
-    QMenu,
-    QMessageBox,
+    QLabel,
+    QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -18,19 +26,84 @@ from PySide6.QtWidgets import (
 from chestnut_studio.core.subtitle import SubtitleManager
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
+# 操作按钮样式
+OP_BTN_STYLE = """
+    QPushButton {
+        background: transparent;
+        border: 1px solid #3f3f46;
+        color: #e4e4e7;
+        font-size: 10pt;
+        padding: 1px 6px;
+        border-radius: 3px;
+        min-width: 24px;
+    }
+    QPushButton:hover {
+        background: #3f3f46;
+    }
+    QPushButton:pressed {
+        background: #27272a;
+    }
+"""
+
+# 锁定按钮激活样式
+LOCK_ACTIVE_STYLE = """
+    QPushButton {
+        background: #f59e0b;
+        border: 1px solid #fbbf24;
+        color: #000000;
+        font-size: 10pt;
+        padding: 1px 6px;
+        border-radius: 3px;
+        min-width: 24px;
+    }
+    QPushButton:hover {
+        background: #fbbf24;
+    }
+"""
+
+# 底部工具栏按钮样式
+TOOL_BTN_STYLE = """
+    QPushButton {
+        background: #27272a;
+        border: 1px solid #3f3f46;
+        color: #e4e4e7;
+        font-size: 9pt;
+        padding: 2px 8px;
+        border-radius: 3px;
+    }
+    QPushButton:hover {
+        background: #3f3f46;
+    }
+    QPushButton:pressed {
+        background: #18181b;
+    }
+    QPushButton:disabled {
+        color: #52525b;
+        background: #1e1e22;
+    }
+"""
+
 
 class TimelineCard(QDockWidget):
-    """打轴编辑卡片 - 简化版
+    """打轴编辑卡片
 
     功能：
-    - 显示字幕列表（只读）
-    - 右键菜单编辑字幕
+    - 显示已打轴的字幕列表（编号 + 起止时间 + 时长 + 操作按钮）
+    - 查看：跳转到字幕起始点
+    - 编辑：弹出对话框调整前后区间
+    - 锁定：切换锁定状态
     - 撤销/重做
+
+    信号：
+    - jump_to_position(ms): 跳转到指定位置
+    - subtitle_changed(): 字幕数据变化（用于同步波形覆盖）
+    - subtitle_selected(col, text): 字幕被选中（用于翻译面板）
     """
 
     # 信号
-    subtitle_selected = Signal(int, str)  # 字幕被选中 (col, text)
+    jump_to_position = Signal(int)  # 跳转到指定位置 (ms)
     subtitle_changed = Signal()  # 字幕数据变化
+    subtitle_selected = Signal(int, str)  # 字幕被选中 (col, text)
 
     # 默认停靠区域
     default_area = Qt.RightDockWidgetArea
@@ -38,13 +111,14 @@ class TimelineCard(QDockWidget):
     def __init__(self, parent=None):
         super().__init__("时间轴", parent)
         self._subtitle_mgr = SubtitleManager()
-        self._global_interval = 33.33  # 间隔 (ms)
         self._duration_ms = 0
-        self._player_position = 0
-        
+
+        # 锁定状态集合 {(col, start_ms), ...}
+        self._locked_states: set[tuple[int, int]] = set()
+
         # 撤销/重做后端
-        self._subtitle_backend = []
-        self._subtitle_backend_point = 0
+        self._backend: list[tuple[dict, set]] = []  # [(subtitle_data, locked_states), ...]
+        self._backend_point: int = -1
 
         self._setup_ui()
 
@@ -61,8 +135,8 @@ class TimelineCard(QDockWidget):
         layout = QVBoxLayout(content)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # 创建字幕列表表格（只读）
-        self._table = QTableWidget(0, 4, self)
+        # --- 字幕列表表格 ---
+        self._table = QTableWidget(0, 5, self)
         self._table.setStyleSheet("""
             QTableWidget {
                 background: #0f0f14;
@@ -70,6 +144,7 @@ class TimelineCard(QDockWidget):
                 gridline-color: #27272a;
                 font-size: 9pt;
                 selection-background-color: rgba(37, 99, 235, 0.3);
+                border: none;
             }
             QTableWidget::item {
                 padding: 2px;
@@ -93,219 +168,295 @@ class TimelineCard(QDockWidget):
         self._table.setEditTriggers(QTableWidget.NoEditTriggers)
         self._table.setSelectionBehavior(QTableWidget.SelectRows)
         self._table.setSelectionMode(QTableWidget.SingleSelection)
-        self._table.setContextMenuPolicy(Qt.CustomContextMenu)
-        
+
         # 设置列头
-        self._table.setHorizontalHeaderLabels(["轨道1", "轨道2", "轨道3", "轨道4"])
-        self._table.horizontalHeader().setStretchLastSection(True)
-        
-        # 连接信号
-        self._table.customContextMenuRequested.connect(self._show_context_menu)
+        self._table.setHorizontalHeaderLabels(["#", "开始时间", "结束时间", "时长", "操作"])
+        header = self._table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.Stretch)
+
+        # 隐藏垂直表头
+        self._table.verticalHeader().setVisible(False)
+
+        # 双击跳转
         self._table.doubleClicked.connect(self._on_double_click)
 
-        # 布局
         layout.addWidget(self._table)
+
+        # --- 底部工具栏 ---
+        bottom_bar = QWidget()
+        bottom_bar.setFixedHeight(32)
+        bottom_bar.setStyleSheet("background: #18181b; border: none;")
+        bottom_layout = QHBoxLayout(bottom_bar)
+        bottom_layout.setContentsMargins(8, 0, 8, 0)
+        bottom_layout.setSpacing(6)
+
+        # 字幕总数
+        self._count_label = QLabel("共 0 条")
+        self._count_label.setStyleSheet("color: #a1a1aa; font-size: 9pt;")
+
+        # 撤销/重做按钮
+        self._undo_btn = QPushButton("撤销")
+        self._undo_btn.setStyleSheet(TOOL_BTN_STYLE)
+        self._undo_btn.setToolTip("撤销 (Ctrl+Z)")
+        self._undo_btn.clicked.connect(self._undo)
+        self._undo_btn.setEnabled(False)
+
+        self._redo_btn = QPushButton("重做")
+        self._redo_btn.setStyleSheet(TOOL_BTN_STYLE)
+        self._redo_btn.setToolTip("重做 (Ctrl+Y)")
+        self._redo_btn.clicked.connect(self._redo)
+        self._redo_btn.setEnabled(False)
+
+        # 全部锁定/解锁按钮
+        self._lock_all_btn = QPushButton("全部锁定")
+        self._lock_all_btn.setStyleSheet(TOOL_BTN_STYLE)
+        self._lock_all_btn.clicked.connect(self._lock_all)
+
+        self._unlock_all_btn = QPushButton("全部解锁")
+        self._unlock_all_btn.setStyleSheet(TOOL_BTN_STYLE)
+        self._unlock_all_btn.clicked.connect(self._unlock_all)
+
+        bottom_layout.addWidget(self._count_label)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self._undo_btn)
+        bottom_layout.addWidget(self._redo_btn)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(self._lock_all_btn)
+        bottom_layout.addWidget(self._unlock_all_btn)
+
+        layout.addWidget(bottom_bar)
+
         self.setWidget(content)
 
+    # ========== 表格更新 ==========
+
     def _update_table(self):
-        """更新字幕列表"""
+        """更新字幕列表表格"""
+        # 记住当前选中行和滚动位置
+        selected_row = -1
+        selected_items = self._table.selectedItems()
+        if selected_items:
+            selected_row = selected_items[0].row()
+        scroll_pos = self._table.verticalScrollBar().value()
+
         self._table.setRowCount(0)
-        
-        # 收集所有字幕
-        all_subtitles = []
+
+        # 收集所有字幕条（跨所有轨道）
+        all_subtitles: list[tuple[int, int, int, str]] = []  # (start, duration, col, text)
         for col, sub_data in self._subtitle_mgr.data.items():
-            for start, (delta, text) in sub_data.items():
-                all_subtitles.append((start, delta, text, col))
-        
+            for start, (duration, text) in sub_data.items():
+                all_subtitles.append((start, duration, col, text))
+
         # 按开始时间排序
         all_subtitles.sort(key=lambda x: x[0])
-        
+
         # 填充表格
-        for start, delta, text, col in all_subtitles:
+        for idx, (start, duration, col, text) in enumerate(all_subtitles):
             row = self._table.rowCount()
             self._table.insertRow(row)
-            
+
+            is_locked = (col, start) in self._locked_states
+
+            # # 列（编号）
+            num_item = QTableWidgetItem(str(idx + 1))
+            num_item.setTextAlignment(Qt.AlignCenter)
+            num_item.setData(Qt.UserRole, (col, start))
+            self._table.setItem(row, 0, num_item)
+
             # 开始时间
             start_item = QTableWidgetItem(ms_to_time_str(start))
-            start_item.setData(Qt.UserRole, (start, col))
-            self._table.setItem(row, 0, start_item)
-            
-            # 结束时间
-            end_item = QTableWidgetItem(ms_to_time_str(start + delta))
-            self._table.setItem(row, 1, end_item)
-            
-            # 持续时间
-            duration_item = QTableWidgetItem(f"{delta/1000:.2f}s")
-            self._table.setItem(row, 2, duration_item)
-            
-            # 文本
-            text_item = QTableWidgetItem(text)
-            self._table.setItem(row, 3, text_item)
-            
-            # 设置颜色
-            color = QColor(53, 84, 93)  # 正常
-            if delta < 100 or delta > 8000:
-                color = QColor(178, 34, 34)  # 异常
-            elif delta > 4500:
-                color = QColor(250, 128, 114)  # 过长
-            
-            for col_idx in range(4):
-                self._table.item(row, col_idx).setBackground(color)
+            start_item.setTextAlignment(Qt.AlignCenter)
+            self._table.setItem(row, 1, start_item)
 
-    def _show_context_menu(self, pos):
-        """显示右键菜单"""
-        menu = QMenu(self)
-        
-        # 获取选中的行
-        selected = self._table.selectedItems()
-        if selected:
-            row = selected[0].row()
-            start_item = self._table.item(row, 0)
-            if start_item:
-                start, col = start_item.data(Qt.UserRole)
-                
-                # 编辑字幕文本
-                edit_action = QAction("编辑字幕文本", self)
-                edit_action.triggered.connect(lambda: self._edit_subtitle_text(col, start))
-                menu.addAction(edit_action)
-                
-                # 删除字幕
-                delete_action = QAction("删除字幕", self)
-                delete_action.triggered.connect(lambda: self._delete_subtitle(col, start))
-                menu.addAction(delete_action)
-                
-                menu.addSeparator()
-        
-        # 创建新字幕
-        create_action = QAction("在当前位置创建字幕", self)
-        create_action.triggered.connect(self._create_subtitle_at_cursor)
-        menu.addAction(create_action)
-        
-        menu.addSeparator()
-        
-        # 撤销/重做
-        undo_action = QAction("撤销", self)
-        undo_action.triggered.connect(self._undo)
-        menu.addAction(undo_action)
-        
-        redo_action = QAction("重做", self)
-        redo_action.triggered.connect(self._redo)
-        menu.addAction(redo_action)
-        
-        menu.exec_(self._table.viewport().mapToGlobal(pos))
+            # 结束时间
+            end_item = QTableWidgetItem(ms_to_time_str(start + duration))
+            end_item.setTextAlignment(Qt.AlignCenter)
+            self._table.setItem(row, 2, end_item)
+
+            # 时长
+            duration_item = QTableWidgetItem(f"{duration / 1000:.2f}s")
+            duration_item.setTextAlignment(Qt.AlignCenter)
+            self._table.setItem(row, 3, duration_item)
+
+            # 操作按钮
+            op_widget = self._create_operation_buttons(col, start, is_locked)
+            self._table.setCellWidget(row, 4, op_widget)
+
+            # 设置行颜色
+            if is_locked:
+                bg_color = QColor(255, 255, 255, 15)  # 锁定时微亮
+            elif duration < 100 or duration > 8000:
+                bg_color = QColor(178, 34, 34, 40)  # 异常：红色
+            elif duration > 4500:
+                bg_color = QColor(250, 128, 114, 30)  # 过长：橙色
+            else:
+                bg_color = QColor(53, 84, 93, 40)  # 正常：蓝色
+
+            for col_idx in range(5):
+                item = self._table.item(row, col_idx)
+                if item:
+                    item.setBackground(bg_color)
+
+        # 恢复选中
+        if selected_row >= 0 and selected_row < self._table.rowCount():
+            self._table.selectRow(selected_row)
+
+        # 恢复滚动位置
+        self._table.verticalScrollBar().setValue(scroll_pos)
+
+        # 更新计数和按钮状态
+        self._count_label.setText(f"共 {len(all_subtitles)} 条")
+        self._update_undo_redo_buttons()
+
+    def _create_operation_buttons(self, col: int, start: int, is_locked: bool) -> QWidget:
+        """创建操作按钮组（👁 ✏️ 🔒）"""
+        widget = QWidget()
+        widget.setStyleSheet("background: transparent;")
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(2, 1, 2, 1)
+        layout.setSpacing(4)
+
+        # 👁 查看按钮
+        view_btn = QPushButton("👁")
+        view_btn.setStyleSheet(OP_BTN_STYLE)
+        view_btn.setToolTip("跳转到字幕起始点")
+        view_btn.setFixedSize(28, 24)
+        view_btn.clicked.connect(lambda checked, s=start: self._on_view_clicked(s))
+        layout.addWidget(view_btn)
+
+        # ✏️ 编辑按钮
+        edit_btn = QPushButton("✏")
+        edit_btn.setStyleSheet(OP_BTN_STYLE)
+        edit_btn.setToolTip("编辑字幕区间")
+        edit_btn.setFixedSize(28, 24)
+        edit_btn.clicked.connect(lambda checked, c=col, s=start: self._on_edit_clicked(c, s))
+        layout.addWidget(edit_btn)
+
+        # 🔒 锁定按钮
+        lock_btn = QPushButton("🔒" if is_locked else "🔓")
+        lock_btn.setStyleSheet(LOCK_ACTIVE_STYLE if is_locked else OP_BTN_STYLE)
+        lock_btn.setToolTip("锁定" if is_locked else "解锁")
+        lock_btn.setFixedSize(28, 24)
+        lock_btn.clicked.connect(lambda checked, c=col, s=start: self._on_lock_clicked(c, s))
+        layout.addWidget(lock_btn)
+
+        layout.addStretch()
+        return widget
+
+    # ========== 操作回调 ==========
+
+    def _on_view_clicked(self, start_ms: int):
+        """查看按钮：跳转到字幕起始点"""
+        self.jump_to_position.emit(start_ms)
+
+    def _on_edit_clicked(self, col: int, start_ms: int):
+        """编辑按钮：弹出编辑对话框"""
+        if (col, start_ms) in self._locked_states:
+            return  # 锁定状态不可编辑
+
+        subtitle = self._subtitle_mgr.get(col, start_ms)
+        if subtitle is None:
+            return
+
+        duration, text = subtitle
+        end_ms = start_ms + duration
+
+        # 弹出编辑对话框
+        from chestnut_studio.ui.dialogs.edit_subtitle_dialog import EditSubtitleDialog
+
+        dialog = EditSubtitleDialog(start_ms, end_ms, self._duration_ms, self)
+        if dialog.exec():
+            new_start, new_end = dialog.get_result()
+            if new_start != start_ms or new_end != end_ms:
+                # 保存撤销点
+                self._push_undo()
+                # 删除旧条目，创建新条目
+                self._subtitle_mgr.delete(col, start_ms)
+                new_duration = new_end - new_start
+                self._subtitle_mgr.set(col, new_start, new_duration, text)
+                self._update_table()
+                self.subtitle_changed.emit()
+
+    def _on_lock_clicked(self, col: int, start_ms: int):
+        """锁定按钮：切换锁定状态"""
+        key = (col, start_ms)
+        if key in self._locked_states:
+            self._locked_states.discard(key)
+        else:
+            self._locked_states.add(key)
+        self._update_table()
 
     def _on_double_click(self, index):
-        """双击跳转到字幕位置"""
+        """双击行：跳转到字幕起始点"""
         row = index.row()
-        start_item = self._table.item(row, 0)
-        if start_item:
-            start, col = start_item.data(Qt.UserRole)
-            self.subtitle_selected.emit(col, self._subtitle_mgr.data[col][start][1])
+        num_item = self._table.item(row, 0)
+        if num_item:
+            data = num_item.data(Qt.UserRole)
+            if data:
+                col, start = data
+                self.jump_to_position.emit(start)
+                self.subtitle_selected.emit(col, self._subtitle_mgr.data[col].get(start, [0, ""])[1])
 
-    def _edit_subtitle_text(self, col, start):
-        """编辑字幕文本"""
-        if start not in self._subtitle_mgr.data[col]:
-            return
-        
-        delta, text = self._subtitle_mgr.data[col][start]
-        new_text, ok = QInputDialog.getText(self, "编辑字幕", "字幕文本:", text=text)
-        
-        if ok and new_text != text:
-            self._subtitle_mgr.data[col][start] = [delta, new_text]
-            self._update_backend()
-            self._update_table()
-            self.subtitle_changed.emit()
+    # ========== 撤销/重做 ==========
 
-    def _delete_subtitle(self, col, start):
-        """删除字幕"""
-        if start not in self._subtitle_mgr.data[col]:
-            return
-        
-        reply = QMessageBox.question(
-            self, "删除字幕",
-            "确定要删除这条字幕吗？",
-            QMessageBox.Yes | QMessageBox.No
+    def _push_undo(self):
+        """保存当前状态到撤销栈"""
+        state = (
+            copy.deepcopy(self._subtitle_mgr.data),
+            copy.deepcopy(self._locked_states),
         )
-        
-        if reply == QMessageBox.Yes:
-            del self._subtitle_mgr.data[col][start]
-            self._update_backend()
-            self._update_table()
-            self.subtitle_changed.emit()
-
-    def _create_subtitle_at_cursor(self):
-        """在当前位置创建字幕"""
-        start_time = int(self._player_position / self._global_interval) * int(self._global_interval)
-        duration = int(self._global_interval * 10)
-        col = 0  # 默认在第一列创建
-        
-        # 检查是否重叠
-        for existing_start, (existing_delta, _) in self._subtitle_mgr.data[col].items():
-            existing_end = existing_start + existing_delta
-            if start_time < existing_end and start_time + duration > existing_start:
-                QMessageBox.warning(self, "重叠检测", "该位置已有字幕，无法创建")
-                return
-        
-        self._subtitle_mgr.data[col][start_time] = [duration, ""]
-        self._update_backend()
-        self._update_table()
-        self.subtitle_changed.emit()
-
-    def _update_backend(self):
-        """保存修改记录"""
-        self._subtitle_backend = self._subtitle_backend[:self._subtitle_backend_point + 1]
-        self._subtitle_backend.append(copy.deepcopy(self._subtitle_mgr.data))
-        self._subtitle_backend_point = len(self._subtitle_backend) - 1
-        if len(self._subtitle_backend) > 100:
-            self._subtitle_backend.pop(0)
+        self._backend = self._backend[: self._backend_point + 1]
+        self._backend.append(state)
+        self._backend_point = len(self._backend) - 1
+        if len(self._backend) > 100:
+            self._backend.pop(0)
+            self._backend_point -= 1
+        self._update_undo_redo_buttons()
 
     def _undo(self):
         """撤销"""
-        if self._subtitle_backend_point > 0:
-            self._subtitle_backend_point -= 1
-            self._subtitle_mgr.data = copy.deepcopy(self._subtitle_backend[self._subtitle_backend_point])
+        if self._backend_point > 0:
+            self._backend_point -= 1
+            data, locked = copy.deepcopy(self._backend[self._backend_point])
+            self._subtitle_mgr._data = data
+            self._locked_states = locked
             self._update_table()
             self.subtitle_changed.emit()
 
     def _redo(self):
         """重做"""
-        if self._subtitle_backend_point < len(self._subtitle_backend) - 1:
-            self._subtitle_backend_point += 1
-            self._subtitle_mgr.data = copy.deepcopy(self._subtitle_backend[self._subtitle_backend_point])
+        if self._backend_point < len(self._backend) - 1:
+            self._backend_point += 1
+            data, locked = copy.deepcopy(self._backend[self._backend_point])
+            self._subtitle_mgr._data = data
+            self._locked_states = locked
             self._update_table()
             self.subtitle_changed.emit()
 
-    # ========== 公有方法 ==========
+    def _update_undo_redo_buttons(self):
+        """更新撤销/重做按钮状态"""
+        self._undo_btn.setEnabled(self._backend_point > 0)
+        self._redo_btn.setEnabled(self._backend_point < len(self._backend) - 1)
 
-    def set_player_position(self, ms: int):
-        """设置播放器位置"""
-        self._player_position = ms
+    # ========== 全部锁定/解锁 ==========
 
-    def set_interval(self, interval_ms: float):
-        """设置间隔"""
-        self._global_interval = interval_ms
+    def _lock_all(self):
+        """锁定所有字幕"""
+        for col, sub_data in self._subtitle_mgr.data.items():
+            for start in sub_data:
+                self._locked_states.add((col, start))
+        self._update_table()
 
-    def get_interval(self) -> float:
-        """获取当前间隔"""
-        return self._global_interval
+    def _unlock_all(self):
+        """解锁所有字幕"""
+        self._locked_states.clear()
+        self._update_table()
 
-    def set_duration(self, duration_ms: int):
-        """设置视频时长"""
-        self._duration_ms = duration_ms
-
-    def get_subtitle_data(self) -> dict:
-        """获取字幕数据"""
-        return self._subtitle_mgr.data
-
-    def get_subtitle_manager(self) -> SubtitleManager:
-        """获取字幕管理器实例"""
-        return self._subtitle_mgr
-
-    def jump_to_position_at_top(self, ms: int):
-        """跳转到指定时间位置"""
-        self._player_position = ms
-
-    # ========== 快捷键操作 ==========
+    # ========== 快捷键 ==========
 
     def keyPressEvent(self, event):
         """处理快捷键"""
@@ -320,20 +471,50 @@ class TimelineCard(QDockWidget):
             self._redo()
             event.accept()
             return
-        
+
         super().keyPressEvent(event)
 
-    # ========== 工具栏集成方法 ==========
+    # ========== 公有方法 ==========
 
-    def create_subtitle_at_cursor(self):
-        """在光标位置创建新字幕条"""
-        self._create_subtitle_at_cursor()
+    def set_duration(self, duration_ms: int):
+        """设置视频时长"""
+        self._duration_ms = duration_ms
 
-    def set_subtitle_text(self, col: int, start: int, text: str):
+    def get_subtitle_data(self) -> dict:
+        """获取字幕数据"""
+        return self._subtitle_mgr.data
+
+    def get_subtitle_manager(self) -> SubtitleManager:
+        """获取字幕管理器实例"""
+        return self._subtitle_mgr
+
+    def is_locked(self, col: int, start_ms: int) -> bool:
+        """检查字幕是否被锁定"""
+        return (col, start_ms) in self._locked_states
+
+    def add_subtitle(self, start_ms: int, end_ms: int, col: int = 0):
+        """添加新字幕条（由打轴信号调用）
+
+        Args:
+            start_ms: 开始时间 (ms)
+            end_ms: 结束时间 (ms)
+            col: 轨道号，默认 0
+        """
+        # 保存撤销点
+        self._push_undo()
+
+        duration = end_ms - start_ms
+        self._subtitle_mgr.set(col, start_ms, duration, "")
+        self._update_table()
+        self.subtitle_changed.emit()
+
+    def set_subtitle_text(self, col: int, start_ms: int, text: str):
         """设置字幕文本"""
-        if start in self._subtitle_mgr.data[col]:
-            delta = self._subtitle_mgr.data[col][start][0]
-            self._subtitle_mgr.data[col][start] = [delta, text]
-            self._update_backend()
+        if start_ms in self._subtitle_mgr.data[col]:
+            if (col, start_ms) in self._locked_states:
+                return  # 锁定状态不可编辑
+            duration = self._subtitle_mgr.data[col][start_ms][0]
+            self._push_undo()
+            self._subtitle_mgr.data[col][start_ms] = [duration, text]
             self._update_table()
             self.subtitle_changed.emit()

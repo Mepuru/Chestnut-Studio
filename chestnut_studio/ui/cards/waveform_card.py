@@ -1,4 +1,14 @@
-"""音频波形卡片模块"""
+"""音频波形卡片模块
+
+功能：
+- 主音轨波形显示（pyqtgraph）
+- 红色时间线跟随播放
+- 视窗滑动跟随播放位置
+- 点击跳转到对应时间
+- 滚轮缩放（以鼠标位置为中心）
+- 打轴功能：I/O 键标记开始/结束点
+- 字幕条覆盖显示（从 SubtitleManager 数据同步）
+"""
 
 import os
 import tempfile
@@ -6,11 +16,45 @@ import tempfile
 import pyqtgraph as pg
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QFont, QMouseEvent, QWheelEvent
-from PySide6.QtWidgets import QDockWidget, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QDockWidget, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from chestnut_studio.core.audio import compute_envelope_fast, downsample_waveform, load_waveform
 from chestnut_studio.core.ffmpeg import FFmpeg
 from chestnut_studio.utils.time_utils import ms_to_time_str
+
+# 打轴按钮样式
+MARK_BTN_STYLE = """
+    QPushButton {
+        background: #27272a;
+        border: 1px solid #3f3f46;
+        color: #e4e4e7;
+        font-size: 9pt;
+        padding: 3px 12px;
+        border-radius: 3px;
+    }
+    QPushButton:hover {
+        background: #3f3f46;
+    }
+    QPushButton:pressed {
+        background: #18181b;
+    }
+"""
+
+# 打轴按钮激活样式（正在标记中）
+MARK_ACTIVE_STYLE = """
+    QPushButton {
+        background: #16a34a;
+        border: 1px solid #22c55e;
+        color: #ffffff;
+        font-size: 9pt;
+        padding: 3px 12px;
+        border-radius: 3px;
+        font-weight: bold;
+    }
+    QPushButton:hover {
+        background: #22c55e;
+    }
+"""
 
 
 class WaveformPlotWidget(pg.PlotWidget):
@@ -142,7 +186,11 @@ class WaveformPlotWidget(pg.PlotWidget):
 
             # 计算鼠标在视窗中的相对位置
             current_range = self.plotItem.vb.viewRange()[0]
-            rel_pos = (center_time - current_range[0]) / (current_range[1] - current_range[0]) if current_range[1] != current_range[0] else 0.5
+            rel_pos = (
+                (center_time - current_range[0]) / (current_range[1] - current_range[0])
+                if current_range[1] != current_range[0]
+                else 0.5
+            )
 
             # 更新视窗
             self._view_window_ms = new_window
@@ -260,14 +308,17 @@ class WaveformCard(QDockWidget):
     - 滚轮缩放（以鼠标位置为中心）
     - 时间刻度显示
     - 放大倍数显示
-    - 字幕条覆盖显示
+    - 打轴功能：I/O 键标记开始/结束点
+    - 字幕条覆盖显示（从 SubtitleManager 数据同步）
 
     信号：
     - position_clicked(ms): 点击波形时发射，用于跳转播放位置
+    - subtitle_created(start_ms, end_ms): 打轴完成时发射
     """
 
     # 信号
     position_clicked = Signal(int)  # 点击位置 (ms)
+    subtitle_created = Signal(int, int)  # 打轴完成 (start_ms, end_ms)
 
     # 默认停靠区域
     default_area = Qt.BottomDockWidgetArea
@@ -286,6 +337,9 @@ class WaveformCard(QDockWidget):
 
         # 字幕条数据 {start_ms: end_ms}
         self._subtitle_regions: dict[int, int] = {}
+
+        # 打轴状态
+        self._mark_start_ms: int = -1  # 标记的开始点，-1 表示未设置
 
         self._setup_ui()
 
@@ -343,9 +397,7 @@ class WaveformCard(QDockWidget):
         )
 
         # 波形曲线（细线，叠加在包络上）
-        self._waveform_curve = self._plot_widget.plot(
-            pen=pg.mkPen(color="#60a5fa", width=1)
-        )
+        self._waveform_curve = self._plot_widget.plot(pen=pg.mkPen(color="#60a5fa", width=1))
 
         # 红色时间线
         self._red_line = pg.InfiniteLine(
@@ -377,6 +429,56 @@ class WaveformCard(QDockWidget):
 
         # 字幕条图层
         self._subtitle_items: list[pg.PlotCurveItem] = []
+
+        # 打轴标记线（绿色虚线 = 开始点，橙色虚线 = 结束点）
+        self._mark_start_line = pg.InfiniteLine(
+            pos=0,
+            angle=90,
+            pen=pg.mkPen(color="#22c55e", width=2, style=Qt.DashLine),
+            movable=False,
+        )
+        self._mark_start_line.setVisible(False)
+        self._mark_start_line.setZValue(15)
+        self._plot_widget.addItem(self._mark_start_line)
+
+        # 底部打轴按钮栏
+        self._mark_bar = QWidget()
+        self._mark_bar.setFixedHeight(32)
+        self._mark_bar.setStyleSheet("background: #18181b; border: none;")
+        mark_layout = QHBoxLayout(self._mark_bar)
+        mark_layout.setContentsMargins(8, 0, 8, 0)
+        mark_layout.setSpacing(8)
+
+        # 打轴状态标签
+        self._mark_status_label = QLabel("就绪")
+        self._mark_status_label.setStyleSheet("color: #a1a1aa; font-size: 9pt; font-family: Consolas;")
+
+        # 标记开始按钮
+        self._mark_start_btn = QPushButton("标记开始 [I]")
+        self._mark_start_btn.setStyleSheet(MARK_BTN_STYLE)
+        self._mark_start_btn.setToolTip("标记字幕开始点 (I)")
+        self._mark_start_btn.clicked.connect(self._on_mark_start)
+
+        # 标记结束按钮
+        self._mark_end_btn = QPushButton("标记结束 [O]")
+        self._mark_end_btn.setStyleSheet(MARK_BTN_STYLE)
+        self._mark_end_btn.setToolTip("标记字幕结束点 (O)")
+        self._mark_end_btn.clicked.connect(self._on_mark_end)
+
+        # 取消标记按钮
+        self._mark_cancel_btn = QPushButton("取消")
+        self._mark_cancel_btn.setStyleSheet(MARK_BTN_STYLE)
+        self._mark_cancel_btn.setToolTip("取消当前打轴标记")
+        self._mark_cancel_btn.clicked.connect(self._on_mark_cancel)
+        self._mark_cancel_btn.setEnabled(False)
+
+        mark_layout.addWidget(self._mark_status_label)
+        mark_layout.addStretch()
+        mark_layout.addWidget(self._mark_start_btn)
+        mark_layout.addWidget(self._mark_end_btn)
+        mark_layout.addWidget(self._mark_cancel_btn)
+
+        layout.addWidget(self._mark_bar)
 
         # 空状态提示
         self._hint_label = QLabel("打开视频后显示音轨波形", content)
@@ -504,6 +606,22 @@ class WaveformCard(QDockWidget):
         self._subtitle_regions = regions
         self._update_subtitle_overlay()
 
+    def update_subtitle_overlay_from_data(self, subtitle_data: dict):
+        """从 SubtitleManager 数据同步字幕条覆盖
+
+        Args:
+            subtitle_data: SubtitleManager.data (dict[int, dict[int, list]])
+        """
+        regions = {}
+        for col, sub_dict in subtitle_data.items():
+            for start_ms, (duration_ms, _text) in sub_dict.items():
+                end_ms = start_ms + duration_ms
+                # 如果该区域已存在，取更大范围
+                if start_ms not in regions or end_ms > regions[start_ms]:
+                    regions[start_ms] = end_ms
+        self._subtitle_regions = regions
+        self._update_subtitle_overlay()
+
     def clear_subtitle_regions(self):
         """清除字幕条覆盖"""
         self._subtitle_regions = {}
@@ -563,6 +681,74 @@ class WaveformCard(QDockWidget):
         self._ab_loop_b_line.setZValue(10)
         self._red_line.setZValue(20)
 
+    # ========== 打轴功能 ==========
+
+    def mark_start(self):
+        """标记字幕开始点（使用当前播放位置）"""
+        if self._duration_ms <= 0:
+            return
+        self._mark_start_ms = self._current_position_ms
+        self._mark_start_line.setPos(self._mark_start_ms)
+        self._mark_start_line.setVisible(True)
+
+        # 更新 UI 状态
+        self._mark_start_btn.setStyleSheet(MARK_ACTIVE_STYLE)
+        self._mark_start_btn.setText(f"开始: {ms_to_time_str(self._mark_start_ms)}")
+        self._mark_cancel_btn.setEnabled(True)
+        self._mark_status_label.setText(f"标记开始: {ms_to_time_str(self._mark_start_ms)}，按 O 标记结束")
+
+    def mark_end(self):
+        """标记字幕结束点（使用当前播放位置），完成打轴"""
+        if self._duration_ms <= 0:
+            return
+        if self._mark_start_ms < 0:
+            self._mark_status_label.setText("请先按 I 标记开始点")
+            return
+
+        end_ms = self._current_position_ms
+        start_ms = self._mark_start_ms
+
+        # 确保 start < end
+        if end_ms <= start_ms:
+            self._mark_status_label.setText("结束点必须在开始点之后")
+            return
+
+        # 发射打轴完成信号
+        self.subtitle_created.emit(start_ms, end_ms)
+
+        # 清除标记状态
+        self._clear_mark_state()
+        self._mark_status_label.setText(f"已打轴: {ms_to_time_str(start_ms)} - {ms_to_time_str(end_ms)}")
+
+    def cancel_marking(self):
+        """取消当前打轴标记"""
+        self._clear_mark_state()
+        self._mark_status_label.setText("已取消标记")
+
+    def _clear_mark_state(self):
+        """清除打轴标记状态"""
+        self._mark_start_ms = -1
+        self._mark_start_line.setVisible(False)
+        self._mark_start_btn.setStyleSheet(MARK_BTN_STYLE)
+        self._mark_start_btn.setText("标记开始 [I]")
+        self._mark_cancel_btn.setEnabled(False)
+
+    def _on_mark_start(self):
+        """标记开始按钮点击"""
+        self.mark_start()
+
+    def _on_mark_end(self):
+        """标记结束按钮点击"""
+        self.mark_end()
+
+    def _on_mark_cancel(self):
+        """取消标记按钮点击"""
+        self.cancel_marking()
+
+    def get_mark_start(self) -> int:
+        """获取当前标记的开始点，-1 表示未设置"""
+        return self._mark_start_ms
+
     # ========== 内部方法 ==========
 
     def _update_waveform_plot(self):
@@ -608,6 +794,21 @@ class WaveformCard(QDockWidget):
         y_range = self._plot_widget.plotItem.vb.viewRange()[1]
         y_min, y_max = y_range
 
+        # 根据持续时间选择颜色
+        duration = end_ms - start_ms
+        if duration < 100 or duration > 8000:
+            # 异常：红色
+            fill_color = QColor(178, 34, 34, 50)
+            border_color = QColor(178, 34, 34, 100)
+        elif duration > 4500:
+            # 过长：橙色
+            fill_color = QColor(250, 128, 114, 40)
+            border_color = QColor(250, 128, 114, 80)
+        else:
+            # 正常：蓝色
+            fill_color = QColor(59, 130, 246, 40)
+            border_color = QColor(59, 130, 246, 80)
+
         # 创建半透明色块
         x = [start_ms, end_ms, end_ms, start_ms, start_ms]
         y = [y_min, y_min, y_max, y_max, y_min]
@@ -616,8 +817,8 @@ class WaveformCard(QDockWidget):
             x=x,
             y=y,
             fillLevel=0,
-            brush=pg.mkBrush(color=QColor(59, 130, 246, 40)),  # 半透明蓝色
-            pen=pg.mkPen(color=QColor(59, 130, 246, 80), width=1),
+            brush=pg.mkBrush(color=fill_color),
+            pen=pg.mkPen(color=border_color, width=1),
         )
         self._plot_widget.addItem(item)
         self._subtitle_items.append(item)
