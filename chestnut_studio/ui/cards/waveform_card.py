@@ -351,7 +351,7 @@ class WaveformCard(QDockWidget):
 
         # 打轴状态
         self._mark_start_ms: int = -1  # 标记的开始点，-1 表示未设置
-        self._current_track: int = 0  # 当前轨道号（0-4）
+        self._current_track: int = 0  # 当前轨道号（0-3，对应轨道1-4）
 
         # 编辑模式状态
         self._edit_mode: bool = False
@@ -395,18 +395,37 @@ class WaveformCard(QDockWidget):
         # 模式标签（左下角显示）
         self._mode_label = QLabel("打轴模式")
         self._mode_label.setStyleSheet("color: #22c55e; font-size: 9pt; font-weight: bold;")
-        self._mode_label.setToolTip("I: 标记开始  O: 标记结束  滚轮缩放  Shift+拖动平移")
+
+        # 模式提示图标
+        self._mode_hint = QLabel("?")
+        self._mode_hint.setFixedSize(18, 18)
+        self._mode_hint.setAlignment(Qt.AlignCenter)
+        self._mode_hint.setStyleSheet("""
+            QLabel {
+                color: #6b7280;
+                font-size: 9pt;
+                background: #27272a;
+                border: 1px solid #3f3f46;
+                border-radius: 9px;
+            }
+            QLabel:hover {
+                background: #3f3f46;
+                color: #a1a1aa;
+            }
+        """)
+        self._mode_hint.setToolTip("I: 标记开始  O: 标记结束\n滚轮缩放  Shift+拖动平移")
+        self._mode_hint.setCursor(Qt.PointingHandCursor)
 
         # 轨道选择器
-        track_label = QLabel("轨:")
+        track_label = QLabel("轨道:")
         track_label.setStyleSheet("color: #a1a1aa; font-size: 9pt;")
 
         self._track_combo = QComboBox()
         self._track_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-        # 添加轨道选项，下拉列表中显示颜色
+        # 添加轨道选项 0-4，下拉列表中显示颜色
         track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#a855f7"]
         for i, color in enumerate(track_colors):
-            self._track_combo.addItem(f"轨{i}")
+            self._track_combo.addItem(f"轨道 {i}")
             self._track_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
         self._track_combo.setCurrentIndex(0)
         self._track_combo.currentIndexChanged.connect(self._on_track_changed)
@@ -415,6 +434,7 @@ class WaveformCard(QDockWidget):
         info_layout.addWidget(self._range_label)
         info_layout.addSpacing(12)
         info_layout.addWidget(self._mode_label)
+        info_layout.addWidget(self._mode_hint)
         info_layout.addStretch()
         info_layout.addWidget(track_label)
         info_layout.addWidget(self._track_combo)
@@ -529,12 +549,12 @@ class WaveformCard(QDockWidget):
         self._mark_end_btn.setToolTip("标记字幕结束点 (O)")
         self._mark_end_btn.clicked.connect(self._on_mark_end)
 
-        # 取消标记按钮
+        # 取消打轴按钮
         self._mark_cancel_btn = QPushButton("取消")
         self._mark_cancel_btn.setStyleSheet(MARK_BTN_STYLE)
         self._mark_cancel_btn.setToolTip("取消当前打轴标记")
         self._mark_cancel_btn.clicked.connect(self._on_mark_cancel)
-        self._mark_cancel_btn.setEnabled(False)
+        self._mark_cancel_btn.setVisible(False)
 
         # 编辑模式按钮（初始隐藏）
         # 设为起点按钮
@@ -591,14 +611,14 @@ class WaveformCard(QDockWidget):
                 background: #3b82f6;
             }
         """)
-        self._edit_confirm_btn.setToolTip("确认编辑")
+        self._edit_confirm_btn.setToolTip("确认编辑 (Enter)")
         self._edit_confirm_btn.clicked.connect(self._on_edit_confirm)
         self._edit_confirm_btn.setVisible(False)
 
         # 取消编辑按钮
-        self._edit_cancel_btn = QPushButton("取消编辑")
+        self._edit_cancel_btn = QPushButton("取消")
         self._edit_cancel_btn.setStyleSheet(MARK_BTN_STYLE)
-        self._edit_cancel_btn.setToolTip("取消编辑，恢复原始值")
+        self._edit_cancel_btn.setToolTip("取消编辑 (Escape)")
         self._edit_cancel_btn.clicked.connect(self._on_edit_cancel)
         self._edit_cancel_btn.setVisible(False)
 
@@ -839,8 +859,8 @@ class WaveformCard(QDockWidget):
         # 更新 UI 状态
         self._mark_start_btn.setStyleSheet(MARK_ACTIVE_STYLE)
         self._mark_start_btn.setText(f"开始: {ms_to_time_str(self._mark_start_ms)}")
-        self._mark_cancel_btn.setEnabled(True)
-        self._mark_status_label.setText(f"开始: {ms_to_time_str(self._mark_start_ms)}  O结束")
+        self._mark_cancel_btn.setVisible(True)
+        self._mark_status_label.setText(f"开始: {ms_to_time_str(self._mark_start_ms)}")
 
     def mark_end(self):
         """标记字幕结束点（使用当前播放位置），完成打轴"""
@@ -880,7 +900,7 @@ class WaveformCard(QDockWidget):
         self._mark_start_line.setVisible(False)
         self._mark_start_btn.setStyleSheet(MARK_BTN_STYLE)
         self._mark_start_btn.setText("标记开始 [I]")
-        self._mark_cancel_btn.setEnabled(False)
+        self._mark_cancel_btn.setVisible(False)
 
     def _on_mark_start(self):
         """标记开始按钮点击"""
@@ -891,7 +911,7 @@ class WaveformCard(QDockWidget):
         self.mark_end()
 
     def _on_mark_cancel(self):
-        """取消标记按钮点击"""
+        """取消打轴按钮点击"""
         self.cancel_marking()
 
     def get_mark_start(self) -> int:
@@ -903,10 +923,10 @@ class WaveformCard(QDockWidget):
         return self._current_track
 
     def set_current_track(self, track: int):
-        """设置当前轨道号"""
-        if 0 <= track <= 4:
-            self._current_track = track
-            self._track_combo.setCurrentIndex(track)
+        """设置当前轨道号（1-4）"""
+        if 1 <= track <= 4:
+            self._current_track = track - 1
+            self._track_combo.setCurrentIndex(self._current_track)
 
     def _on_track_changed(self, index: int):
         """轨道选择变化"""
@@ -943,19 +963,15 @@ class WaveformCard(QDockWidget):
         self._set_mark_buttons_visible(False)
         self._set_edit_buttons_visible(True)
 
-        # 更新状态提示（缩短避免拉长卡片）
+        # 更新状态提示
         self._mark_status_label.setText(
             f"编辑: {ms_to_time_str(start_ms)}-{ms_to_time_str(end_ms)}"
-        )
-        self._mark_status_label.setToolTip(
-            f"编辑模式: {ms_to_time_str(start_ms)} - {ms_to_time_str(end_ms)}\n"
-            f"按 I 设起点，按 O 设终点，Enter 确认，Escape 取消"
         )
 
         # 更新模式标签
         self._mode_label.setText("编辑模式")
         self._mode_label.setStyleSheet("color: #a855f7; font-size: 9pt; font-weight: bold;")
-        self._mode_label.setToolTip("I: 设为起点  O: 设为终点  Enter: 确认  Escape: 取消")
+        self._mode_hint.setToolTip("I: 设为起点\nO: 设为终点\nEnter: 确认\nEscape: 取消")
 
         # 视窗跳转到编辑区域
         self._scroll_to_edit_area()
