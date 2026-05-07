@@ -128,9 +128,14 @@ class WaveformPlotWidget(pg.PlotWidget):
         """设置时间轴格式"""
         axis = self.getAxis("bottom")
 
+        # 保存父组件引用（WaveformCard）
+        card = self.parent() if hasattr(self, 'parent') else None
+
         def time_tick_strings(values, scale, spacing):
             """将毫秒值转换为 mm:ss + 帧号 格式"""
             strings = []
+            # 获取帧率，默认30
+            fps = getattr(card, '_fps', 30.0) if card else 30.0
             for v in values:
                 if v < 0:
                     strings.append("")
@@ -140,7 +145,7 @@ class WaveformPlotWidget(pg.PlotWidget):
                     minutes = total_seconds // 60
                     seconds = total_seconds % 60
                     # 计算帧号
-                    frame = int(v * self._fps / 1000) if self._fps > 0 else 0
+                    frame = int(v * fps / 1000) if fps > 0 else 0
                     strings.append(f"{minutes}:{seconds:02d}\n{frame}")
             return strings
 
