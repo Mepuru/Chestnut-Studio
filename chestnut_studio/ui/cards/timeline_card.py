@@ -1,8 +1,9 @@
 """打轴编辑卡片模块
 
 功能：
-- 显示已打轴的字幕列表（编号 + 起止时间 + 时长 + 操作按钮）
-- 提供查看（跳转起始点）、编辑（调整区间）、锁定功能
+- 显示已打轴的字幕列表（编号 + 轨道 + 起止时间 + 时长 + 操作按钮）
+- 提供查看、编辑、锁定、删除功能
+- 支持批量删除
 - 支持撤销/重做
 - 与音频波形区联动
 """
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QMessageBox,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
@@ -86,10 +88,11 @@ class TimelineCard(QDockWidget):
     """打轴编辑卡片
 
     功能：
-    - 显示已打轴的字幕列表（编号 + 起止时间 + 时长 + 操作按钮）
+    - 显示已打轴的字幕列表（编号 + 轨道 + 起止时间 + 时长 + 操作按钮）
     - 查看：跳转到字幕起始点
     - 编辑：在波形图上可视化调整区间
     - 锁定：切换锁定状态
+    - 删除：删除单条或多条字幕
     - 撤销/重做
 
     信号：
@@ -140,7 +143,7 @@ class TimelineCard(QDockWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         # --- 字幕列表表格 ---
-        self._table = QTableWidget(0, 5, self)
+        self._table = QTableWidget(0, 6, self)
         self._table.setStyleSheet("""
             QTableWidget {
                 background: #0f0f14;
@@ -171,18 +174,20 @@ class TimelineCard(QDockWidget):
         # 设置表格属性
         self._table.setEditTriggers(QTableWidget.NoEditTriggers)
         self._table.setSelectionBehavior(QTableWidget.SelectRows)
-        self._table.setSelectionMode(QTableWidget.SingleSelection)
+        self._table.setSelectionMode(QTableWidget.ExtendedSelection)  # 支持多选
 
         # 设置列头
-        self._table.setHorizontalHeaderLabels(["#", "开始时间", "结束时间", "时长", "操作"])
+        self._table.setHorizontalHeaderLabels(["#", "轨道", "开始时间", "结束时间", "时长", "操作"])
         header = self._table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Fixed)
         self._table.setColumnWidth(0, 36)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.Fixed)
+        self._table.setColumnWidth(1, 50)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.Fixed)
-        self._table.setColumnWidth(4, 130)
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.Fixed)
+        self._table.setColumnWidth(5, 160)
 
         # 隐藏垂直表头
         self._table.verticalHeader().setVisible(False)
@@ -217,6 +222,17 @@ class TimelineCard(QDockWidget):
         self._redo_btn.clicked.connect(self._redo)
         self._redo_btn.setEnabled(False)
 
+        # 删除按钮
+        self._delete_btn = QPushButton("删除")
+        self._delete_btn.setStyleSheet(TOOL_BTN_STYLE)
+        self._delete_btn.setToolTip("删除选中的字幕 (Delete)")
+        self._delete_btn.clicked.connect(self._delete_selected)
+
+        self._delete_all_btn = QPushButton("清空")
+        self._delete_all_btn.setStyleSheet(TOOL_BTN_STYLE)
+        self._delete_all_btn.setToolTip("清空当前轨道所有字幕")
+        self._delete_all_btn.clicked.connect(self._delete_all_current_track)
+
         # 全部锁定/解锁按钮
         self._lock_all_btn = QPushButton("全部锁定")
         self._lock_all_btn.setStyleSheet(TOOL_BTN_STYLE)
@@ -226,13 +242,22 @@ class TimelineCard(QDockWidget):
         self._unlock_all_btn.setStyleSheet(TOOL_BTN_STYLE)
         self._unlock_all_btn.clicked.connect(self._unlock_all)
 
+        # 预览按钮
+        self._preview_btn = QPushButton("预览")
+        self._preview_btn.setStyleSheet(TOOL_BTN_STYLE)
+        self._preview_btn.setToolTip("预览所有轨道叠加效果")
+        self._preview_btn.clicked.connect(self._preview_tracks)
+
         bottom_layout.addWidget(self._count_label)
         bottom_layout.addStretch()
         bottom_layout.addWidget(self._undo_btn)
         bottom_layout.addWidget(self._redo_btn)
+        bottom_layout.addWidget(self._delete_btn)
+        bottom_layout.addWidget(self._delete_all_btn)
         bottom_layout.addStretch()
         bottom_layout.addWidget(self._lock_all_btn)
         bottom_layout.addWidget(self._unlock_all_btn)
+        bottom_layout.addWidget(self._preview_btn)
 
         layout.addWidget(bottom_bar)
 
@@ -267,33 +292,50 @@ class TimelineCard(QDockWidget):
 
             is_locked = (col, start) in self._locked_states
 
+            # 轨道颜色
+            track_colors_fg = [
+                QColor(59, 130, 246),  # 轨道0: 蓝色
+                QColor(16, 185, 129),  # 轨道1: 绿色
+                QColor(245, 158, 11),  # 轨道2: 橙色
+                QColor(236, 72, 153),  # 轨道3: 粉色
+                QColor(168, 85, 247),  # 轨道4: 紫色
+            ]
+
             # # 列（编号）
             num_item = QTableWidgetItem(str(idx + 1))
             num_item.setTextAlignment(Qt.AlignCenter)
             num_item.setData(Qt.UserRole, (col, start))
             self._table.setItem(row, 0, num_item)
 
+            # 轨道列
+            track_item = QTableWidgetItem(f"轨{col}")
+            track_item.setTextAlignment(Qt.AlignCenter)
+            track_item.setData(Qt.UserRole + 1, col)
+            col_idx = max(0, min(col, len(track_colors_fg) - 1))
+            track_item.setForeground(track_colors_fg[col_idx])
+            self._table.setItem(row, 1, track_item)
+
             # 开始时间
             start_item = QTableWidgetItem(ms_to_time_str(start))
             start_item.setTextAlignment(Qt.AlignCenter)
-            self._table.setItem(row, 1, start_item)
+            self._table.setItem(row, 2, start_item)
 
             # 结束时间
             end_item = QTableWidgetItem(ms_to_time_str(start + duration))
             end_item.setTextAlignment(Qt.AlignCenter)
-            self._table.setItem(row, 2, end_item)
+            self._table.setItem(row, 3, end_item)
 
             # 时长
             duration_item = QTableWidgetItem(f"{duration / 1000:.2f}s")
             duration_item.setTextAlignment(Qt.AlignCenter)
-            self._table.setItem(row, 3, duration_item)
+            self._table.setItem(row, 4, duration_item)
 
             # 操作按钮
             op_widget = self._create_operation_buttons(col, start, is_locked)
-            self._table.setCellWidget(row, 4, op_widget)
+            self._table.setCellWidget(row, 5, op_widget)
 
-            # 轨道颜色方案
-            track_colors = [
+            # 轨道背景颜色方案
+            track_colors_bg = [
                 QColor(59, 130, 246, 30),  # 轨道0: 蓝色
                 QColor(16, 185, 129, 30),  # 轨道1: 绿色
                 QColor(245, 158, 11, 30),  # 轨道2: 橙色
@@ -307,11 +349,11 @@ class TimelineCard(QDockWidget):
             elif duration < 100 or duration > 8000:
                 bg_color = QColor(178, 34, 34, 40)  # 异常：红色
             else:
-                col_idx = max(0, min(col, len(track_colors) - 1))
-                bg_color = track_colors[col_idx]
+                col_idx = max(0, min(col, len(track_colors_bg) - 1))
+                bg_color = track_colors_bg[col_idx]
 
-            for col_idx in range(5):
-                item = self._table.item(row, col_idx)
+            for c in range(6):
+                item = self._table.item(row, c)
                 if item:
                     item.setBackground(bg_color)
 
@@ -404,6 +446,102 @@ class TimelineCard(QDockWidget):
                 self.jump_to_position.emit(start)
                 self.subtitle_selected.emit(col, self._subtitle_mgr.data[col].get(start, [0, ""])[1])
 
+    # ========== 删除功能 ==========
+
+    def _delete_selected(self):
+        """删除选中的字幕"""
+        selected_rows = set()
+        for item in self._table.selectedItems():
+            selected_rows.add(item.row())
+
+        if not selected_rows:
+            return
+
+        # 收集要删除的字幕
+        to_delete = []
+        for row in selected_rows:
+            num_item = self._table.item(row, 0)
+            if num_item:
+                data = num_item.data(Qt.UserRole)
+                if data:
+                    col, start = data
+                    if (col, start) not in self._locked_states:
+                        to_delete.append((col, start))
+
+        if not to_delete:
+            return
+
+        # 确认删除
+        if len(to_delete) > 1:
+            reply = QMessageBox.question(
+                self, "批量删除", f"确定要删除选中的 {len(to_delete)} 条字幕吗？", QMessageBox.Yes | QMessageBox.No
+            )
+            if reply != QMessageBox.Yes:
+                return
+
+        # 执行删除
+        self._push_undo()
+        for col, start in to_delete:
+            self._subtitle_mgr.delete(col, start)
+            self._locked_states.discard((col, start))
+
+        self._update_table()
+        self.subtitle_changed.emit()
+
+    def _delete_all_current_track(self):
+        """清空当前轨道所有字幕（需要外部传入当前轨道号）"""
+        # 这个方法需要与 WaveformCard 的当前轨道联动
+        # 暂时清空所有轨道
+        reply = QMessageBox.question(
+            self, "清空字幕", "确定要清空所有字幕吗？此操作不可撤销。", QMessageBox.Yes | QMessageBox.No
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        self._push_undo()
+        self._subtitle_mgr.clear_all()
+        self._locked_states.clear()
+        self._update_table()
+        self.subtitle_changed.emit()
+
+    def delete_by_track(self, track: int):
+        """删除指定轨道的所有字幕"""
+        if track < 0 or track > 4:
+            return
+
+        sub_data = self._subtitle_mgr.data.get(track, {})
+        if not sub_data:
+            return
+
+        reply = QMessageBox.question(
+            self, "清空轨道", f"确定要清空轨道 {track} 的所有字幕吗？", QMessageBox.Yes | QMessageBox.No
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        self._push_undo()
+        self._subtitle_mgr.clear(track)
+        # 清除该轨道的锁定状态
+        to_remove = [(c, s) for c, s in self._locked_states if c == track]
+        for key in to_remove:
+            self._locked_states.discard(key)
+
+        self._update_table()
+        self.subtitle_changed.emit()
+
+    def _preview_tracks(self):
+        """预览所有轨道叠加效果"""
+        # 发射预览信号或打开预览对话框
+        # 暂时打印到控制台
+        print("\n===== 轨道预览 =====")
+        for col in range(5):
+            sub_data = self._subtitle_mgr.data.get(col, {})
+            if sub_data:
+                print(f"轨道 {col}: {len(sub_data)} 条")
+                for start, (duration, text) in sorted(sub_data.items()):
+                    print(f"  {ms_to_time_str(start)} - {ms_to_time_str(start + duration)}: {text or '(无文本)'}")
+        print("===================\n")
+
     # ========== 撤销/重做 ==========
 
     def _push_undo(self):
@@ -476,6 +614,10 @@ class TimelineCard(QDockWidget):
             return
         elif modifiers == Qt.ControlModifier and key == Qt.Key_Y:
             self._redo()
+            event.accept()
+            return
+        elif key == Qt.Key_Delete:
+            self._delete_selected()
             event.accept()
             return
 
