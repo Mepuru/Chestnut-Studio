@@ -396,10 +396,27 @@ class WaveformCard(QDockWidget):
         self._scroll_hint = QLabel("滚轮缩放 | Shift+拖动平移")
         self._scroll_hint.setStyleSheet("color: #52525b; font-size: 8pt;")
 
+        # 轨道选择器
+        track_label = QLabel("轨道:")
+        track_label.setStyleSheet("color: #a1a1aa; font-size: 9pt;")
+
+        self._track_combo = QComboBox()
+        self._track_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        # 添加轨道选项，下拉列表中显示颜色
+        track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#a855f7"]
+        for i, color in enumerate(track_colors):
+            self._track_combo.addItem(f"轨道 {i}")
+            self._track_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
+        self._track_combo.setCurrentIndex(0)
+        self._track_combo.currentIndexChanged.connect(self._on_track_changed)
+
         info_layout.addWidget(self._zoom_label)
         info_layout.addWidget(self._range_label)
         info_layout.addStretch()
         info_layout.addWidget(self._scroll_hint)
+        info_layout.addSpacing(12)
+        info_layout.addWidget(track_label)
+        info_layout.addWidget(self._track_combo)
 
         layout.addWidget(info_bar)
 
@@ -499,20 +516,6 @@ class WaveformCard(QDockWidget):
         self._mark_status_label = QLabel("就绪")
         self._mark_status_label.setStyleSheet("color: #a1a1aa; font-size: 9pt; font-family: Consolas;")
 
-        # 轨道选择器
-        track_label = QLabel("轨道:")
-        track_label.setStyleSheet("color: #a1a1aa; font-size: 9pt;")
-
-        self._track_combo = QComboBox()
-        self._track_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-        # 添加轨道选项，下拉列表中显示颜色
-        track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#a855f7"]
-        for i, color in enumerate(track_colors):
-            self._track_combo.addItem(f"轨道 {i}")
-            self._track_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
-        self._track_combo.setCurrentIndex(0)
-        self._track_combo.currentIndexChanged.connect(self._on_track_changed)
-
         # 标记开始按钮
         self._mark_start_btn = QPushButton("标记开始 [I]")
         self._mark_start_btn.setStyleSheet(MARK_BTN_STYLE)
@@ -599,9 +602,6 @@ class WaveformCard(QDockWidget):
         self._edit_cancel_btn.setVisible(False)
 
         mark_layout.addWidget(self._mark_status_label)
-        mark_layout.addSpacing(12)
-        mark_layout.addWidget(track_label)
-        mark_layout.addWidget(self._track_combo)
         mark_layout.addStretch()
 
         # 打轴模式按钮
