@@ -99,14 +99,14 @@ class TimelineCard(QDockWidget):
     信号：
     - jump_to_position(ms): 跳转到指定位置
     - subtitle_changed(): 字幕数据变化（用于同步波形覆盖）
-    - subtitle_selected(col, text): 字幕被选中（用于翻译面板）
+    - subtitle_selected(col, start_ms): 字幕被选中（用于翻译面板）
     - edit_subtitle_requested(col, start_ms, end_ms): 请求编辑字幕（发射到波形图）
     """
 
     # 信号
     jump_to_position = Signal(int)  # 跳转到指定位置 (ms)
     subtitle_changed = Signal()  # 字幕数据变化
-    subtitle_selected = Signal(int, str)  # 字幕被选中 (col, text)
+    subtitle_selected = Signal(int, int)  # 字幕被选中 (col, start_ms)
     edit_subtitle_requested = Signal(int, int, int)  # 请求编辑 (col, start_ms, end_ms)
 
     # 默认停靠区域
@@ -179,7 +179,7 @@ class TimelineCard(QDockWidget):
         # 设置表格属性
         self._table.setEditTriggers(QTableWidget.NoEditTriggers)
         self._table.setSelectionBehavior(QTableWidget.SelectRows)
-        self._table.setSelectionMode(QTableWidget.ExtendedSelection)  # 支持多选
+        self._table.setSelectionMode(QTableWidget.NoSelection)  # 默认禁用选择，仅翻译区域高亮时启用
 
         # 设置列头 - 使用 Stretch 模式自动调整列宽
         self._table.setHorizontalHeaderLabels(["#", "轨道", "开始时间", "结束时间", "开始帧", "结束帧", "时长", "操作"])
@@ -249,6 +249,33 @@ class TimelineCard(QDockWidget):
         self._preview_btn.setToolTip("预览所有轨道叠加效果")
         self._preview_btn.clicked.connect(self._preview_tracks)
 
+        # 复制轴功能
+        copy_label = QLabel("复制:")
+        copy_label.setStyleSheet("color: #a1a1aa; font-size: 9pt;")
+
+        self._copy_source_combo = QComboBox()
+        self._copy_source_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899"]
+        for i, color in enumerate(track_colors):
+            self._copy_source_combo.addItem(f"轨道 {i + 1}")
+            self._copy_source_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
+        self._copy_source_combo.setCurrentIndex(0)
+
+        copy_arrow = QLabel("→")
+        copy_arrow.setStyleSheet("color: #a1a1aa; font-size: 9pt;")
+
+        self._copy_target_combo = QComboBox()
+        self._copy_target_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        for i, color in enumerate(track_colors):
+            self._copy_target_combo.addItem(f"轨道 {i + 1}")
+            self._copy_target_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
+        self._copy_target_combo.setCurrentIndex(1)
+
+        self._copy_track_btn = QPushButton("复制轴")
+        self._copy_track_btn.setStyleSheet(TOOL_BTN_STYLE)
+        self._copy_track_btn.setToolTip("将源轨道的字幕复制到目标轨道")
+        self._copy_track_btn.clicked.connect(self._copy_track)
+
         # 轨道筛选器
         filter_label = QLabel("显示:")
         filter_label.setStyleSheet("color: #a1a1aa; font-size: 9pt;")
@@ -267,6 +294,12 @@ class TimelineCard(QDockWidget):
         bottom_layout.addSpacing(8)
         bottom_layout.addWidget(filter_label)
         bottom_layout.addWidget(self._track_filter)
+        bottom_layout.addStretch()
+        bottom_layout.addWidget(copy_label)
+        bottom_layout.addWidget(self._copy_source_combo)
+        bottom_layout.addWidget(copy_arrow)
+        bottom_layout.addWidget(self._copy_target_combo)
+        bottom_layout.addWidget(self._copy_track_btn)
         bottom_layout.addStretch()
         bottom_layout.addWidget(self._undo_btn)
         bottom_layout.addWidget(self._redo_btn)
@@ -469,7 +502,7 @@ class TimelineCard(QDockWidget):
         if subtitle is None:
             return
 
-        duration, text = subtitle
+        duration = subtitle[0]
         end_ms = start_ms + duration
 
         # 发射编辑请求信号，让波形图进入编辑模式
@@ -495,7 +528,6 @@ class TimelineCard(QDockWidget):
         if subtitle is None:
             return
 
-        duration, text = subtitle
         self._push_undo()
         self._subtitle_mgr.delete(col, start_ms)
         self._locked_states.discard((col, start_ms))
@@ -511,7 +543,7 @@ class TimelineCard(QDockWidget):
             if data:
                 col, start = data
                 self.jump_to_position.emit(start)
-                self.subtitle_selected.emit(col, self._subtitle_mgr.data[col].get(start, [0, ""])[1])
+                self.subtitle_selected.emit(col, start)
 
     def _on_track_filter_changed(self, index: int):
         """轨道筛选变化"""
@@ -606,13 +638,55 @@ class TimelineCard(QDockWidget):
         # 发射预览信号或打开预览对话框
         # 暂时打印到控制台
         print("\n===== 轨道预览 =====")
-        for col in range(5):
+        for col in range(1, 5):
             sub_data = self._subtitle_mgr.data.get(col, {})
             if sub_data:
                 print(f"轨道 {col}: {len(sub_data)} 条")
                 for start, (duration, text) in sorted(sub_data.items()):
                     print(f"  {ms_to_time_str(start)} - {ms_to_time_str(start + duration)}: {text or '(无文本)'}")
         print("===================\n")
+
+    def _copy_track(self):
+        """复制轨道字幕到另一个轨道"""
+        source_col = self._copy_source_combo.currentIndex() + 1  # combo index 0 = track 1
+        target_col = self._copy_target_combo.currentIndex() + 1
+
+        if source_col == target_col:
+            QMessageBox.warning(self, "复制失败", "源轨道和目标轨道不能相同")
+            return
+
+        # 检查源轨道是否有数据
+        source_data = self._subtitle_mgr.data.get(source_col, {})
+        if not source_data:
+            QMessageBox.warning(self, "复制失败", f"轨道 {source_col} 没有字幕数据")
+            return
+
+        # 检查目标轨道是否有数据
+        target_data = self._subtitle_mgr.data.get(target_col, {})
+        if target_data:
+            reply = QMessageBox.question(
+                self,
+                "确认复制",
+                f"轨道 {target_col} 已有字幕数据，复制将覆盖现有数据。确定要继续吗？",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if reply != QMessageBox.Yes:
+                return
+
+        # 执行复制
+        self._push_undo()
+        success = self._subtitle_mgr.copy_track(source_col, target_col)
+
+        if success:
+            self._update_table()
+            self.subtitle_changed.emit()
+            QMessageBox.information(
+                self,
+                "复制成功",
+                f"已将轨道 {source_col} 的 {len(source_data)} 条字幕复制到轨道 {target_col}",
+            )
+        else:
+            QMessageBox.warning(self, "复制失败", "复制过程中发生错误")
 
     # ========== 撤销/重做 ==========
 
@@ -780,3 +854,84 @@ class TimelineCard(QDockWidget):
         self._push_undo()
         self._update_table()
         self.subtitle_changed.emit()
+
+    def get_next_subtitle(self, col: int, current_start_ms: int) -> tuple[int, int] | None:
+        """获取下一条字幕
+
+        Args:
+            col: 轨道号
+            current_start_ms: 当前字幕开始时间
+
+        Returns:
+            (col, start_ms) 或 None
+        """
+        sub_data = self._subtitle_mgr.data.get(col, {})
+        if not sub_data:
+            return None
+
+        sorted_starts = sorted(sub_data.keys())
+        try:
+            idx = sorted_starts.index(current_start_ms)
+            if idx + 1 < len(sorted_starts):
+                return (col, sorted_starts[idx + 1])
+        except ValueError:
+            pass
+
+        return None
+
+    def get_prev_subtitle(self, col: int, current_start_ms: int) -> tuple[int, int] | None:
+        """获取上一条字幕
+
+        Args:
+            col: 轨道号
+            current_start_ms: 当前字幕开始时间
+
+        Returns:
+            (col, start_ms) 或 None
+        """
+        sub_data = self._subtitle_mgr.data.get(col, {})
+        if not sub_data:
+            return None
+
+        sorted_starts = sorted(sub_data.keys())
+        try:
+            idx = sorted_starts.index(current_start_ms)
+            if idx - 1 >= 0:
+                return (col, sorted_starts[idx - 1])
+        except ValueError:
+            pass
+
+        return None
+
+    def get_track_subtitle_count(self, col: int) -> int:
+        """获取指定轨道的字幕数量"""
+        return len(self._subtitle_mgr.data.get(col, {}))
+
+    def highlight_subtitle(self, col: int, start_ms: int):
+        """高亮指定的字幕行
+
+        Args:
+            col: 轨道号
+            start_ms: 字幕开始时间
+        """
+        from PySide6.QtWidgets import QAbstractItemView
+
+        # 遍历表格，找到对应的行
+        for row in range(self._table.rowCount()):
+            num_item = self._table.item(row, 0)
+            if num_item:
+                data = num_item.data(Qt.UserRole)
+                if data and data == (col, start_ms):
+                    # 临时启用选择模式
+                    self._table.setSelectionMode(QAbstractItemView.SingleSelection)
+                    # 选中该行并滚动到可见位置
+                    self._table.selectRow(row)
+                    self._table.scrollToItem(
+                        self._table.item(row, 0),
+                        QAbstractItemView.PositionAtCenter,
+                    )
+                    return
+
+        # 如果没有找到对应行，清除选择并恢复禁用模式
+        self._table.clearSelection()
+        self._table.setSelectionMode(QAbstractItemView.NoSelection)

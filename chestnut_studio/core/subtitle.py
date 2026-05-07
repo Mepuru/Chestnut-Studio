@@ -24,7 +24,7 @@ class SubtitleManager:
         return self._data
 
     def get(self, col: int, start: int) -> list | None:
-        """获取字幕条"""
+        """获取字幕条 [duration, text]"""
         return self._data[col].get(start)
 
     def set(self, col: int, start: int, duration: int, text: str):
@@ -127,3 +127,22 @@ class SubtitleManager:
     def clear_all(self):
         """清空所有"""
         self._data = {1: {}, 2: {}, 3: {}, 4: {}}
+
+    def copy_track(self, source_col: int, target_col: int) -> bool:
+        """复制轨道数据到另一个轨道
+
+        Args:
+            source_col: 源轨道号 (1-4)
+            target_col: 目标轨道号 (1-4)
+
+        Returns:
+            是否成功复制
+        """
+        if source_col not in self._data or target_col not in self._data:
+            return False
+        if source_col == target_col:
+            return False
+
+        # 深拷贝源轨道数据到目标轨道
+        self._data[target_col] = copy.deepcopy(self._data[source_col])
+        return True

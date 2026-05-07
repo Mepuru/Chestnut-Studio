@@ -6,6 +6,7 @@ from PySide6.QtCore import QSettings, Qt
 from PySide6.QtWidgets import QFileDialog, QMainWindow
 
 from chestnut_studio.core.ffmpeg import FFmpeg
+from chestnut_studio.core.subtitle_io import SubtitleIO
 from chestnut_studio.ui.cards.player_card import PlayerCard
 from chestnut_studio.ui.cards.timeline_card import TimelineCard
 from chestnut_studio.ui.cards.translate_card import TranslateCard
@@ -41,6 +42,10 @@ class MainWindow(QMainWindow):
 
     # 视频文件过滤器
     VIDEO_FILTER = "视频文件 (*.mp4 *.avi *.flv *.mkv *.mov *.wmv *.mp3 *.wav *.aac);;所有文件 (*)"
+
+    # 字幕文件过滤器
+    SUBTITLE_FILTER = "SRT 字幕 (*.srt);;ASS 字幕 (*.ass);;所有文件 (*)"
+    EXPORT_ASS_FILTER = "ASS 字幕 (*.ass)"
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -97,6 +102,9 @@ class MainWindow(QMainWindow):
         self.translate_card = TranslateCard(self)
         self.translate_card.setObjectName("translate_card")
         self.translate_card.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetClosable)
+
+        # 设置翻译面板的字幕数据引用
+        self.translate_card.set_subtitle_data(self.timeline_card.get_subtitle_data())
 
         # 设置卡片属性
         for card in [self.player_card, self.timeline_card, self.waveform_card, self.translate_card]:
@@ -254,6 +262,47 @@ class MainWindow(QMainWindow):
 
         # --- 波形卡片 → 时间轴卡片（编辑完成） ---
         self.waveform_card.subtitle_edited.connect(self.timeline_card.apply_subtitle_edit)
+
+        # --- 时间轴卡片 → 翻译面板（字幕选中） ---
+        self.timeline_card.subtitle_selected.connect(self._on_subtitle_selected)
+
+        # --- 翻译面板 → 时间轴卡片（文本保存） ---
+        self.translate_card.text_saved.connect(self._on_text_saved)
+
+        # --- 翻译面板 → 时间轴卡片（跳转请求） ---
+        self.translate_card.jump_to_next.connect(self._on_jump_to_next)
+        self.translate_card.jump_to_prev.connect(self._on_jump_to_prev)
+
+        # --- 翻译面板 → 时间轴卡片（高亮当前编辑行） ---
+        self.translate_card.editing_subtitle.connect(self.timeline_card.highlight_subtitle)
+
+    def _on_subtitle_selected(self, col: int, start_ms: int):
+        """字幕被选中 → 更新翻译面板"""
+        self.translate_card.show_subtitle(col, start_ms)
+
+    def _on_text_saved(self, col: int, start_ms: int, text: str):
+        """翻译文本保存 → 更新时间轴卡片"""
+        self.timeline_card.set_subtitle_text(col, start_ms, text)
+
+    def _on_jump_to_next(self, col: int, start_ms: int):
+        """跳转到下一条字幕"""
+        next_sub = self.timeline_card.get_next_subtitle(col, start_ms)
+        if next_sub:
+            new_col, new_start = next_sub
+            self.player_card.set_position(new_start)
+            self.translate_card.show_subtitle(new_col, new_start)
+        else:
+            self.status_bar.set_status("已是最后一条字幕")
+
+    def _on_jump_to_prev(self, col: int, start_ms: int):
+        """跳转到上一条字幕"""
+        prev_sub = self.timeline_card.get_prev_subtitle(col, start_ms)
+        if prev_sub:
+            new_col, new_start = prev_sub
+            self.player_card.set_position(new_start)
+            self.translate_card.show_subtitle(new_col, new_start)
+        else:
+            self.status_bar.set_status("已是第一条字幕")
 
     # ========== 布局管理 ==========
 
@@ -431,13 +480,76 @@ class MainWindow(QMainWindow):
 
     def _on_open_subtitle(self):
         """导入字幕文件"""
-        # TODO: Phase 4 实现
-        pass
+        path, _ = QFileDialog.getOpenFileName(self, "导入字幕", "", self.SUBTITLE_FILTER)
+        if path:
+            self._import_subtitle_file(path)
+
+    def _import_subtitle_file(self, path: str):
+        """导入字幕文件
+
+        Args:
+            path: 字幕文件路径
+        """
+        try:
+            ext = Path(path).suffix.lower()
+            if ext == ".srt":
+                data = SubtitleIO.import_srt(path)
+            elif ext == ".ass":
+                data = SubtitleIO.import_ass(path)
+            else:
+                self.status_bar.set_status(f"不支持的字幕格式: {ext}")
+                return
+
+            if data:
+                # 导入到当前选中的轨道（默认轨道1）
+                subtitle_mgr = self.timeline_card.get_subtitle_manager()
+                for start_ms, (duration, text) in data.items():
+                    subtitle_mgr.set(1, start_ms, duration, text)
+
+                # 刷新界面
+                self._sync_subtitle_overlay()
+                self.status_bar.set_status(f"已导入 {len(data)} 条字幕")
+            else:
+                self.status_bar.set_status("字幕文件为空或格式错误")
+
+        except Exception as e:
+            self.status_bar.set_status(f"导入失败: {str(e)}")
 
     def _on_save_subtitle(self):
         """导出字幕文件"""
-        # TODO: Phase 4 实现
-        pass
+        path, _ = QFileDialog.getSaveFileName(self, "导出 ASS 字幕", "", self.EXPORT_ASS_FILTER)
+        if path:
+            self._export_ass_file(path)
+
+    def _export_ass_file(self, path: str):
+        """导出 ASS 字幕文件
+
+        Args:
+            path: 输出文件路径
+        """
+        try:
+            subtitle_data = self.timeline_card.get_subtitle_data()
+
+            # 过滤空轨道
+            tracks = {}
+            for col, sub_data in subtitle_data.items():
+                if sub_data:
+                    tracks[col] = sub_data
+
+            if not tracks:
+                self.status_bar.set_status("没有字幕数据可导出")
+                return
+
+            # 生成轨道样式名
+            track_styles = {}
+            for col in tracks:
+                track_styles[col] = f"轨道 {col}"
+
+            SubtitleIO.export_ass(path, tracks, track_styles)
+            self.status_bar.set_status(f"已导出到: {Path(path).name}")
+
+        except Exception as e:
+            self.status_bar.set_status(f"导出失败: {str(e)}")
 
     def _toggle_fullscreen(self):
         """切换全屏模式"""

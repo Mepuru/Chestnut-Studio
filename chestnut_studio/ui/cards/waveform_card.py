@@ -788,7 +788,8 @@ class WaveformCard(QDockWidget):
         self._subtitle_full_data = subtitle_data
         regions = {}
         for col, sub_dict in subtitle_data.items():
-            for start_ms, (duration_ms, _text) in sub_dict.items():
+            for start_ms, subtitle in sub_dict.items():
+                duration_ms = subtitle[0]
                 end_ms = start_ms + duration_ms
                 # 如果该区域已存在，取更大范围
                 if start_ms not in regions or end_ms > regions[start_ms]:
@@ -1213,7 +1214,8 @@ class WaveformCard(QDockWidget):
             # 按轨道顺序绘制，轨道号大的在下层
             for col in sorted(self._subtitle_full_data.keys(), reverse=True):
                 sub_dict = self._subtitle_full_data[col]
-                for start_ms, (duration_ms, _text) in sub_dict.items():
+                for start_ms, subtitle in sub_dict.items():
+                    duration_ms = subtitle[0]
                     end_ms = start_ms + duration_ms
                     self._draw_subtitle_region(start_ms, end_ms, col)
         else:

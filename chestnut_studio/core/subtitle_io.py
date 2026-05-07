@@ -1,5 +1,7 @@
 """字幕导入/导出"""
 
+import os
+
 
 def ms_to_srt_time(ms: int) -> str:
     """毫秒 → SRT 时间格式 (h:m:s,ms)"""
@@ -19,6 +21,26 @@ def srt_time_to_ms(t: str) -> int:
     else:
         ms = "0"
     return int(h) * 3600000 + int(m) * 60000 + int(s) * 1000 + int(ms)
+
+
+def ms_to_ass_time(ms: int) -> str:
+    """毫秒 → ASS 时间格式 (h:mm:ss.cc)"""
+    h, r = divmod(ms, 3600000)
+    m, r = divmod(r, 60000)
+    s, ms = divmod(r, 1000)
+    cc = ms // 10  # 百分秒
+    return f"{h}:{m:02d}:{s:02d}.{cc:02d}"
+
+
+def ass_time_to_ms(t: str) -> int:
+    """ASS 时间格式 → 毫秒"""
+    t = t.strip()
+    h, m, s = t.split(":")
+    if "." in s:
+        s, cc = s.split(".")
+    else:
+        cc = "0"
+    return int(h) * 3600000 + int(m) * 60000 + int(s) * 1000 + int(cc) * 10
 
 
 class SubtitleIO:
@@ -55,7 +77,7 @@ class SubtitleIO:
 
         Args:
             path: 输出路径
-            data: 字幕数据
+            data: 字幕数据 {start_ms: [duration_ms, "text"]}
             video_start: 视频起始时间 (ms)
             sub_start: 字幕起始偏移 (ms)
         """
@@ -67,3 +89,126 @@ class SubtitleIO:
                     srt_start = ms_to_srt_time(start - video_start + sub_start)
                     srt_end = ms_to_srt_time(start - video_start + sub_start + delta)
                     f.write(f"{num}\n{srt_start} --> {srt_end}\n{text}\n\n")
+
+    @staticmethod
+    def import_ass(path: str) -> dict[int, list]:
+        """导入 ASS 文件（读取第一个样式的字幕）
+
+        Returns:
+            {start_ms: [duration_ms, "text"], ...}
+        """
+        result = {}
+
+        with open(path, encoding="utf-8-sig") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("Dialogue:"):
+                    parts = line.split(",", 9)
+                    if len(parts) >= 10:
+                        start = ass_time_to_ms(parts[1])
+                        end = ass_time_to_ms(parts[2])
+                        text = parts[9].replace("\\N", "\n").replace("\\n", "\n")
+                        # 移除 ASS 标签
+                        if text.startswith("{") and "}" in text:
+                            text = text[text.index("}") + 1:]
+                        result[start] = [end - start, text]
+
+        return result
+
+    @staticmethod
+    def export_ass(
+        path: str,
+        tracks: dict[int, dict[int, list]],
+        track_styles: dict[int, str] = None,
+        fontname: str = "Arial",
+        fontsize: int = 20,
+    ):
+        """导出 ASS 文件（多轨道）
+
+        Args:
+            path: 输出路径
+            tracks: {col: {start_ms: [duration, text], ...}}
+            track_styles: {col: "样式名"} 默认使用 "轨道 1", "轨道 2" 等
+            fontname: 字体名称
+            fontsize: 字体大小
+        """
+        # 默认样式名
+        if track_styles is None:
+            track_styles = {}
+        for col in tracks:
+            if col not in track_styles:
+                track_styles[col] = f"轨道 {col}"
+
+        # 收集所有用到的样式
+        used_styles = set(track_styles.values())
+
+        # 生成样式颜色（不同样式不同颜色）
+        style_colors = {
+            "轨道 1": "&H00FFFFFF",  # 白色
+            "轨道 2": "&H0000FFFF",  # 黄色
+            "轨道 3": "&H0000FF00",  # 绿色
+            "轨道 4": "&H00FF0000",  # 蓝色
+        }
+
+        with open(path, "w", encoding="utf-8-sig") as f:
+            # Script Info
+            f.write("[Script Info]\n")
+            f.write("Title: Chestnut Studio Export\n")
+            f.write("ScriptType: v4.00+\n")
+            f.write("PlayResX: 1920\n")
+            f.write("PlayResY: 1080\n")
+            f.write("\n")
+
+            # V4+ Styles
+            f.write("[V4+ Styles]\n")
+            f.write("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
+
+            for style_name in sorted(used_styles):
+                color = style_colors.get(style_name, "&H00FFFFFF")
+                f.write(
+                    f"Style: {style_name},{fontname},{fontsize},{color},&H000000FF,&H00000000,&H80000000,"
+                    f"0,0,0,0,100,100,0,0,1,2,1,2,10,10,10,1\n"
+                )
+            f.write("\n")
+
+            # Events
+            f.write("[Events]\n")
+            f.write("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
+
+            for col in sorted(tracks.keys()):
+                sub_data = tracks[col]
+                style_name = track_styles.get(col, f"轨道 {col}")
+
+                for start_ms in sorted(sub_data.keys()):
+                    duration, text = sub_data[start_ms]
+                    if text.strip():
+                        start_time = ms_to_ass_time(start_ms)
+                        end_time = ms_to_ass_time(start_ms + duration)
+                        # 换行符转换为 \N
+                        ass_text = text.replace("\n", "\\N")
+                        f.write(f"Dialogue: 0,{start_time},{end_time},{style_name},,0,0,0,,{ass_text}\n")
+
+    @staticmethod
+    def export_ass_single(
+        path: str,
+        data: dict[int, list],
+        style_name: str = "Default",
+        fontname: str = "Arial",
+        fontsize: int = 20,
+    ):
+        """导出单轨道 ASS 文件
+
+        Args:
+            path: 输出路径
+            data: {start_ms: [duration, text]}
+            style_name: 样式名称
+            fontname: 字体名称
+            fontsize: 字体大小
+        """
+        SubtitleIO.export_ass(
+            path,
+            tracks={1: data},
+            track_styles={1: style_name},
+            fontname=fontname,
+            fontsize=fontsize,
+        )
