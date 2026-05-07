@@ -378,7 +378,7 @@ class WaveformCard(QDockWidget):
 
         # 顶部信息栏
         info_bar = QWidget()
-        info_bar.setFixedHeight(24)
+        info_bar.setFixedHeight(28)
         info_bar.setStyleSheet("background: #18181b; border: none;")
         info_layout = QHBoxLayout(info_bar)
         info_layout.setContentsMargins(8, 0, 8, 0)
@@ -392,16 +392,17 @@ class WaveformCard(QDockWidget):
         self._range_label = QLabel("0:00 - 0:30")
         self._range_label.setStyleSheet("color: #a1a1aa; font-size: 9pt; font-family: Consolas;")
 
-        # 提示标签
-        self._scroll_hint = QLabel("滚轮缩放 | Shift+拖动平移")
-        self._scroll_hint.setStyleSheet("color: #52525b; font-size: 8pt;")
+        # 模式标签（左下角显示）
+        self._mode_label = QLabel("打轴模式")
+        self._mode_label.setStyleSheet("color: #22c55e; font-size: 9pt; font-weight: bold;")
+        self._mode_label.setToolTip("I: 标记开始  O: 标记结束  滚轮缩放  Shift+拖动平移")
 
         # 轨道选择器
         track_label = QLabel("轨:")
         track_label.setStyleSheet("color: #a1a1aa; font-size: 9pt;")
 
         self._track_combo = QComboBox()
-        self._track_combo.setFixedWidth(60)
+        self._track_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         # 添加轨道选项，下拉列表中显示颜色
         track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#a855f7"]
         for i, color in enumerate(track_colors):
@@ -412,9 +413,9 @@ class WaveformCard(QDockWidget):
 
         info_layout.addWidget(self._zoom_label)
         info_layout.addWidget(self._range_label)
-        info_layout.addStretch()
-        info_layout.addWidget(self._scroll_hint)
         info_layout.addSpacing(12)
+        info_layout.addWidget(self._mode_label)
+        info_layout.addStretch()
         info_layout.addWidget(track_label)
         info_layout.addWidget(self._track_combo)
 
@@ -947,12 +948,17 @@ class WaveformCard(QDockWidget):
 
         # 更新状态提示（缩短避免拉长卡片）
         self._mark_status_label.setText(
-            f"编辑: {ms_to_time_str(start_ms)}-{ms_to_time_str(end_ms)}  I起点 O终点 Enter确认"
+            f"编辑: {ms_to_time_str(start_ms)}-{ms_to_time_str(end_ms)}"
         )
         self._mark_status_label.setToolTip(
             f"编辑模式: {ms_to_time_str(start_ms)} - {ms_to_time_str(end_ms)}\n"
             f"按 I 设起点，按 O 设终点，Enter 确认，Escape 取消"
         )
+
+        # 更新模式标签
+        self._mode_label.setText("编辑模式")
+        self._mode_label.setStyleSheet("color: #a855f7; font-size: 9pt; font-weight: bold;")
+        self._mode_label.setToolTip("I: 设为起点  O: 设为终点  Enter: 确认  Escape: 取消")
 
         # 视窗跳转到编辑区域
         self._scroll_to_edit_area()
@@ -979,6 +985,11 @@ class WaveformCard(QDockWidget):
         self._set_mark_buttons_visible(True)
 
         self._mark_status_label.setText("就绪")
+
+        # 恢复模式标签
+        self._mode_label.setText("打轴模式")
+        self._mode_label.setStyleSheet("color: #22c55e; font-size: 9pt; font-weight: bold;")
+        self._mode_label.setToolTip("I: 标记开始  O: 标记结束  滚轮缩放  Shift+拖动平移")
 
     def edit_set_start(self):
         """编辑模式：将当前位置设为起点"""
