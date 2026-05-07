@@ -194,7 +194,7 @@ class TimelineCard(QDockWidget):
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(7, QHeaderView.Fixed)
-        self._table.setColumnWidth(7, 140)
+        self._table.setColumnWidth(7, 180)
 
         # 隐藏垂直表头
         self._table.verticalHeader().setVisible(False)
