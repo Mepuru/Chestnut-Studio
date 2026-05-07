@@ -76,6 +76,33 @@ CLOSE_BTN_STYLE = """
 class HotkeyDialog(QDialog):
     """快捷键说明对话框"""
 
+    # 滚动条样式
+    SCROLLBAR_STYLE = """
+        QScrollArea {
+            background: transparent;
+            border: none;
+        }
+        QScrollBar:vertical {
+            background: #18181b;
+            width: 8px;
+            margin: 0;
+        }
+        QScrollBar::handle:vertical {
+            background: #3f3f46;
+            min-height: 20px;
+            border-radius: 4px;
+        }
+        QScrollBar::handle:vertical:hover {
+            background: #52525b;
+        }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            height: 0;
+        }
+        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+            background: none;
+        }
+    """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("快捷键说明")
@@ -182,31 +209,7 @@ class HotkeyDialog(QDialog):
         # 创建滚动区域
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet("""
-            QScrollArea {
-                background: transparent;
-                border: none;
-            }
-            QScrollBar:vertical {
-                background: #18181b;
-                width: 8px;
-                margin: 0;
-            }
-            QScrollBar::handle:vertical {
-                background: #3f3f46;
-                min-height: 20px;
-                border-radius: 4px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: #52525b;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0;
-            }
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-                background: none;
-            }
-        """)
+        scroll_area.setStyleSheet(self.SCROLLBAR_STYLE)
 
         # 内容容器
         content = QWidget()
@@ -268,68 +271,113 @@ class HotkeyDialog(QDialog):
         """创建波形图快捷键标签页"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(4)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # 创建滚动区域
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setStyleSheet(self.SCROLLBAR_STYLE)
+
+        # 内容容器
+        content = QWidget()
+        content.setStyleSheet("background: transparent;")
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(12, 12, 12, 12)
+        content_layout.setSpacing(4)
 
         # 鼠标操作
-        layout.addWidget(self._create_section_title("鼠标操作"))
-        layout.addWidget(self._create_hotkey_row("左键点击", "跳转到点击位置"))
-        layout.addWidget(self._create_hotkey_row("Shift+左键拖动", "平移视窗"))
-        layout.addWidget(self._create_hotkey_row("滚轮", "缩放视窗（以鼠标位置为中心）"))
+        content_layout.addWidget(self._create_section_title("鼠标操作"))
+        content_layout.addWidget(self._create_hotkey_row("左键点击", "跳转到点击位置"))
+        content_layout.addWidget(self._create_hotkey_row("Shift+左键拖动", "平移视窗"))
+        content_layout.addWidget(self._create_hotkey_row("滚轮", "缩放视窗（以鼠标位置为中心）"))
 
-        layout.addSpacing(8)
+        content_layout.addSpacing(8)
 
         # 打轴操作
-        layout.addWidget(self._create_section_title("打轴操作"))
-        layout.addWidget(self._create_hotkey_row("I", "标记字幕开始点"))
-        layout.addWidget(self._create_hotkey_row("O", "标记字幕结束点"))
+        content_layout.addWidget(self._create_section_title("打轴操作"))
+        content_layout.addWidget(self._create_hotkey_row("I", "标记字幕开始点"))
+        content_layout.addWidget(self._create_hotkey_row("O", "标记字幕结束点"))
 
-        layout.addSpacing(8)
+        content_layout.addSpacing(8)
 
         # 编辑模式操作
-        layout.addWidget(self._create_section_title("编辑模式"))
-        layout.addWidget(self._create_hotkey_row("I", "设为起点"))
-        layout.addWidget(self._create_hotkey_row("O", "设为终点"))
-        layout.addWidget(self._create_hotkey_row("Enter", "确认编辑"))
-        layout.addWidget(self._create_hotkey_row("Escape", "取消编辑"))
+        content_layout.addWidget(self._create_section_title("编辑模式"))
+        content_layout.addWidget(self._create_hotkey_row("I", "设为起点"))
+        content_layout.addWidget(self._create_hotkey_row("O", "设为终点"))
+        content_layout.addWidget(self._create_hotkey_row("Enter", "确认编辑"))
+        content_layout.addWidget(self._create_hotkey_row("Escape", "取消编辑"))
 
-        layout.addStretch()
+        content_layout.addStretch()
+
+        scroll_area.setWidget(content)
+        layout.addWidget(scroll_area)
+
         return widget
 
     def _create_timeline_tab(self) -> QWidget:
         """创建时间轴快捷键标签页"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(4)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # 创建滚动区域
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setStyleSheet(self.SCROLLBAR_STYLE)
+
+        # 内容容器
+        content = QWidget()
+        content.setStyleSheet("background: transparent;")
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(12, 12, 12, 12)
+        content_layout.setSpacing(4)
 
         # 列表操作
-        layout.addWidget(self._create_section_title("列表操作"))
-        layout.addWidget(self._create_hotkey_row("双击行", "跳转到字幕起始点"))
+        content_layout.addWidget(self._create_section_title("列表操作"))
+        content_layout.addWidget(self._create_hotkey_row("双击行", "跳转到字幕起始点"))
 
-        layout.addSpacing(8)
+        content_layout.addSpacing(8)
 
         # 编辑操作
-        layout.addWidget(self._create_section_title("编辑操作"))
-        layout.addWidget(self._create_hotkey_row("Ctrl+Z", "撤销"))
-        layout.addWidget(self._create_hotkey_row("Ctrl+Y", "重做"))
-        layout.addWidget(self._create_hotkey_row("Delete", "删除选中字幕"))
+        content_layout.addWidget(self._create_section_title("编辑操作"))
+        content_layout.addWidget(self._create_hotkey_row("Ctrl+Z", "撤销"))
+        content_layout.addWidget(self._create_hotkey_row("Ctrl+Y", "重做"))
+        content_layout.addWidget(self._create_hotkey_row("Delete", "删除选中字幕"))
 
-        layout.addStretch()
+        content_layout.addStretch()
+
+        scroll_area.setWidget(content)
+        layout.addWidget(scroll_area)
+
         return widget
 
     def _create_translate_tab(self) -> QWidget:
         """创建翻译面板快捷键标签页"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(4)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # 创建滚动区域
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setStyleSheet(self.SCROLLBAR_STYLE)
+
+        # 内容容器
+        content = QWidget()
+        content.setStyleSheet("background: transparent;")
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(12, 12, 12, 12)
+        content_layout.setSpacing(4)
 
         # 导航操作
-        layout.addWidget(self._create_section_title("导航操作"))
-        layout.addWidget(self._create_hotkey_row("Ctrl+Enter", "保存并跳转到下一条字幕"))
-        layout.addWidget(self._create_hotkey_row("Shift+Enter", "跳转到上一条字幕"))
-        layout.addWidget(self._create_hotkey_row("Enter", "换行（文本框内）"))
+        content_layout.addWidget(self._create_section_title("导航操作"))
+        content_layout.addWidget(self._create_hotkey_row("Ctrl+Enter", "保存并跳转到下一条字幕"))
+        content_layout.addWidget(self._create_hotkey_row("Shift+Enter", "跳转到上一条字幕"))
+        content_layout.addWidget(self._create_hotkey_row("Enter", "换行（文本框内）"))
 
-        layout.addStretch()
+        content_layout.addStretch()
+
+        scroll_area.setWidget(content)
+        layout.addWidget(scroll_area)
+
         return widget
