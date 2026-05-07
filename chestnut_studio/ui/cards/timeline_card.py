@@ -115,10 +115,14 @@ class TimelineCard(QDockWidget):
         self._locked_states: set[tuple[int, int]] = set()
 
         # 撤销/重做后端
-        self._backend: list[tuple[dict, set]] = []  # [(subtitle_data, locked_states), ...]
+        # 栈保存每个操作完成后状态快照，point 指向当前状态
+        self._backend: list[tuple[dict, set]] = []
         self._backend_point: int = -1
 
         self._setup_ui()
+
+        # 初始化撤销栈，保存初始状态
+        self._push_undo()
 
     def _setup_ui(self):
         """初始化 UI"""
@@ -367,17 +371,16 @@ class TimelineCard(QDockWidget):
 
         # 弹出编辑对话框
         from chestnut_studio.ui.dialogs.edit_subtitle_dialog import EditSubtitleDialog
-
         dialog = EditSubtitleDialog(start_ms, end_ms, self._duration_ms, self)
         if dialog.exec():
             new_start, new_end = dialog.get_result()
             if new_start != start_ms or new_end != end_ms:
-                # 保存撤销点
-                self._push_undo()
                 # 删除旧条目，创建新条目
                 self._subtitle_mgr.delete(col, start_ms)
                 new_duration = new_end - new_start
                 self._subtitle_mgr.set(col, new_start, new_duration, text)
+                # 操作完成后保存状态
+                self._push_undo()
                 self._update_table()
                 self.subtitle_changed.emit()
 
@@ -404,14 +407,16 @@ class TimelineCard(QDockWidget):
     # ========== 撤销/重做 ==========
 
     def _push_undo(self):
-        """保存当前状态到撤销栈"""
+        """保存当前状态到撤销栈（在操作完成后调用）"""
         state = (
             copy.deepcopy(self._subtitle_mgr.data),
             copy.deepcopy(self._locked_states),
         )
+        # 截断当前位置之后的栈（丢弃重做历史）
         self._backend = self._backend[: self._backend_point + 1]
         self._backend.append(state)
         self._backend_point = len(self._backend) - 1
+        # 限制栈大小
         if len(self._backend) > 100:
             self._backend.pop(0)
             self._backend_point -= 1
@@ -500,11 +505,10 @@ class TimelineCard(QDockWidget):
             end_ms: 结束时间 (ms)
             col: 轨道号，默认 0
         """
-        # 保存撤销点
-        self._push_undo()
-
         duration = end_ms - start_ms
         self._subtitle_mgr.set(col, start_ms, duration, "")
+        # 操作完成后保存状态
+        self._push_undo()
         self._update_table()
         self.subtitle_changed.emit()
 
@@ -514,7 +518,8 @@ class TimelineCard(QDockWidget):
             if (col, start_ms) in self._locked_states:
                 return  # 锁定状态不可编辑
             duration = self._subtitle_mgr.data[col][start_ms][0]
-            self._push_undo()
             self._subtitle_mgr.data[col][start_ms] = [duration, text]
+            # 操作完成后保存状态
+            self._push_undo()
             self._update_table()
             self.subtitle_changed.emit()
