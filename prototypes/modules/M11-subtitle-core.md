@@ -1,6 +1,6 @@
 # M11 — 字幕数据结构
 
-> `src/core/subtitle.py`　｜　Phase 3　｜　纯逻辑，无 UI 依赖
+> `chestnut_studio/core/subtitle.py`　｜　Phase 3　｜　纯逻辑，无 UI 依赖
 
 ---
 
@@ -18,7 +18,7 @@
 
 ```python
 # 字幕字典
-# key: 列号 (0-4)
+# key: 列号 (1-4)
 # value: {start_ms: [duration_ms, "text"], ...}
 SubtitleDict = dict[int, dict[int, list]]
 ```
@@ -26,11 +26,10 @@ SubtitleDict = dict[int, dict[int, list]]
 示例：
 ```python
 {
-    0: {
+    1: {
         15200: [3200, "你好"],
         22000: [1800, "谢谢"],
     },
-    1: {},
     2: {},
     3: {},
     4: {},
@@ -46,7 +45,7 @@ class SubtitleManager:
     """字幕管理器"""
     
     def __init__(self):
-        self._data: SubtitleDict = {0: {}, 1: {}, 2: {}, 3: {}, 4: {}}
+        self._data: SubtitleDict = {1: {}, 2: {}, 3: {}, 4: {}}
         self._undo_stack: list[SubtitleDict] = []
         self._undo_index: int = -1
     
@@ -148,7 +147,7 @@ class SubtitleManager:
     
     def clear_all(self):
         """清空所有"""
-        self._data = {0: {}, 1: {}, 2: {}, 3: {}, 4: {}}
+        self._data = {1: {}, 2: {}, 3: {}, 4: {}}
 ```
 
 ---

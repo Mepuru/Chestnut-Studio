@@ -181,20 +181,20 @@ class TimelineCard(QDockWidget):
         self._table.setSelectionBehavior(QTableWidget.SelectRows)
         self._table.setSelectionMode(QTableWidget.ExtendedSelection)  # 支持多选
 
-        # 设置列头
+        # 设置列头 - 使用 Stretch 模式自动调整列宽
         self._table.setHorizontalHeaderLabels(["#", "轨道", "开始时间", "结束时间", "开始帧", "结束帧", "时长", "操作"])
         header = self._table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Fixed)
-        self._table.setColumnWidth(0, 36)
+        self._table.setColumnWidth(0, 40)
         header.setSectionResizeMode(1, QHeaderView.Fixed)
-        self._table.setColumnWidth(1, 60)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        self._table.setColumnWidth(1, 65)
+        header.setSectionResizeMode(2, QHeaderView.Stretch)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
+        header.setSectionResizeMode(4, QHeaderView.Stretch)
+        header.setSectionResizeMode(5, QHeaderView.Stretch)
+        header.setSectionResizeMode(6, QHeaderView.Stretch)
         header.setSectionResizeMode(7, QHeaderView.Fixed)
-        self._table.setColumnWidth(7, 180)
+        self._table.setColumnWidth(7, 170)
 
         # 隐藏垂直表头
         self._table.verticalHeader().setVisible(False)

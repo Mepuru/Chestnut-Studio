@@ -1,6 +1,6 @@
 # M02 — 视频播放卡片
 
-> `src/ui/cards/player_card.py`　｜　Phase 1　｜　视频渲染 + 播放控制
+> `chestnut_studio/ui/cards/player_card.py`　｜　Phase 1　｜　视频渲染 + 播放控制
 
 ---
 
@@ -142,7 +142,7 @@ def dropEvent(self, event):
 ```python
 def _parse_video_info(self, path: str) -> dict:
     """解析视频信息"""
-    # 调用 src/core/ffmpeg.py
+    # 调用 chestnut_studio/core/ffmpeg.py
     return {
         'duration': 330000,      # ms
         'width': 1920,
@@ -160,4 +160,4 @@ def _parse_video_info(self, path: str) -> dict:
 |------|------|
 | PySide6.QtMultimedia | QMediaPlayer |
 | PySide6.QtMultimediaWidgets | QGraphicsVideoItem |
-| src/core/ffmpeg.py | 视频信息解析 |
+| chestnut_studio/core/ffmpeg.py | 视频信息解析 |

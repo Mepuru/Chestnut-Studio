@@ -1,6 +1,6 @@
 # M05 — 翻译面板卡片
 
-> `src/ui/cards/translate_card.py`　｜　Phase 4　｜　填写源语言和目标语言
+> `chestnut_studio/ui/cards/translate_card.py`　｜　Phase 4　｜　填写源语言和目标语言
 
 ---
 

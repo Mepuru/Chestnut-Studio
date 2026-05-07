@@ -1,6 +1,6 @@
 # M04 — 时间轴列表卡片
 
-> `src/ui/cards/timeline_card.py`　｜　Phase 3　｜　显示已打轴的字幕列表
+> `chestnut_studio/ui/cards/timeline_card.py`　｜　Phase 3　｜　显示已打轴的字幕列表
 
 ---
 

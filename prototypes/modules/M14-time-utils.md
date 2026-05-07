@@ -1,6 +1,7 @@
 # M14 — 时间工具函数
 
-> `src/utils/time_utils.py`　｜　Phase 0　｜　纯逻辑工具
+> `chestnut_studio/utils/time_utils.py`　｜　Phase 0　｜　纯逻辑工具
+> **注意：部分函数尚未实现（vtt_time_to_ms, lrc_time_to_ms）**
 
 ---
 

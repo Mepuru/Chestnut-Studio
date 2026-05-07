@@ -1,6 +1,6 @@
 # M12 — 字幕导入/导出
 
-> `src/core/subtitle_io.py`　｜　Phase 4　｜　纯逻辑，无 UI 依赖
+> `chestnut_studio/core/subtitle_io.py`　｜　Phase 4　｜　纯逻辑，无 UI 依赖
 
 ---
 

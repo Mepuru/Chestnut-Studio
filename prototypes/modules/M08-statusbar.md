@@ -1,6 +1,6 @@
 # M08 — 状态栏
 
-> `src/ui/statusbar.py`　｜　Phase 0　｜　状态信息展示
+> `chestnut_studio/ui/statusbar.py`　｜　Phase 0　｜　状态信息展示
 
 ---
 

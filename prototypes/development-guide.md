@@ -16,8 +16,8 @@ D:\ChestnutStudio\
 │       ├── M01-main-window.md
 │       ├── M02-player-card.md
 │       └── ...
-├── src/                           # 源代码
-│   ├── main.py                    # 入口文件
+├── chestnut_studio/               # 源代码
+│   ├── __init__.py
 │   ├── core/                      # 核心逻辑（无 UI）
 │   │   ├── __init__.py
 │   │   ├── ffmpeg.py              # FFmpeg 调用封装
@@ -38,15 +38,13 @@ D:\ChestnutStudio\
 │   │   │   └── translate_card.py  # 翻译面板卡片
 │   │   └── dialogs/               # 弹窗
 │   │       ├── __init__.py
-│   │       └── hotkey_dialog.py   # 快捷键说明
+│   │       └── edit_subtitle_dialog.py  # 字幕编辑对话框
 │   ├── resources/                 # 资源文件
 │   │   ├── style.qss              # 暗色主题样式表
-│   │   ├── icons/                 # 图标
-│   │   └── fonts/                 # 字体
+│   │   └── fonts/                 # 字体（HarmonyOS Sans）
 │   └── utils/                     # 工具函数
 │       ├── __init__.py
-│       ├── time_utils.py          # 时间格式转换
-│       └── config.py              # 配置管理
+│       └── time_utils.py          # 时间格式转换
 ├── tests/                         # 测试
 │   ├── test_subtitle.py
 │   ├── test_ffmpeg.py
@@ -127,8 +125,8 @@ import numpy as np
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 
-from src.core.subtitle import SubtitleDict
-from src.utils.time_utils import ms_to_time_str
+from chestnut_studio.core.subtitle import SubtitleDict
+from chestnut_studio.utils.time_utils import ms_to_time_str
 ```
 
 ### 3.2 类型注解
@@ -452,7 +450,7 @@ for start in sorted(sub_data):
 | 工具 | 用途 | 命令 |
 |------|------|------|
 | **uv** | 包管理 | `uv sync` / `uv add <pkg>` / `uv run <cmd>` |
-| **ruff** | 代码检查 + 格式化 | `uv run ruff check src/` / `uv run ruff format src/` |
+| **ruff** | 代码检查 + 格式化 | `uv run ruff check chestnut_studio/` / `uv run ruff format chestnut_studio/` |
 | **pytest** | 测试框架 | `uv run pytest tests/` |
 | **PyInstaller** | 打包 | `uv run pyinstaller chestnut.spec` |
 
@@ -470,13 +468,13 @@ uv sync
 .venv\Scripts\activate
 
 # 运行
-uv run python src/chestnut_studio/main.py
+uv run python main.py
 
 # 测试
 uv run pytest tests/
 
 # 代码检查
-uv run ruff check src/
+uv run ruff check chestnut_studio/
 
 # 添加新依赖
 uv add <package>

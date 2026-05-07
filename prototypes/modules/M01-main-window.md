@@ -1,6 +1,6 @@
 # M01 — 主窗口框架
 
-> `src/ui/main_window.py`　｜　Phase 0　｜　所有卡片的容器
+> `chestnut_studio/ui/main_window.py`　｜　Phase 0　｜　所有卡片的容器
 
 ---
 
@@ -130,10 +130,10 @@ def apply_layout_fullscreen_timeline(self):
 
 | 组件 | 来源 |
 |------|------|
-| PlayerCard | `src/ui/cards/player_card.py` |
-| TimelineCard | `src/ui/cards/timeline_card.py` |
-| WaveformCard | `src/ui/cards/waveform_card.py` |
-| TranslateCard | `src/ui/cards/translate_card.py` |
-| MenuBar | `src/ui/menubar.py` |
-| ToolBar | `src/ui/toolbar.py` |
-| StatusBar | `src/ui/statusbar.py` |
+| PlayerCard | `chestnut_studio/ui/cards/player_card.py` |
+| TimelineCard | `chestnut_studio/ui/cards/timeline_card.py` |
+| WaveformCard | `chestnut_studio/ui/cards/waveform_card.py` |
+| TranslateCard | `chestnut_studio/ui/cards/translate_card.py` |
+| MenuBar | `chestnut_studio/ui/menubar.py` |
+| ToolBar | `chestnut_studio/ui/toolbar.py` |
+| StatusBar | `chestnut_studio/ui/statusbar.py` |

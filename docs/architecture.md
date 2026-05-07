@@ -67,7 +67,7 @@
 
 ```python
 # 字幕字典类型
-# key: 列号 (0-4)
+# key: 列号 (1-4)
 # value: {start_ms: [duration_ms, "text"], ...}
 SubtitleDict = dict[int, dict[int, list]]
 ```
@@ -75,12 +75,11 @@ SubtitleDict = dict[int, dict[int, list]]
 **示例：**
 ```python
 {
-    0: {  # 第 0 列（原文）
+    1: {  # 第 1 列（原文）
         1000: [2000, "你好"],
         4000: [1500, "世界"],
     },
-    1: {},  # 第 1 列（翻译）
-    2: {},
+    2: {},  # 第 2 列（翻译）
     3: {},
     4: {},
 }

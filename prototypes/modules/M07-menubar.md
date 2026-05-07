@@ -1,6 +1,6 @@
 # M07 — 菜单栏
 
-> `src/ui/menubar.py`　｜　Phase 0　｜　应用菜单
+> `chestnut_studio/ui/menubar.py`　｜　Phase 0　｜　应用菜单
 
 ---
 

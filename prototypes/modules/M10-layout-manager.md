@@ -1,6 +1,7 @@
 # M10 — 布局管理
 
-> `src/utils/layout_manager.py`　｜　Phase 5　｜　布局保存/恢复/预设
+> `chestnut_studio/utils/layout_manager.py`　｜　Phase 5　｜　布局保存/恢复/预设
+> **注意：此模块尚未实现，布局管理功能目前集成在 MainWindow 中**
 
 ---
 

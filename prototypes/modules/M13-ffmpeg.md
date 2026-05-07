@@ -1,6 +1,6 @@
 # M13 — FFmpeg 封装
 
-> `src/core/ffmpeg.py`　｜　Phase 1~2　｜　视频解析 + 音轨提取
+> `chestnut_studio/core/ffmpeg.py`　｜　Phase 1~2　｜　视频解析 + 音轨提取
 
 ---
 

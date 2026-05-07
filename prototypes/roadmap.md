@@ -23,12 +23,12 @@ Phase 5  打磨收尾        █████████████████
 
 | 序号 | 任务 | 产出 | 验收标准 |
 |------|------|------|---------|
-| 0.1 | 初始化 Python 项目结构 | `pyproject.toml` / `src/` 目录 | `pip install -e .` 可执行 |
-| 0.2 | 创建主窗口 MainWindow | `src/main.py` + `src/ui/main_window.py` | 空窗口可显示，标题正确 |
-| 0.3 | 实现暗色主题 QSS | `src/resources/style.qss` | 窗口背景、文字颜色符合规范 |
-| 0.4 | 创建四个空 DockWidget 卡片 | `src/ui/cards/` 目录 | 四张卡片可拖拽、可浮动 |
-| 0.5 | 实现菜单栏骨架 | `src/ui/menubar.py` | 文件/视图/帮助菜单可展开 |
-| 0.6 | 实现状态栏骨架 | `src/ui/statusbar.py` | 三段式状态栏可显示 |
+| 0.1 | 初始化 Python 项目结构 | `pyproject.toml` / `chestnut_studio/` 目录 | `pip install -e .` 可执行 |
+| 0.2 | 创建主窗口 MainWindow | `main.py` + `chestnut_studio/ui/main_window.py` | 空窗口可显示，标题正确 |
+| 0.3 | 实现暗色主题 QSS | `chestnut_studio/resources/style.qss` | 窗口背景、文字颜色符合规范 |
+| 0.4 | 创建四个空 DockWidget 卡片 | `chestnut_studio/ui/cards/` 目录 | 四张卡片可拖拽、可浮动 |
+| 0.5 | 实现菜单栏骨架 | `chestnut_studio/ui/menubar.py` | 文件/视图/帮助菜单可展开 |
+| 0.6 | 实现状态栏骨架 | `chestnut_studio/ui/statusbar.py` | 三段式状态栏可显示 |
 | 0.7 | 布局保存/恢复 | QSettings 集成 | 关闭重启后布局恢复 |
 
 **里程碑：** 启动应用 → 看到暗色主题主窗口 + 四张可拖拽的空卡片
@@ -41,13 +41,13 @@ Phase 5  打磨收尾        █████████████████
 
 | 序号 | 任务 | 产出 | 验收标准 |
 |------|------|------|---------|
-| 1.1 | 实现 PlayerCard 卡片 | `src/ui/cards/player_card.py` | 卡片内显示 QGraphicsView |
+| 1.1 | 实现 PlayerCard 卡片 | `chestnut_studio/ui/cards/player_card.py` | 卡片内显示 QGraphicsView |
 | 1.2 | 集成 QMediaPlayer | Player 类 | 视频画面可渲染 |
 | 1.3 | 实现播放控制 | play/pause/stop 方法 | 点击播放/暂停可切换 |
 | 1.4 | 实现进度条 | Slider + 时间标签 | 拖拽进度条跳转，时间显示正确 |
 | 1.5 | 实现音量控制 | 音量滑块 + 静音按钮 | 音量可调，可静音 |
 | 1.6 | 实现倍速播放 | 下拉选择 0.1x~2x | 倍速切换生效 |
-| 1.7 | 实现 FFmpeg 视频信息解析 | `src/core/ffmpeg.py` | 解析时长/分辨率/帧率/码率 |
+| 1.7 | 实现 FFmpeg 视频信息解析 | `chestnut_studio/core/ffmpeg.py` | 解析时长/分辨率/帧率/码率 |
 | 1.8 | 实现工具栏播放区 | 工具栏集成 | 打开/播放/音量/进度/时间/倍速 |
 | 1.9 | 实现拖放打开文件 | dragEnterEvent/dropEvent | 拖入视频文件可打开 |
 | 1.10 | 实现字幕叠加预览 | QGraphicsTextItem | 视频上可显示文字（静态测试） |
@@ -63,9 +63,9 @@ Phase 5  打磨收尾        █████████████████
 
 | 序号 | 任务 | 产出 | 验收标准 |
 |------|------|------|---------|
-| 2.1 | 实现 WaveformCard 卡片 | `src/ui/cards/waveform_card.py` | 卡片内嵌 pyqtgraph |
-| 2.2 | 实现 FFmpeg 音轨提取 | `src/core/ffmpeg.py` 扩展 | 视频 → 1kHz WAV 文件 |
-| 2.3 | 实现波形数据加载 | `src/core/audio.py` | WAV → numpy 数组 |
+| 2.1 | 实现 WaveformCard 卡片 | `chestnut_studio/ui/cards/waveform_card.py` | 卡片内嵌 pyqtgraph |
+| 2.2 | 实现 FFmpeg 音轨提取 | `chestnut_studio/core/ffmpeg.py` 扩展 | 视频 → 1kHz WAV 文件 |
+| 2.3 | 实现波形数据加载 | `chestnut_studio/core/audio.py` | WAV → numpy 数组 |
 | 2.4 | 实现波形绑图 | pyqtgraph PlotWidget | 波形曲线可显示 |
 | 2.5 | 实现红线跟随 | InfiniteLine | 红线随播放位置移动 |
 | 2.6 | 实现视窗滑动 | 定时刷新切片 | 波形跟随播放位置滚动 |
@@ -82,9 +82,9 @@ Phase 5  打磨收尾        █████████████████
 
 | 序号 | 任务 | 产出 | 验收标准 |
 |------|------|------|---------|
-| 3.1 | 实现 WaveformCard 打轴功能 | `src/ui/cards/waveform_card.py` | I/O 键标记开始/结束点 |
-| 3.2 | 实现 TimelineCard 列表卡片 | `src/ui/cards/timeline_card.py` | 显示已打轴的字幕列表 |
-| 3.3 | 实现字幕数据结构 | `src/core/subtitle.py` | subtitle_list 定义 + 基础操作 |
+| 3.1 | 实现 WaveformCard 打轴功能 | `chestnut_studio/ui/cards/waveform_card.py` | I/O 键标记开始/结束点 |
+| 3.2 | 实现 TimelineCard 列表卡片 | `chestnut_studio/ui/cards/timeline_card.py` | 显示已打轴的字幕列表 |
+| 3.3 | 实现字幕数据结构 | `chestnut_studio/core/subtitle.py` | subtitle_list 定义 + 基础操作 |
 | 3.4 | 实现查看功能 | 👁 按钮 | 点击跳转到字幕起始点 |
 | 3.5 | 实现编辑功能 | ✏️ 按钮 | 弹出对话框调整前后区间 |
 | 3.6 | 实现锁定功能 | 🔒 按钮 | 切换锁定状态 |
@@ -101,10 +101,10 @@ Phase 5  打磨收尾        █████████████████
 
 | 序号 | 任务 | 产出 | 验收标准 |
 |------|------|------|---------|
-| 4.1 | 实现 TranslateCard 卡片 | `src/ui/cards/translate_card.py` | 源语言+目标语言输入区 |
+| 4.1 | 实现 TranslateCard 卡片 | `chestnut_studio/ui/cards/translate_card.py` | 源语言+目标语言输入区 |
 | 4.2 | 实现字幕选中联动 | 选中字幕 → 显示翻译面板 | 选中字幕时翻译面板显示时间点 |
 | 4.3 | 实现翻译保存 | 写入 subtitle_data | 输入源语言和目标语言后可保存 |
-| 4.4 | 实现 SRT 导入 | `src/core/subtitle_io.py` | 导入 SRT 文件 |
+| 4.4 | 实现 SRT 导入 | `chestnut_studio/core/subtitle_io.py` | 导入 SRT 文件 |
 | 4.5 | 实现 ASS 导入 | assSelect 弹窗 | 导入 ASS 文件，选择样式 |
 | 4.6 | 实现 VTT 导入 | YouTube 格式解析 | 导入 VTT 文件 |
 | 4.7 | 实现 LRC 导入 | 歌词格式解析 | 导入 LRC 文件 |

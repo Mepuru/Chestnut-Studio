@@ -49,19 +49,21 @@ ToolBar                          MainWindow                         PlayerCard
                               ├──→ WaveformCard.update_position
                               ├──→ WaveformCard.set_duration
                               ├──→ WaveformCard.set_ab_loop_region
-                              ├──→ TimelineCard.set_player_position
+                              ├──→ TimelineCard.set_duration
                               ├──→ StatusBar.set_time (位置变化)
                               ├──→ StatusBar.set_status (时长变化)
                               └──→ StatusBar.set_video_info (FFmpeg 解析)
 
 WaveformCard
   │ position_clicked ──────────→ PlayerCard.set_position
-  │ subtitle_created ──────────→ TimelineCard.add_subtitle
+  │ subtitle_created ──────────→ MainWindow._on_subtitle_created → TimelineCard.add_subtitle
+  │ subtitle_edited ───────────→ TimelineCard.apply_subtitle_edit
 
 TimelineCard
   │ subtitle_selected ─────────→ TranslateCard.show_subtitle
-  │ subtitle_changed ──────────→ WaveformCard.refresh_overlay
+  │ subtitle_changed ───────────→ MainWindow._sync_subtitle_overlay → WaveformCard.update_subtitle_overlay_from_data
   │ jump_to_position ──────────→ PlayerCard.set_position
+  │ edit_subtitle_requested ───→ WaveformCard.enter_edit_mode
 ```
 
 ### 全局快捷键

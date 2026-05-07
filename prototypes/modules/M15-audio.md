@@ -1,6 +1,7 @@
 # M15 — 音频数据处理
 
-> `src/core/audio.py`　｜　Phase 2　｜　纯逻辑，无 UI 依赖
+> `chestnut_studio/core/audio.py`　｜　Phase 2　｜　纯逻辑，无 UI 依赖
+> **注意：部分函数尚未实现（get_waveform_range）**
 
 ---
 

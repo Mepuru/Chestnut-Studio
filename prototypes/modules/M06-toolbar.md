@@ -1,6 +1,6 @@
 # M06 — 工具栏
 
-> `src/ui/toolbar.py`　｜　Phase 1　｜　播放控制 + 全局操作
+> `chestnut_studio/ui/toolbar.py`　｜　Phase 1　｜　播放控制 + 全局操作
 
 ---
 

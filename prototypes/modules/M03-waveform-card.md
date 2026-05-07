@@ -1,6 +1,6 @@
 # M03 — 音频波形卡片
 
-> `src/ui/cards/waveform_card.py`　｜　Phase 2　｜　波形显示 + 交互
+> `chestnut_studio/ui/cards/waveform_card.py`　｜　Phase 2　｜　波形显示 + 交互
 
 ---
 
@@ -98,13 +98,13 @@ class WaveformCard(QDockWidget):
 ## 数据来源
 
 ```python
-# src/core/ffmpeg.py
+# chestnut_studio/core/ffmpeg.py
 def extract_audio(video_path: str, output_path: str) -> bool:
     """从视频提取音轨并降采样"""
     cmd = ['ffmpeg', '-y', '-i', video_path, '-vn', '-ar', '1000', output_path]
     ...
 
-# src/core/audio.py
+# chestnut_studio/core/audio.py
 def load_waveform(wav_path: str) -> tuple[list, list]:
     """加载 WAV 文件，返回 (time_list, amplitude_list)"""
     f = wave.open(wav_path, 'rb')
@@ -146,5 +146,5 @@ RED_LINE_RIGHT = 50  # 右侧显示 50% 区间
 | pyqtgraph | 波形绘制 |
 | numpy | 数据处理 |
 | wave (标准库) | WAV 文件读取 |
-| src/core/ffmpeg.py | 音轨提取 |
-| src/core/audio.py | 波形数据加载 |
+| chestnut_studio/core/ffmpeg.py | 音轨提取 |
+| chestnut_studio/core/audio.py | 波形数据加载 |

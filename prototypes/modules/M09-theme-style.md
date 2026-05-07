@@ -1,6 +1,7 @@
 # M09 — 主题样式
 
-> `src/resources/style.qss`　｜　Phase 0　｜　暗色主题视觉规范
+> `chestnut_studio/resources/style.qss`　｜　Phase 0　｜　暗色主题视觉规范
+> **注意：icons/ 目录尚未实现，图标功能暂未启用**
 
 ---
 
