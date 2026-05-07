@@ -148,7 +148,7 @@ class TimelineCard(QDockWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         # --- 字幕列表表格 ---
-        self._table = QTableWidget(0, 6, self)
+        self._table = QTableWidget(0, 8, self)
         self._table.setStyleSheet("""
             QTableWidget {
                 background: #0f0f14;

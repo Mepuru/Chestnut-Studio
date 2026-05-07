@@ -113,7 +113,7 @@ class WaveformPlotWidget(pg.PlotWidget):
         self.hideAxis("left")
 
         # 设置边距
-        self.plotItem.setContentsMargins(0, 0, 0, 45)
+        self.plotItem.setContentsMargins(0, 0, 0, 25)
 
         # 禁用右键菜单
         self.setMenuEnabled(False)
