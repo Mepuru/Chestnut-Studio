@@ -32,10 +32,9 @@ OP_BTN_STYLE = """
         background: transparent;
         border: 1px solid #3f3f46;
         color: #e4e4e7;
-        font-size: 10pt;
-        padding: 1px 6px;
+        font-size: 8pt;
+        padding: 1px 4px;
         border-radius: 3px;
-        min-width: 24px;
     }
     QPushButton:hover {
         background: #3f3f46;
@@ -51,10 +50,9 @@ LOCK_ACTIVE_STYLE = """
         background: #f59e0b;
         border: 1px solid #fbbf24;
         color: #000000;
-        font-size: 10pt;
-        padding: 1px 6px;
+        font-size: 8pt;
+        padding: 1px 4px;
         border-radius: 3px;
-        min-width: 24px;
     }
     QPushButton:hover {
         background: #fbbf24;
@@ -172,11 +170,13 @@ class TimelineCard(QDockWidget):
         # 设置列头
         self._table.setHorizontalHeaderLabels(["#", "开始时间", "结束时间", "时长", "操作"])
         header = self._table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(0, QHeaderView.Fixed)
+        self._table.setColumnWidth(0, 36)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.Stretch)
+        header.setSectionResizeMode(4, QHeaderView.Fixed)
+        self._table.setColumnWidth(4, 130)
 
         # 隐藏垂直表头
         self._table.verticalHeader().setVisible(False)
@@ -313,34 +313,34 @@ class TimelineCard(QDockWidget):
         self._update_undo_redo_buttons()
 
     def _create_operation_buttons(self, col: int, start: int, is_locked: bool) -> QWidget:
-        """创建操作按钮组（👁 ✏️ 🔒）"""
+        """创建操作按钮组（查看 / 编辑 / 锁定）"""
         widget = QWidget()
         widget.setStyleSheet("background: transparent;")
         layout = QHBoxLayout(widget)
-        layout.setContentsMargins(2, 1, 2, 1)
-        layout.setSpacing(4)
+        layout.setContentsMargins(4, 2, 4, 2)
+        layout.setSpacing(6)
 
-        # 👁 查看按钮
-        view_btn = QPushButton("👁")
+        # 查看按钮
+        view_btn = QPushButton("查看")
         view_btn.setStyleSheet(OP_BTN_STYLE)
         view_btn.setToolTip("跳转到字幕起始点")
-        view_btn.setFixedSize(28, 24)
+        view_btn.setFixedSize(36, 22)
         view_btn.clicked.connect(lambda checked, s=start: self._on_view_clicked(s))
         layout.addWidget(view_btn)
 
-        # ✏️ 编辑按钮
-        edit_btn = QPushButton("✏")
+        # 编辑按钮
+        edit_btn = QPushButton("编辑")
         edit_btn.setStyleSheet(OP_BTN_STYLE)
         edit_btn.setToolTip("编辑字幕区间")
-        edit_btn.setFixedSize(28, 24)
+        edit_btn.setFixedSize(36, 22)
         edit_btn.clicked.connect(lambda checked, c=col, s=start: self._on_edit_clicked(c, s))
         layout.addWidget(edit_btn)
 
-        # 🔒 锁定按钮
-        lock_btn = QPushButton("🔒" if is_locked else "🔓")
+        # 锁定按钮
+        lock_btn = QPushButton("锁定" if not is_locked else "解锁")
         lock_btn.setStyleSheet(LOCK_ACTIVE_STYLE if is_locked else OP_BTN_STYLE)
-        lock_btn.setToolTip("锁定" if is_locked else "解锁")
-        lock_btn.setFixedSize(28, 24)
+        lock_btn.setToolTip("切换锁定状态")
+        lock_btn.setFixedSize(36, 22)
         lock_btn.clicked.connect(lambda checked, c=col, s=start: self._on_lock_clicked(c, s))
         layout.addWidget(lock_btn)
 
