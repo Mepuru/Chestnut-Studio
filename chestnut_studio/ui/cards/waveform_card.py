@@ -504,7 +504,7 @@ class WaveformCard(QDockWidget):
         track_label.setStyleSheet("color: #a1a1aa; font-size: 9pt;")
 
         self._track_combo = QComboBox()
-        self._track_combo.setFixedWidth(88)
+        self._track_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         # 添加轨道选项，下拉列表中显示颜色
         track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#a855f7"]
         for i, color in enumerate(track_colors):
