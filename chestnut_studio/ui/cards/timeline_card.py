@@ -292,9 +292,14 @@ class TimelineCard(QDockWidget):
             op_widget = self._create_operation_buttons(col, start, is_locked)
             self._table.setCellWidget(row, 4, op_widget)
 
+            # 检测是否与其他字幕重叠
+            is_overlapping = self._check_overlap(start, start + duration, col, start)
+
             # 设置行颜色
             if is_locked:
                 bg_color = QColor(255, 255, 255, 15)  # 锁定时微亮
+            elif is_overlapping:
+                bg_color = QColor(234, 179, 8, 30)  # 重叠：黄色警告
             elif duration < 100 or duration > 8000:
                 bg_color = QColor(178, 34, 34, 40)  # 异常：红色
             elif duration > 4500:
@@ -317,6 +322,26 @@ class TimelineCard(QDockWidget):
         # 更新计数和按钮状态
         self._count_label.setText(f"共 {len(all_subtitles)} 条")
         self._update_undo_redo_buttons()
+
+    def _check_overlap(self, start_ms: int, end_ms: int, col: int, self_start: int) -> bool:
+        """检测指定区间是否与其他字幕重叠
+
+        Args:
+            start_ms: 检测区间的开始时间
+            end_ms: 检测区间的结束时间
+            col: 轨道号
+            self_start: 自身的开始时间（用于排除自身）
+        """
+        for c, sub_data in self._subtitle_mgr.data.items():
+            for s, (d, _) in sub_data.items():
+                # 排除自身
+                if c == col and s == self_start:
+                    continue
+                e = s + d
+                # 检测重叠：两个区间有交集
+                if start_ms < e and end_ms > s:
+                    return True
+        return False
 
     def _create_operation_buttons(self, col: int, start: int, is_locked: bool) -> QWidget:
         """创建操作按钮组（查看 / 编辑 / 锁定）"""

@@ -923,6 +923,9 @@ class WaveformCard(QDockWidget):
         self._edit_end_line.setVisible(False)
         self._clear_edit_fill()
 
+        # 刷新字幕条显示（清除紫色高亮）
+        self._update_subtitle_overlay()
+
         # 切换按钮显示
         self._set_edit_buttons_visible(False)
         self._set_mark_buttons_visible(True)
@@ -1134,12 +1137,19 @@ class WaveformCard(QDockWidget):
         # 判断是否是正在编辑的字幕条
         is_editing = self._edit_mode and start_ms == self._edit_old_start
 
+        # 检测是否与其他字幕重叠
+        is_overlapping = self._check_overlap(start_ms, end_ms)
+
         # 根据状态选择颜色
         duration = end_ms - start_ms
         if is_editing:
             # 正在编辑：紫色高亮
             fill_color = QColor(139, 92, 246, 60)
             border_color = QColor(139, 92, 246, 120)
+        elif is_overlapping:
+            # 重叠：黄色警告
+            fill_color = QColor(234, 179, 8, 50)
+            border_color = QColor(234, 179, 8, 120)
         elif duration < 100 or duration > 8000:
             # 异常：红色
             fill_color = QColor(178, 34, 34, 50)
@@ -1166,6 +1176,17 @@ class WaveformCard(QDockWidget):
         )
         self._plot_widget.addItem(item)
         self._subtitle_items.append(item)
+
+    def _check_overlap(self, start_ms: int, end_ms: int) -> bool:
+        """检测指定区间是否与其他字幕重叠"""
+        for other_start, other_end in self._subtitle_regions.items():
+            # 跳过自身
+            if other_start == start_ms:
+                continue
+            # 检测重叠：两个区间有交集
+            if start_ms < other_end and end_ms > other_start:
+                return True
+        return False
 
     def _cleanup_temp_file(self):
         """清理临时 WAV 文件"""
