@@ -88,7 +88,7 @@ class TimelineCard(QDockWidget):
     功能：
     - 显示已打轴的字幕列表（编号 + 起止时间 + 时长 + 操作按钮）
     - 查看：跳转到字幕起始点
-    - 编辑：弹出对话框调整前后区间
+    - 编辑：在波形图上可视化调整区间
     - 锁定：切换锁定状态
     - 撤销/重做
 
@@ -96,12 +96,14 @@ class TimelineCard(QDockWidget):
     - jump_to_position(ms): 跳转到指定位置
     - subtitle_changed(): 字幕数据变化（用于同步波形覆盖）
     - subtitle_selected(col, text): 字幕被选中（用于翻译面板）
+    - edit_subtitle_requested(col, start_ms, end_ms): 请求编辑字幕（发射到波形图）
     """
 
     # 信号
     jump_to_position = Signal(int)  # 跳转到指定位置 (ms)
     subtitle_changed = Signal()  # 字幕数据变化
     subtitle_selected = Signal(int, str)  # 字幕被选中 (col, text)
+    edit_subtitle_requested = Signal(int, int, int)  # 请求编辑 (col, start_ms, end_ms)
 
     # 默认停靠区域
     default_area = Qt.RightDockWidgetArea
@@ -358,7 +360,7 @@ class TimelineCard(QDockWidget):
         self.jump_to_position.emit(start_ms)
 
     def _on_edit_clicked(self, col: int, start_ms: int):
-        """编辑按钮：弹出编辑对话框"""
+        """编辑按钮：发射信号到波形图进行可视化编辑"""
         if (col, start_ms) in self._locked_states:
             return  # 锁定状态不可编辑
 
@@ -369,20 +371,8 @@ class TimelineCard(QDockWidget):
         duration, text = subtitle
         end_ms = start_ms + duration
 
-        # 弹出编辑对话框
-        from chestnut_studio.ui.dialogs.edit_subtitle_dialog import EditSubtitleDialog
-        dialog = EditSubtitleDialog(start_ms, end_ms, self._duration_ms, self)
-        if dialog.exec():
-            new_start, new_end = dialog.get_result()
-            if new_start != start_ms or new_end != end_ms:
-                # 删除旧条目，创建新条目
-                self._subtitle_mgr.delete(col, start_ms)
-                new_duration = new_end - new_start
-                self._subtitle_mgr.set(col, new_start, new_duration, text)
-                # 操作完成后保存状态
-                self._push_undo()
-                self._update_table()
-                self.subtitle_changed.emit()
+        # 发射编辑请求信号，让波形图进入编辑模式
+        self.edit_subtitle_requested.emit(col, start_ms, end_ms)
 
     def _on_lock_clicked(self, col: int, start_ms: int):
         """锁定按钮：切换锁定状态"""
@@ -523,3 +513,40 @@ class TimelineCard(QDockWidget):
             self._push_undo()
             self._update_table()
             self.subtitle_changed.emit()
+
+    def apply_subtitle_edit(self, col: int, old_start: int, new_start: int, new_end: int):
+        """应用字幕编辑结果（由波形图编辑模式调用）
+
+        Args:
+            col: 轨道号
+            old_start: 编辑前的起始点
+            new_start: 新的起始点
+            new_end: 新的结束点
+        """
+        # 检查原字幕是否存在
+        subtitle = self._subtitle_mgr.get(col, old_start)
+        if subtitle is None:
+            return
+
+        duration, text = subtitle
+
+        # 检查是否锁定
+        if (col, old_start) in self._locked_states:
+            return
+
+        # 删除旧条目
+        self._subtitle_mgr.delete(col, old_start)
+
+        # 同步更新锁定状态
+        if (col, old_start) in self._locked_states:
+            self._locked_states.discard((col, old_start))
+            self._locked_states.add((col, new_start))
+
+        # 创建新条目
+        new_duration = new_end - new_start
+        self._subtitle_mgr.set(col, new_start, new_duration, text)
+
+        # 操作完成后保存状态
+        self._push_undo()
+        self._update_table()
+        self.subtitle_changed.emit()

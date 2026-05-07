@@ -309,16 +309,19 @@ class WaveformCard(QDockWidget):
     - 时间刻度显示
     - 放大倍数显示
     - 打轴功能：I/O 键标记开始/结束点
+    - 编辑模式：可视化调整字幕起止点
     - 字幕条覆盖显示（从 SubtitleManager 数据同步）
 
     信号：
     - position_clicked(ms): 点击波形时发射，用于跳转播放位置
     - subtitle_created(start_ms, end_ms): 打轴完成时发射
+    - subtitle_edited(col, old_start, new_start, new_end): 编辑完成时发射
     """
 
     # 信号
     position_clicked = Signal(int)  # 点击位置 (ms)
     subtitle_created = Signal(int, int)  # 打轴完成 (start_ms, end_ms)
+    subtitle_edited = Signal(int, int, int, int)  # 编辑完成 (col, old_start, new_start, new_end)
 
     # 默认停靠区域
     default_area = Qt.BottomDockWidgetArea
@@ -340,6 +343,14 @@ class WaveformCard(QDockWidget):
 
         # 打轴状态
         self._mark_start_ms: int = -1  # 标记的开始点，-1 表示未设置
+
+        # 编辑模式状态
+        self._edit_mode: bool = False
+        self._edit_col: int = -1  # 编辑的字幕轨道
+        self._edit_old_start: int = -1  # 编辑前的起始点
+        self._edit_start_ms: int = -1  # 编辑中的开始点
+        self._edit_end_ms: int = -1  # 编辑中的结束点
+        self._edit_which: str = ""  # 正在编辑哪个端点: "start" 或 "end"
 
         self._setup_ui()
 
@@ -430,7 +441,7 @@ class WaveformCard(QDockWidget):
         # 字幕条图层
         self._subtitle_items: list[pg.PlotCurveItem] = []
 
-        # 打轴标记线（绿色虚线 = 开始点，橙色虚线 = 结束点）
+        # 打轴标记线（绿色虚线 = 开始点）
         self._mark_start_line = pg.InfiniteLine(
             pos=0,
             angle=90,
@@ -441,7 +452,33 @@ class WaveformCard(QDockWidget):
         self._mark_start_line.setZValue(15)
         self._plot_widget.addItem(self._mark_start_line)
 
-        # 底部打轴按钮栏
+        # 编辑模式标记线
+        # 编辑开始线（绿色虚线）
+        self._edit_start_line = pg.InfiniteLine(
+            pos=0,
+            angle=90,
+            pen=pg.mkPen(color="#22c55e", width=2.5, style=Qt.DashLine),
+            movable=False,
+        )
+        self._edit_start_line.setVisible(False)
+        self._edit_start_line.setZValue(15)
+        self._plot_widget.addItem(self._edit_start_line)
+
+        # 编辑结束线（橙色虚线）
+        self._edit_end_line = pg.InfiniteLine(
+            pos=0,
+            angle=90,
+            pen=pg.mkPen(color="#f59e0b", width=2.5, style=Qt.DashLine),
+            movable=False,
+        )
+        self._edit_end_line.setVisible(False)
+        self._edit_end_line.setZValue(15)
+        self._plot_widget.addItem(self._edit_end_line)
+
+        # 编辑模式填充区域
+        self._edit_fill_item: pg.PlotCurveItem | None = None
+
+        # 底部打轴/编辑按钮栏
         self._mark_bar = QWidget()
         self._mark_bar.setFixedHeight(32)
         self._mark_bar.setStyleSheet("background: #18181b; border: none;")
@@ -449,7 +486,7 @@ class WaveformCard(QDockWidget):
         mark_layout.setContentsMargins(8, 0, 8, 0)
         mark_layout.setSpacing(8)
 
-        # 打轴状态标签
+        # 状态标签
         self._mark_status_label = QLabel("就绪")
         self._mark_status_label.setStyleSheet("color: #a1a1aa; font-size: 9pt; font-family: Consolas;")
 
@@ -472,11 +509,85 @@ class WaveformCard(QDockWidget):
         self._mark_cancel_btn.clicked.connect(self._on_mark_cancel)
         self._mark_cancel_btn.setEnabled(False)
 
+        # 编辑模式按钮（初始隐藏）
+        # 设为起点按钮
+        self._edit_set_start_btn = QPushButton("设为起点 [I]")
+        self._edit_set_start_btn.setStyleSheet("""
+            QPushButton {
+                background: #16a34a;
+                border: 1px solid #22c55e;
+                color: #ffffff;
+                font-size: 9pt;
+                padding: 3px 12px;
+                border-radius: 3px;
+            }
+            QPushButton:hover {
+                background: #22c55e;
+            }
+        """)
+        self._edit_set_start_btn.setToolTip("将当前位置设为起点 (I)")
+        self._edit_set_start_btn.clicked.connect(self._on_edit_set_start)
+        self._edit_set_start_btn.setVisible(False)
+
+        # 设为终点按钮
+        self._edit_set_end_btn = QPushButton("设为终点 [O]")
+        self._edit_set_end_btn.setStyleSheet("""
+            QPushButton {
+                background: #d97706;
+                border: 1px solid #f59e0b;
+                color: #ffffff;
+                font-size: 9pt;
+                padding: 3px 12px;
+                border-radius: 3px;
+            }
+            QPushButton:hover {
+                background: #f59e0b;
+            }
+        """)
+        self._edit_set_end_btn.setToolTip("将当前位置设为终点 (O)")
+        self._edit_set_end_btn.clicked.connect(self._on_edit_set_end)
+        self._edit_set_end_btn.setVisible(False)
+
+        # 确认编辑按钮
+        self._edit_confirm_btn = QPushButton("确认")
+        self._edit_confirm_btn.setStyleSheet("""
+            QPushButton {
+                background: #2563eb;
+                border: 1px solid #3b82f6;
+                color: #ffffff;
+                font-size: 9pt;
+                padding: 3px 12px;
+                border-radius: 3px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #3b82f6;
+            }
+        """)
+        self._edit_confirm_btn.setToolTip("确认编辑")
+        self._edit_confirm_btn.clicked.connect(self._on_edit_confirm)
+        self._edit_confirm_btn.setVisible(False)
+
+        # 取消编辑按钮
+        self._edit_cancel_btn = QPushButton("取消编辑")
+        self._edit_cancel_btn.setStyleSheet(MARK_BTN_STYLE)
+        self._edit_cancel_btn.setToolTip("取消编辑，恢复原始值")
+        self._edit_cancel_btn.clicked.connect(self._on_edit_cancel)
+        self._edit_cancel_btn.setVisible(False)
+
         mark_layout.addWidget(self._mark_status_label)
         mark_layout.addStretch()
+
+        # 打轴模式按钮
         mark_layout.addWidget(self._mark_start_btn)
         mark_layout.addWidget(self._mark_end_btn)
         mark_layout.addWidget(self._mark_cancel_btn)
+
+        # 编辑模式按钮
+        mark_layout.addWidget(self._edit_set_start_btn)
+        mark_layout.addWidget(self._edit_set_end_btn)
+        mark_layout.addWidget(self._edit_confirm_btn)
+        mark_layout.addWidget(self._edit_cancel_btn)
 
         layout.addWidget(self._mark_bar)
 
@@ -685,6 +796,11 @@ class WaveformCard(QDockWidget):
 
     def mark_start(self):
         """标记字幕开始点（使用当前播放位置）"""
+        # 如果在编辑模式，调用编辑模式的方法
+        if self._edit_mode:
+            self.edit_set_start()
+            return
+
         if self._duration_ms <= 0:
             return
         self._mark_start_ms = self._current_position_ms
@@ -699,6 +815,11 @@ class WaveformCard(QDockWidget):
 
     def mark_end(self):
         """标记字幕结束点（使用当前播放位置），完成打轴"""
+        # 如果在编辑模式，调用编辑模式的方法
+        if self._edit_mode:
+            self.edit_set_end()
+            return
+
         if self._duration_ms <= 0:
             return
         if self._mark_start_ms < 0:
@@ -748,6 +869,222 @@ class WaveformCard(QDockWidget):
     def get_mark_start(self) -> int:
         """获取当前标记的开始点，-1 表示未设置"""
         return self._mark_start_ms
+
+    # ========== 编辑模式 ==========
+
+    def enter_edit_mode(self, col: int, start_ms: int, end_ms: int):
+        """进入编辑模式，可视化调整字幕起止点
+
+        Args:
+            col: 字幕轨道号
+            start_ms: 当前开始时间 (ms)
+            end_ms: 当前结束时间 (ms)
+        """
+        if self._duration_ms <= 0:
+            return
+
+        # 如果正在打轴，先取消
+        if self._mark_start_ms >= 0:
+            self._clear_mark_state()
+
+        self._edit_mode = True
+        self._edit_col = col
+        self._edit_old_start = start_ms
+        self._edit_start_ms = start_ms
+        self._edit_end_ms = end_ms
+        self._edit_which = "start"  # 默认先编辑起点
+
+        # 更新可视化
+        self._update_edit_lines()
+
+        # 切换按钮显示
+        self._set_mark_buttons_visible(False)
+        self._set_edit_buttons_visible(True)
+
+        # 更新状态提示
+        self._mark_status_label.setText(
+            f"编辑模式: {ms_to_time_str(start_ms)} - {ms_to_time_str(end_ms)}  |  按 I 设起点，按 O 设终点，Enter 确认"
+        )
+
+        # 视窗跳转到编辑区域
+        self._scroll_to_edit_area()
+
+    def exit_edit_mode(self):
+        """退出编辑模式"""
+        self._edit_mode = False
+        self._edit_col = -1
+        self._edit_old_start = -1
+        self._edit_start_ms = -1
+        self._edit_end_ms = -1
+        self._edit_which = ""
+
+        # 隐藏编辑可视化
+        self._edit_start_line.setVisible(False)
+        self._edit_end_line.setVisible(False)
+        self._clear_edit_fill()
+
+        # 切换按钮显示
+        self._set_edit_buttons_visible(False)
+        self._set_mark_buttons_visible(True)
+
+        self._mark_status_label.setText("就绪")
+
+    def edit_set_start(self):
+        """编辑模式：将当前位置设为起点"""
+        if not self._edit_mode:
+            return
+
+        new_start = self._current_position_ms
+        # 确保起点在终点之前
+        if new_start >= self._edit_end_ms:
+            self._mark_status_label.setText("起点必须在终点之前")
+            return
+
+        self._edit_start_ms = new_start
+        self._update_edit_lines()
+        self._mark_status_label.setText(
+            f"起点已更新: {ms_to_time_str(self._edit_start_ms)} - {ms_to_time_str(self._edit_end_ms)}  |  "
+            f"按 O 设终点，Enter 确认"
+        )
+
+    def edit_set_end(self):
+        """编辑模式：将当前位置设为终点"""
+        if not self._edit_mode:
+            return
+
+        new_end = self._current_position_ms
+        # 确保终点在起点之后
+        if new_end <= self._edit_start_ms:
+            self._mark_status_label.setText("终点必须在起点之后")
+            return
+
+        self._edit_end_ms = new_end
+        self._update_edit_lines()
+        self._mark_status_label.setText(
+            f"终点已更新: {ms_to_time_str(self._edit_start_ms)} - {ms_to_time_str(self._edit_end_ms)}  |  "
+            f"按 I 设起点，Enter 确认"
+        )
+
+    def edit_confirm(self):
+        """确认编辑，发射信号"""
+        if not self._edit_mode:
+            return
+
+        # 发射编辑完成信号
+        self.subtitle_edited.emit(
+            self._edit_col,
+            self._edit_old_start,
+            self._edit_start_ms,
+            self._edit_end_ms,
+        )
+
+        self._mark_status_label.setText(
+            f"已更新: {ms_to_time_str(self._edit_start_ms)} - {ms_to_time_str(self._edit_end_ms)}"
+        )
+        self.exit_edit_mode()
+
+    def edit_cancel(self):
+        """取消编辑"""
+        self._mark_status_label.setText("已取消编辑")
+        self.exit_edit_mode()
+
+    def is_in_edit_mode(self) -> bool:
+        """是否在编辑模式"""
+        return self._edit_mode
+
+    def _update_edit_lines(self):
+        """更新编辑模式的可视化线条"""
+        self._edit_start_line.setPos(self._edit_start_ms)
+        self._edit_start_line.setVisible(True)
+
+        self._edit_end_line.setPos(self._edit_end_ms)
+        self._edit_end_line.setVisible(True)
+
+        # 更新填充区域
+        self._draw_edit_fill()
+
+    def _draw_edit_fill(self):
+        """绘制编辑模式的填充区域"""
+        self._clear_edit_fill()
+
+        if self._edit_start_ms < 0 or self._edit_end_ms < 0:
+            return
+
+        # 获取 Y 轴范围
+        y_range = self._plot_widget.plotItem.vb.viewRange()[1]
+        y_min, y_max = y_range
+
+        # 创建半透明紫色填充区域（区分于打轴的蓝色和 AB 循环的橙色）
+        x = [self._edit_start_ms, self._edit_end_ms, self._edit_end_ms, self._edit_start_ms, self._edit_start_ms]
+        y = [y_min, y_min, y_max, y_max, y_min]
+
+        self._edit_fill_item = pg.PlotCurveItem(
+            x=x,
+            y=y,
+            fillLevel=0,
+            brush=pg.mkBrush(color=QColor(139, 92, 246, 30)),  # 半透明紫色
+            pen=pg.mkPen(color=QColor(139, 92, 246, 60), width=1),
+        )
+        self._plot_widget.addItem(self._edit_fill_item)
+
+        # 确保线条在填充之上
+        self._edit_start_line.setZValue(15)
+        self._edit_end_line.setZValue(15)
+        self._red_line.setZValue(20)
+
+    def _clear_edit_fill(self):
+        """清除编辑模式的填充区域"""
+        if self._edit_fill_item is not None:
+            self._plot_widget.removeItem(self._edit_fill_item)
+            self._edit_fill_item = None
+
+    def _scroll_to_edit_area(self):
+        """视窗跳转到编辑区域"""
+        # 让编辑区域居中显示，左右各留 20% 的空间
+        center = (self._edit_start_ms + self._edit_end_ms) / 2
+        half_window = self._view_window_ms / 2
+
+        new_start = max(0, center - half_window)
+        new_end = min(self._duration_ms, center + half_window)
+
+        # 调整边界
+        if new_end - new_start < self._view_window_ms:
+            if new_start == 0:
+                new_end = min(self._duration_ms, self._view_window_ms)
+            else:
+                new_start = max(0, new_end - self._view_window_ms)
+
+        self._plot_widget.setXRange(new_start, new_end, padding=0)
+        self._update_range_label()
+
+    def _set_mark_buttons_visible(self, visible: bool):
+        """设置打轴模式按钮可见性"""
+        self._mark_start_btn.setVisible(visible)
+        self._mark_end_btn.setVisible(visible)
+        self._mark_cancel_btn.setVisible(visible and self._mark_start_ms >= 0)
+
+    def _set_edit_buttons_visible(self, visible: bool):
+        """设置编辑模式按钮可见性"""
+        self._edit_set_start_btn.setVisible(visible)
+        self._edit_set_end_btn.setVisible(visible)
+        self._edit_confirm_btn.setVisible(visible)
+        self._edit_cancel_btn.setVisible(visible)
+
+    def _on_edit_set_start(self):
+        """设为起点按钮点击"""
+        self.edit_set_start()
+
+    def _on_edit_set_end(self):
+        """设为终点按钮点击"""
+        self.edit_set_end()
+
+    def _on_edit_confirm(self):
+        """确认编辑按钮点击"""
+        self.edit_confirm()
+
+    def _on_edit_cancel(self):
+        """取消编辑按钮点击"""
+        self.edit_cancel()
 
     # ========== 内部方法 ==========
 

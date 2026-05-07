@@ -249,6 +249,12 @@ class MainWindow(QMainWindow):
         # --- 时间轴卡片 → 波形卡片（字幕数据变化，同步覆盖） ---
         self.timeline_card.subtitle_changed.connect(self._sync_subtitle_overlay)
 
+        # --- 时间轴卡片 → 波形卡片（请求编辑字幕） ---
+        self.timeline_card.edit_subtitle_requested.connect(self.waveform_card.enter_edit_mode)
+
+        # --- 波形卡片 → 时间轴卡片（编辑完成） ---
+        self.waveform_card.subtitle_edited.connect(self.timeline_card.apply_subtitle_edit)
+
     # ========== 布局管理 ==========
 
     def _restore_layout(self):
@@ -335,11 +341,25 @@ class MainWindow(QMainWindow):
             event.accept()
             return
 
-        # O：标记字幕结束点
+        # O：标记字幕结束点 / 编辑模式设为终点
         if key == Qt.Key_O and modifiers == Qt.NoModifier:
             self.waveform_card.mark_end()
             event.accept()
             return
+
+        # Enter：确认编辑
+        if key in (Qt.Key_Return, Qt.Key_Enter):
+            if self.waveform_card.is_in_edit_mode():
+                self.waveform_card.edit_confirm()
+                event.accept()
+                return
+
+        # Escape：取消编辑
+        if key == Qt.Key_Escape:
+            if self.waveform_card.is_in_edit_mode():
+                self.waveform_card.edit_cancel()
+                event.accept()
+                return
 
         # [：设置 A 点
         if key == Qt.Key_BracketLeft:
