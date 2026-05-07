@@ -23,18 +23,19 @@ dependencies = [
     "pyside6>=6.11.0",
 ]
 
-[[tool.uv.index]]
-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
-default = true
-
 [dependency-groups]
 dev = [
+    "pyinstaller>=6.20.0",
     "pytest>=9.0.3",
     "ruff>=0.15.12",
 ]
 
 [project.scripts]
 chestnut = "main:main"
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
 
 [tool.ruff]
 line-length = 120
