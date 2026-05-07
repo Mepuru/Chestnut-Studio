@@ -4,9 +4,10 @@ import sys
 from pathlib import Path
 
 from PySide6.QtWidgets import QApplication
-from PySide6.QtGui import QFont, QFontDatabase
+from PySide6.QtGui import QFont, QFontDatabase, QIcon
 
 from chestnut_studio.ui.main_window import MainWindow
+from chestnut_studio.resources import get_icon_path, get_stylesheet_path, get_fonts_dir
 
 
 def load_stylesheet() -> str:
@@ -15,7 +16,7 @@ def load_stylesheet() -> str:
     Returns:
         样式表内容
     """
-    style_path = Path(__file__).parent / "chestnut_studio" / "resources" / "style.qss"
+    style_path = get_stylesheet_path()
     if style_path.exists():
         with open(style_path, "r", encoding="utf-8") as f:
             return f.read()
@@ -28,7 +29,7 @@ def load_fonts() -> str:
     Returns:
         字体族名称
     """
-    fonts_dir = Path(__file__).parent / "chestnut_studio" / "resources" / "fonts"
+    fonts_dir = get_fonts_dir()
     font_family = "Microsoft YaHei"  # 默认字体
     
     if fonts_dir.exists():
@@ -49,6 +50,11 @@ def main():
     app.setApplicationName("Chestnut Studio")
     app.setApplicationVersion("0.1.0")
     app.setOrganizationName("ChestnutStudio")
+    
+    # 设置应用图标
+    icon_path = get_icon_path()
+    if icon_path.exists():
+        app.setWindowIcon(QIcon(str(icon_path)))
     
     # 加载自定义字体
     font_family = load_fonts()

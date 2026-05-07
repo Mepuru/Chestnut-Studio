@@ -1,9 +1,14 @@
+<div align="center">
+    <img alt="Chestnut Studio" src="chestnut_studio/resources/icon.png" width=180 height=180/>
+
 # Chestnut Studio
 
-> 现代化卡片化字幕工具 - 基于 PySide6 的字幕编辑器
+现代化卡片化字幕工具 - 基于 PySide6 的字幕编辑器
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+
+</div>
 
 ## 简介
 
@@ -27,16 +32,15 @@ Chestnut Studio 是一款面向字幕组/烤肉组的现代化字幕工具，采
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │  菜单栏 / 工具栏（播放控制 · AB循环 · 倍速 · 帧号）                   │
-├────────────────────────────────┬─────────────────────────────────────┤
-│    ① 视频播放区                 │    ③ 时间轴列表区                    │
-│    - 视频渲染 + 字幕叠加预览    │    - 已打轴的字幕列表               │
-│    - 滚轮缩放 · 拖放打开        │    - 查看/编辑/锁定/删除操作        │
-├────────────────────────────────┼─────────────────────────────────────┤
-│    ② 音频波形区（打轴区域）      │    ④ 翻译面板（Phase 4）            │
-│    - 主音轨波形 + 包络线        │    - 源语言输入区                   │
-│    - I/O 键打轴 · 红线跟随      │    - 目标语言输入区                 │
-│    - Shift+拖动平移 · 滚轮缩放  │                                     │
-└────────────────────────────────┴─────────────────────────────────────┘
+├────────────────────────┬─────────────────────────────────────────────┤
+│    ① 视频播放区         │    ③ 时间轴列表区                          │
+│    - 视频渲染           │    - 已打轴的字幕列表                       │
+│    - 字幕叠加预览       │    - 查看/编辑/锁定/删除                    │
+├────────────────────────┼─────────────────────────────────────────────┤
+│    ② 音频波形区         │    ④ 翻译面板                              │
+│    - 主音轨波形         │    - 源语言 → 目标语言                      │
+│    - I/O 键打轴         │    - 快速跳转                               │
+└────────────────────────┴─────────────────────────────────────────────┘
 ```
 
 ## 快速开始
@@ -86,72 +90,6 @@ uv run ruff check chestnut_studio/
 uv run ruff format chestnut_studio/
 ```
 
-## 项目结构
-
-```
-ChestnutStudio/
-├── main.py                        # 入口文件
-├── CLAUDE.md                      # AI 开发指南
-├── chestnut_studio/               # 主模块
-│   ├── __init__.py
-│   ├── core/                      # 核心逻辑（无 UI 依赖）
-│   │   ├── __init__.py
-│   │   ├── ffmpeg.py              # FFmpeg 封装
-│   │   ├── audio.py               # 音频数据处理
-│   │   ├── subtitle.py            # 字幕数据结构
-│   │   └── subtitle_io.py         # 字幕导入/导出
-│   ├── ui/                        # UI 层
-│   │   ├── __init__.py
-│   │   ├── main_window.py         # 主窗口
-│   │   ├── toolbar.py             # 工具栏
-│   │   ├── menubar.py             # 菜单栏
-│   │   ├── statusbar.py           # 状态栏
-│   │   ├── cards/                 # 卡片组件
-│   │   │   ├── __init__.py
-│   │   │   ├── player_card.py     # 视频播放卡片
-│   │   │   ├── waveform_card.py   # 音频波形卡片
-│   │   │   ├── timeline_card.py   # 打轴编辑卡片
-│   │   │   └── translate_card.py  # 翻译面板卡片
-│   │   └── dialogs/               # 弹窗
-│   │       ├── __init__.py
-│   │       └── edit_subtitle_dialog.py  # 字幕编辑对话框
-│   ├── utils/                     # 工具函数
-│   │   ├── __init__.py
-│   │   └── time_utils.py          # 时间格式转换
-│   └── resources/                 # 资源文件
-│       ├── style.qss              # 暗色主题样式表
-│       └── fonts/                 # 字体（HarmonyOS Sans）
-├── docs/                          # 文档
-│   ├── architecture.md            # 架构文档
-│   ├── development.md             # 开发指南
-│   ├── core.md                    # 核心层模块文档
-│   ├── ui.md                      # UI 层模块文档
-│   ├── utils.md                   # 工具层模块文档
-│   └── changelog.md               # 变更日志
-├── tests/                         # 测试
-│   ├── conftest.py                # 测试配置
-│   ├── test_phase0.py             # Phase 0 测试
-│   ├── test_phase1.py             # Phase 1 测试
-│   ├── test_phase2.py             # Phase 2 测试
-│   └── test_subtitle.py           # 字幕测试
-├── prototypes/                    # 设计文档
-├── pyproject.toml                 # 项目配置
-├── uv.lock                        # 依赖锁定
-├── README.md
-└── LICENSE                        # MIT 协议
-```
-
-## 开发路线
-
-- **Phase 0** - 基础设施（项目骨架 + 主题）✅
-- **Phase 1** - 视频播放（播放器卡片 + 工具栏）✅
-- **Phase 2** - 音频波形（波形图卡片 + FFmpeg）✅
-- **Phase 3** - 打轴功能（音频波形打轴 + 时间轴列表 + 编辑模式）✅
-- **Phase 4** - 翻译面板（翻译卡片 + 字幕导入导出）✅
-- **Phase 5** - 打磨收尾（布局持久化 + 打包）
-
-详见 [roadmap.md](prototypes/roadmap.md)
-
 ## 快捷键
 
 ### 全局快捷键
@@ -197,6 +135,73 @@ ChestnutStudio/
 | `Ctrl+Enter` | 保存并跳转到下一条字幕 |
 | `Shift+Enter` | 跳转到上一条字幕 |
 | `Enter` | 换行（文本框内） |
+
+## 项目结构
+
+```
+ChestnutStudio/
+├── main.py                        # 入口文件
+├── CLAUDE.md                      # AI 开发指南
+├── chestnut_studio/               # 主模块
+│   ├── __init__.py
+│   ├── core/                      # 核心逻辑（无 UI 依赖）
+│   │   ├── __init__.py
+│   │   ├── ffmpeg.py              # FFmpeg 封装
+│   │   ├── audio.py               # 音频数据处理
+│   │   ├── subtitle.py            # 字幕数据结构
+│   │   └── subtitle_io.py         # 字幕导入/导出
+│   ├── ui/                        # UI 层
+│   │   ├── __init__.py
+│   │   ├── main_window.py         # 主窗口
+│   │   ├── toolbar.py             # 工具栏
+│   │   ├── menubar.py             # 菜单栏
+│   │   ├── statusbar.py           # 状态栏
+│   │   ├── cards/                 # 卡片组件
+│   │   │   ├── __init__.py
+│   │   │   ├── player_card.py     # 视频播放卡片
+│   │   │   ├── waveform_card.py   # 音频波形卡片
+│   │   │   ├── timeline_card.py   # 打轴编辑卡片
+│   │   │   └── translate_card.py  # 翻译面板卡片
+│   │   └── dialogs/               # 弹窗
+│   │       ├── __init__.py
+│   │       └── edit_subtitle_dialog.py  # 字幕编辑对话框
+│   ├── utils/                     # 工具函数
+│   │   ├── __init__.py
+│   │   └── time_utils.py          # 时间格式转换
+│   └── resources/                 # 资源文件
+│       ├── icon.png               # 应用图标
+│       ├── style.qss              # 暗色主题样式表
+│       └── fonts/                 # 字体（HarmonyOS Sans）
+├── docs/                          # 文档
+│   ├── architecture.md            # 架构文档
+│   ├── development.md             # 开发指南
+│   ├── core.md                    # 核心层模块文档
+│   ├── ui.md                      # UI 层模块文档
+│   ├── utils.md                   # 工具层模块文档
+│   └── changelog.md               # 变更日志
+├── tests/                         # 测试
+│   ├── conftest.py                # 测试配置
+│   ├── test_phase0.py             # Phase 0 测试
+│   ├── test_phase1.py             # Phase 1 测试
+│   ├── test_phase2.py             # Phase 2 测试
+│   └── test_subtitle.py           # 字幕测试
+├── prototypes/                    # 设计文档
+├── pyproject.toml                 # 项目配置
+├── uv.lock                        # 依赖锁定
+├── README.md
+└── LICENSE                        # MIT 协议
+```
+
+## 开发路线
+
+- **Phase 0** - 基础设施（项目骨架 + 主题）✅
+- **Phase 1** - 视频播放（播放器卡片 + 工具栏）✅
+- **Phase 2** - 音频波形（波形图卡片 + FFmpeg）✅
+- **Phase 3** - 打轴功能（音频波形打轴 + 时间轴列表 + 编辑模式）✅
+- **Phase 4** - 翻译面板（翻译卡片 + 字幕导入导出）✅
+- **Phase 5** - 打磨收尾（布局持久化 + 打包）
+
+详见 [roadmap.md](prototypes/roadmap.md)
 
 ## 技术栈
 

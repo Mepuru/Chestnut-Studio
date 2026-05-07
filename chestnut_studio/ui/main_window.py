@@ -3,10 +3,12 @@
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QFileDialog, QMainWindow
 
 from chestnut_studio.core.ffmpeg import FFmpeg
 from chestnut_studio.core.subtitle_io import SubtitleIO
+from chestnut_studio.resources import get_icon_path
 from chestnut_studio.ui.cards.player_card import PlayerCard
 from chestnut_studio.ui.cards.timeline_card import TimelineCard
 from chestnut_studio.ui.cards.translate_card import TranslateCard
@@ -51,6 +53,11 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle("Chestnut Studio")
         self.resize(1280, 720)
+        
+        # 设置窗口图标
+        icon_path = get_icon_path()
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
 
         # 禁用 Tab 合并，只允许嵌套停靠
         self.setDockNestingEnabled(True)
