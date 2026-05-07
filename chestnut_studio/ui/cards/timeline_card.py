@@ -292,20 +292,23 @@ class TimelineCard(QDockWidget):
             op_widget = self._create_operation_buttons(col, start, is_locked)
             self._table.setCellWidget(row, 4, op_widget)
 
-            # 检测是否与其他字幕重叠
-            is_overlapping = self._check_overlap(start, start + duration, col, start)
+            # 轨道颜色方案
+            track_colors = [
+                QColor(59, 130, 246, 30),  # 轨道0: 蓝色
+                QColor(16, 185, 129, 30),  # 轨道1: 绿色
+                QColor(245, 158, 11, 30),  # 轨道2: 橙色
+                QColor(236, 72, 153, 30),  # 轨道3: 粉色
+                QColor(168, 85, 247, 30),  # 轨道4: 紫色
+            ]
 
             # 设置行颜色
             if is_locked:
                 bg_color = QColor(255, 255, 255, 15)  # 锁定时微亮
-            elif is_overlapping:
-                bg_color = QColor(234, 179, 8, 30)  # 重叠：黄色警告
             elif duration < 100 or duration > 8000:
                 bg_color = QColor(178, 34, 34, 40)  # 异常：红色
-            elif duration > 4500:
-                bg_color = QColor(250, 128, 114, 30)  # 过长：橙色
             else:
-                bg_color = QColor(53, 84, 93, 40)  # 正常：蓝色
+                col_idx = max(0, min(col, len(track_colors) - 1))
+                bg_color = track_colors[col_idx]
 
             for col_idx in range(5):
                 item = self._table.item(row, col_idx)
@@ -322,26 +325,6 @@ class TimelineCard(QDockWidget):
         # 更新计数和按钮状态
         self._count_label.setText(f"共 {len(all_subtitles)} 条")
         self._update_undo_redo_buttons()
-
-    def _check_overlap(self, start_ms: int, end_ms: int, col: int, self_start: int) -> bool:
-        """检测指定区间是否与其他字幕重叠
-
-        Args:
-            start_ms: 检测区间的开始时间
-            end_ms: 检测区间的结束时间
-            col: 轨道号
-            self_start: 自身的开始时间（用于排除自身）
-        """
-        for c, sub_data in self._subtitle_mgr.data.items():
-            for s, (d, _) in sub_data.items():
-                # 排除自身
-                if c == col and s == self_start:
-                    continue
-                e = s + d
-                # 检测重叠：两个区间有交集
-                if start_ms < e and end_ms > s:
-                    return True
-        return False
 
     def _create_operation_buttons(self, col: int, start: int, is_locked: bool) -> QWidget:
         """创建操作按钮组（查看 / 编辑 / 锁定）"""

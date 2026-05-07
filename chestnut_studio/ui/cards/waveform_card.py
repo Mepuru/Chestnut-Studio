@@ -723,6 +723,8 @@ class WaveformCard(QDockWidget):
         Args:
             subtitle_data: SubtitleManager.data (dict[int, dict[int, list]])
         """
+        # 存储完整数据用于重叠检测和颜色区分
+        self._subtitle_full_data = subtitle_data
         regions = {}
         for col, sub_dict in subtitle_data.items():
             for start_ms, (duration_ms, _text) in sub_dict.items():
@@ -1124,12 +1126,27 @@ class WaveformCard(QDockWidget):
             self._plot_widget.removeItem(item)
         self._subtitle_items.clear()
 
-        # 绘制新的字幕条
-        for start_ms, end_ms in self._subtitle_regions.items():
-            self._draw_subtitle_region(start_ms, end_ms)
+        # 绘制新的字幕条（按轨道绘制，后绘制的在上层）
+        if hasattr(self, "_subtitle_full_data") and self._subtitle_full_data:
+            # 按轨道顺序绘制，轨道号大的在下层
+            for col in sorted(self._subtitle_full_data.keys(), reverse=True):
+                sub_dict = self._subtitle_full_data[col]
+                for start_ms, (duration_ms, _text) in sub_dict.items():
+                    end_ms = start_ms + duration_ms
+                    self._draw_subtitle_region(start_ms, end_ms, col)
+        else:
+            # 兼容旧的调用方式
+            for start_ms, end_ms in self._subtitle_regions.items():
+                self._draw_subtitle_region(start_ms, end_ms, 0)
 
-    def _draw_subtitle_region(self, start_ms: int, end_ms: int):
-        """绘制单个字幕条区域"""
+    def _draw_subtitle_region(self, start_ms: int, end_ms: int, col: int = 0):
+        """绘制单个字幕条区域
+
+        Args:
+            start_ms: 开始时间
+            end_ms: 结束时间
+            col: 轨道号（0-4），不同轨道用不同颜色
+        """
         # 获取 Y 轴范围
         y_range = self._plot_widget.plotItem.vb.viewRange()[1]
         y_min, y_max = y_range
@@ -1137,31 +1154,29 @@ class WaveformCard(QDockWidget):
         # 判断是否是正在编辑的字幕条
         is_editing = self._edit_mode and start_ms == self._edit_old_start
 
-        # 检测是否与其他字幕重叠
-        is_overlapping = self._check_overlap(start_ms, end_ms)
+        # 轨道颜色方案（5个轨道，颜色不同）
+        track_colors = [
+            (QColor(59, 130, 246), QColor(59, 130, 246, 40)),  # 轨道0: 蓝色
+            (QColor(16, 185, 129), QColor(16, 185, 129, 40)),  # 轨道1: 绿色
+            (QColor(245, 158, 11), QColor(245, 158, 11, 40)),  # 轨道2: 橙色
+            (QColor(236, 72, 153), QColor(236, 72, 153, 40)),  # 轨道3: 粉色
+            (QColor(168, 85, 247), QColor(168, 85, 247, 40)),  # 轨道4: 紫色
+        ]
 
         # 根据状态选择颜色
         duration = end_ms - start_ms
         if is_editing:
-            # 正在编辑：紫色高亮
-            fill_color = QColor(139, 92, 246, 60)
-            border_color = QColor(139, 92, 246, 120)
-        elif is_overlapping:
-            # 重叠：黄色警告
-            fill_color = QColor(234, 179, 8, 50)
-            border_color = QColor(234, 179, 8, 120)
+            # 正在编辑：高亮紫色
+            fill_color = QColor(139, 92, 246, 70)
+            border_color = QColor(139, 92, 246, 150)
         elif duration < 100 or duration > 8000:
-            # 异常：红色
+            # 异常：红色（覆盖轨道颜色）
             fill_color = QColor(178, 34, 34, 50)
             border_color = QColor(178, 34, 34, 100)
-        elif duration > 4500:
-            # 过长：橙色
-            fill_color = QColor(250, 128, 114, 40)
-            border_color = QColor(250, 128, 114, 80)
         else:
-            # 正常：蓝色
-            fill_color = QColor(59, 130, 246, 40)
-            border_color = QColor(59, 130, 246, 80)
+            # 正常：使用轨道颜色
+            col_idx = max(0, min(col, len(track_colors) - 1))
+            border_color, fill_color = track_colors[col_idx]
 
         # 创建半透明色块
         x = [start_ms, end_ms, end_ms, start_ms, start_ms]
