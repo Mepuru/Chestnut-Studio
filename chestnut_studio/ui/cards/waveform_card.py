@@ -868,9 +868,6 @@ class WaveformCard(QDockWidget):
 
         # 清除标记状态
         self._clear_mark_state()
-        self._mark_status_label.setText(
-            f"已打轴: {ms_to_time_str(start_ms)}-{ms_to_time_str(end_ms)} 轨{self._current_track}"
-        )
 
     def cancel_marking(self):
         """取消当前打轴标记"""

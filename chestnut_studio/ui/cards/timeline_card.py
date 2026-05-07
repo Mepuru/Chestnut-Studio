@@ -13,6 +13,7 @@ import copy
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
+    QComboBox,
     QDockWidget,
     QHBoxLayout,
     QHeaderView,
@@ -119,6 +120,9 @@ class TimelineCard(QDockWidget):
         # 锁定状态集合 {(col, start_ms), ...}
         self._locked_states: set[tuple[int, int]] = set()
 
+        # 轨道筛选 (-1 = 全部，0-4 = 指定轨道)
+        self._filter_track: int = -1
+
         # 撤销/重做后端
         # 栈保存每个操作完成后状态快照，point 指向当前状态
         self._backend: list[tuple[dict, set]] = []
@@ -187,7 +191,7 @@ class TimelineCard(QDockWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.Fixed)
-        self._table.setColumnWidth(5, 160)
+        self._table.setColumnWidth(5, 180)
 
         # 隐藏垂直表头
         self._table.verticalHeader().setVisible(False)
@@ -248,7 +252,24 @@ class TimelineCard(QDockWidget):
         self._preview_btn.setToolTip("预览所有轨道叠加效果")
         self._preview_btn.clicked.connect(self._preview_tracks)
 
+        # 轨道筛选器
+        filter_label = QLabel("显示:")
+        filter_label.setStyleSheet("color: #a1a1aa; font-size: 9pt;")
+
+        self._track_filter = QComboBox()
+        self._track_filter.setFixedWidth(80)
+        self._track_filter.addItem("全部")
+        track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#a855f7"]
+        for i, color in enumerate(track_colors):
+            self._track_filter.addItem(f"轨{i}")
+            self._track_filter.setItemData(i + 1, QColor(color), Qt.ForegroundRole)
+        self._track_filter.setCurrentIndex(0)
+        self._track_filter.currentIndexChanged.connect(self._on_track_filter_changed)
+
         bottom_layout.addWidget(self._count_label)
+        bottom_layout.addSpacing(8)
+        bottom_layout.addWidget(filter_label)
+        bottom_layout.addWidget(self._track_filter)
         bottom_layout.addStretch()
         bottom_layout.addWidget(self._undo_btn)
         bottom_layout.addWidget(self._redo_btn)
@@ -276,9 +297,12 @@ class TimelineCard(QDockWidget):
 
         self._table.setRowCount(0)
 
-        # 收集所有字幕条（跨所有轨道）
+        # 收集字幕条（根据筛选条件）
         all_subtitles: list[tuple[int, int, int, str]] = []  # (start, duration, col, text)
         for col, sub_data in self._subtitle_mgr.data.items():
+            # 轨道筛选
+            if self._filter_track >= 0 and col != self._filter_track:
+                continue
             for start, (duration, text) in sub_data.items():
                 all_subtitles.append((start, duration, col, text))
 
@@ -369,18 +393,18 @@ class TimelineCard(QDockWidget):
         self._update_undo_redo_buttons()
 
     def _create_operation_buttons(self, col: int, start: int, is_locked: bool) -> QWidget:
-        """创建操作按钮组（查看 / 编辑 / 锁定）"""
+        """创建操作按钮组（查看 / 编辑 / 锁定 / 删除）"""
         widget = QWidget()
         widget.setStyleSheet("background: transparent;")
         layout = QHBoxLayout(widget)
         layout.setContentsMargins(4, 2, 4, 2)
-        layout.setSpacing(6)
+        layout.setSpacing(4)
 
         # 查看按钮
         view_btn = QPushButton("查看")
         view_btn.setStyleSheet(OP_BTN_STYLE)
         view_btn.setToolTip("跳转到字幕起始点")
-        view_btn.setFixedSize(36, 22)
+        view_btn.setFixedSize(32, 22)
         view_btn.clicked.connect(lambda checked, s=start: self._on_view_clicked(s))
         layout.addWidget(view_btn)
 
@@ -388,7 +412,7 @@ class TimelineCard(QDockWidget):
         edit_btn = QPushButton("编辑")
         edit_btn.setStyleSheet(OP_BTN_STYLE)
         edit_btn.setToolTip("编辑字幕区间")
-        edit_btn.setFixedSize(36, 22)
+        edit_btn.setFixedSize(32, 22)
         edit_btn.clicked.connect(lambda checked, c=col, s=start: self._on_edit_clicked(c, s))
         layout.addWidget(edit_btn)
 
@@ -396,9 +420,30 @@ class TimelineCard(QDockWidget):
         lock_btn = QPushButton("锁定" if not is_locked else "解锁")
         lock_btn.setStyleSheet(LOCK_ACTIVE_STYLE if is_locked else OP_BTN_STYLE)
         lock_btn.setToolTip("切换锁定状态")
-        lock_btn.setFixedSize(36, 22)
+        lock_btn.setFixedSize(32, 22)
         lock_btn.clicked.connect(lambda checked, c=col, s=start: self._on_lock_clicked(c, s))
         layout.addWidget(lock_btn)
+
+        # 删除按钮
+        delete_btn = QPushButton("删除")
+        delete_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: 1px solid #3f3f46;
+                color: #ef4444;
+                font-size: 8pt;
+                padding: 1px 4px;
+                border-radius: 3px;
+            }
+            QPushButton:hover {
+                background: #ef4444;
+                color: #ffffff;
+            }
+        """)
+        delete_btn.setToolTip("删除此字幕")
+        delete_btn.setFixedSize(32, 22)
+        delete_btn.clicked.connect(lambda checked, c=col, s=start: self._on_delete_single(c, s))
+        layout.addWidget(delete_btn)
 
         layout.addStretch()
         return widget
@@ -435,6 +480,22 @@ class TimelineCard(QDockWidget):
         self._push_undo()
         self._update_table()
 
+    def _on_delete_single(self, col: int, start_ms: int):
+        """删除单条字幕"""
+        if (col, start_ms) in self._locked_states:
+            return  # 锁定状态不可删除
+
+        subtitle = self._subtitle_mgr.get(col, start_ms)
+        if subtitle is None:
+            return
+
+        duration, text = subtitle
+        self._push_undo()
+        self._subtitle_mgr.delete(col, start_ms)
+        self._locked_states.discard((col, start_ms))
+        self._update_table()
+        self.subtitle_changed.emit()
+
     def _on_double_click(self, index):
         """双击行：跳转到字幕起始点"""
         row = index.row()
@@ -445,6 +506,11 @@ class TimelineCard(QDockWidget):
                 col, start = data
                 self.jump_to_position.emit(start)
                 self.subtitle_selected.emit(col, self._subtitle_mgr.data[col].get(start, [0, ""])[1])
+
+    def _on_track_filter_changed(self, index: int):
+        """轨道筛选变化"""
+        self._filter_track = index - 1  # -1=全部, 0-4=指定轨道
+        self._update_table()
 
     # ========== 删除功能 ==========
 
