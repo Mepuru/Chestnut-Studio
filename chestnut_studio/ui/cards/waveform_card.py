@@ -129,7 +129,7 @@ class WaveformPlotWidget(pg.PlotWidget):
         axis = self.getAxis("bottom")
 
         def time_tick_strings(values, scale, spacing):
-            """将毫秒值转换为 mm:ss 格式"""
+            """将毫秒值转换为 mm:ss + 帧号 格式"""
             strings = []
             for v in values:
                 if v < 0:
@@ -139,7 +139,9 @@ class WaveformPlotWidget(pg.PlotWidget):
                     total_seconds = int(v / 1000)
                     minutes = total_seconds // 60
                     seconds = total_seconds % 60
-                    strings.append(f"{minutes}:{seconds:02d}")
+                    # 计算帧号
+                    frame = int(v * self._fps / 1000) if self._fps > 0 else 0
+                    strings.append(f"{minutes}:{seconds:02d}\n{frame}")
             return strings
 
         axis.tickStrings = time_tick_strings
@@ -395,11 +397,6 @@ class WaveformCard(QDockWidget):
         self._range_label = QLabel("0:00 - 0:30")
         self._range_label.setStyleSheet("color: #a1a1aa; font-size: 9pt; font-family: Consolas;")
 
-        # 帧号标签
-        self._frame_label = QLabel("帧: 0")
-        self._frame_label.setStyleSheet("color: #a1a1aa; font-size: 9pt; font-family: Consolas;")
-        self._frame_label.setFixedWidth(80)
-
         # 模式标签（左下角显示）
         self._mode_label = QLabel("打轴模式")
         self._mode_label.setStyleSheet("color: #22c55e; font-size: 9pt; font-weight: bold;")
@@ -440,7 +437,6 @@ class WaveformCard(QDockWidget):
 
         info_layout.addWidget(self._zoom_label)
         info_layout.addWidget(self._range_label)
-        info_layout.addWidget(self._frame_label)
         info_layout.addSpacing(12)
         info_layout.addWidget(self._mode_label)
         info_layout.addWidget(self._mode_hint)
@@ -748,10 +744,6 @@ class WaveformCard(QDockWidget):
 
         # 移动红线
         self._red_line.setPos(position_ms)
-
-        # 更新帧号
-        frame = int(position_ms * self._fps / 1000) if self._fps > 0 else 0
-        self._frame_label.setText(f"帧: {frame}")
 
         # 获取当前视窗范围
         view_range = self._plot_widget.plotItem.vb.viewRange()[0]

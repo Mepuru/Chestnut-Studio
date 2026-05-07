@@ -229,6 +229,12 @@ class TimelineCard(QDockWidget):
         self._redo_btn.clicked.connect(self._redo)
         self._redo_btn.setEnabled(False)
 
+        # 删除按钮
+        self._delete_btn = QPushButton("删除选中")
+        self._delete_btn.setStyleSheet(TOOL_BTN_STYLE)
+        self._delete_btn.setToolTip("删除选中的字幕 (Delete)")
+        self._delete_btn.clicked.connect(self._delete_selected)
+
         self._delete_all_btn = QPushButton("清空")
         self._delete_all_btn.setStyleSheet(TOOL_BTN_STYLE)
         self._delete_all_btn.setToolTip("清空当前轨道所有字幕")
@@ -270,6 +276,7 @@ class TimelineCard(QDockWidget):
         bottom_layout.addStretch()
         bottom_layout.addWidget(self._undo_btn)
         bottom_layout.addWidget(self._redo_btn)
+        bottom_layout.addWidget(self._delete_btn)
         bottom_layout.addWidget(self._delete_all_btn)
         bottom_layout.addStretch()
         bottom_layout.addWidget(self._lock_all_btn)
