@@ -42,7 +42,7 @@
 | `cards/player_card.py` | 视频播放卡片，QMediaPlayer + 拖放打开 + 字幕叠加 + AB 循环 |
 | `cards/timeline_card.py` | 时间轴列表卡片，显示已打轴的字幕条（编号 + 起止时间 + 查看/编辑/锁定） |
 | `cards/waveform_card.py` | 音频波形卡片，波形显示 + 包络线 + AB 循环区域 + 滚轮缩放 + Shift 拖动 + 打轴功能 |
-| `cards/translate_card.py` | 翻译面板卡片，填写源语言和目标语言内容（Phase 4 实现） |
+| `cards/translate_card.py` | 翻译面板卡片，编辑当前轨道的字幕文本，支持快速跳转 |
 
 ### 2.2 核心层 (`chestnut_studio/core/`)
 
@@ -129,12 +129,15 @@ WaveformCard
   │ subtitle_created ──────────→ TimelineCard.add_subtitle
 
 TimelineCard
-  │ subtitle_selected ─────────→ TranslateCard.show_subtitle
+  │ subtitle_selected(col, start_ms) ──→ TranslateCard.show_subtitle
   │ subtitle_changed ──────────→ WaveformCard.refresh_overlay
   │ jump_to_position ──────────→ PlayerCard.set_position
 
 TranslateCard
-  │ translation_saved ─────────→ TimelineCard.update_translation
+  │ text_saved(col, start_ms, text) ──→ TimelineCard.set_subtitle_text
+  │ jump_to_next(col, start_ms) ──────→ MainWindow._on_jump_to_next
+  │ jump_to_prev(col, start_ms) ──────→ MainWindow._on_jump_to_prev
+  │ editing_subtitle(col, start_ms) ──→ TimelineCard.highlight_subtitle
 ```
 
 ### 4.3 AB 循环流程

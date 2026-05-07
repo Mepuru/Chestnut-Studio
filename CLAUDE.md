@@ -8,12 +8,14 @@
 
 Chestnut Studio 是一款面向字幕组/烤肉组的现代化字幕工具，基于 PySide6 开发。
 
-**当前进度**: Phase 3 进行中（打轴功能）
+**当前进度**: Phase 4 完成（翻译面板 + 字幕导入导出）
 
 **核心特性**: 
 - 音频波形区：用户通过快捷键打轴（标记开始/结束点）
 - 时间轴列表：显示已打轴的字幕条（编号 + 起止时间）
-- 翻译面板：填写源语言和目标语言内容
+- 翻译面板：编辑当前轨道的字幕文本，支持快速跳转
+- 复制轴功能：将一个轨道的字幕复制到另一个轨道
+- ASS 导出：支持多轨道导出，样式名根据轨道自动命名
 
 ---
 
@@ -64,6 +66,9 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 | `Ctrl+O` | 打开视频 | `menubar.py` |
 | `I` | 标记字幕开始点 | `waveform_card.py` |
 | `O` | 标记字幕结束点 | `waveform_card.py` |
+| `Ctrl+Enter` | 保存翻译并跳转下一条 | `translate_card.py` |
+| `Shift+Enter` | 跳转到上一条字幕 | `translate_card.py` |
+| `1` `2` `3` `4` | 快速切换轨道 | `main_window.py` |
 
 ---
 
@@ -90,12 +95,15 @@ WaveformCard
   │ subtitle_created ──────────→ TimelineCard.add_subtitle
 
 TimelineCard
-  │ subtitle_selected ─────────→ TranslateCard.show_subtitle
+  │ subtitle_selected(col, start_ms) ──→ TranslateCard.show_subtitle
   │ subtitle_changed ──────────→ WaveformCard.refresh_overlay
   │ jump_to_position ──────────→ PlayerCard.set_position
 
 TranslateCard
-  │ translation_saved ─────────→ TimelineCard.update_translation
+  │ text_saved(col, start_ms, text) ──→ TimelineCard.set_subtitle_text
+  │ jump_to_next(col, start_ms) ──────→ MainWindow._on_jump_to_next
+  │ jump_to_prev(col, start_ms) ──────→ MainWindow._on_jump_to_prev
+  │ editing_subtitle(col, start_ms) ──→ TimelineCard.highlight_subtitle
 ```
 
 ---

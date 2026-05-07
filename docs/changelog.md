@@ -4,6 +4,52 @@
 
 ---
 
+## 2026-05-07 — Phase 4 完成（翻译面板 + 字幕导入导出）
+
+### 数据结构优化
+
+- 回归简单数据结构 `[duration, text]`，每个轨道独立存储一种语言
+- 移除之前的 `[duration, source_text, target_text]` 设计
+
+### 新增功能
+
+- **复制轴功能**：支持将一个轨道的字幕复制到另一个轨道
+  - 底部工具栏添加源轨道/目标轨道选择和复制按钮
+  - 复制时覆盖目标轨道数据，需要用户确认
+- **ASS 导出**：支持多轨道 ASS 文件导出
+  - 样式名根据轨道自动命名（轨道 1、轨道 2 等）
+  - 不同样式自动分配不同颜色
+- **字幕导入**：支持导入 SRT 和 ASS 格式字幕文件
+- **翻译面板改进**：
+  - Ctrl+Enter 保存并跳转下一条字幕
+  - Shift+Enter 跳转到上一条字幕
+  - 编辑字幕时高亮时间轴对应行
+  - 禁用用户手动选中行，仅翻译区域高亮时启用
+
+### 信号变更
+
+- `TimelineCard.subtitle_selected` 参数从 `(start_ms)` 改为 `(col, start_ms)`
+- `TranslateCard` 移除 `translation_saved` 信号，新增：
+  - `text_saved(col, start_ms, text)` — 文本保存
+  - `jump_to_next(col, start_ms)` — 跳转下一条
+  - `jump_to_prev(col, start_ms)` — 跳转上一条
+  - `editing_subtitle(col, start_ms)` — 正在编辑的字幕
+
+### 菜单集成
+
+- 文件 → 导入字幕：支持 SRT/ASS 格式
+- 文件 → 导出字幕：导出多轨道 ASS 文件
+
+### 文档更新
+
+- 更新 CLAUDE.md：项目进度、快捷键、信号连接图
+- 更新 README.md：核心特性、开发路线、快捷键
+- 更新 docs/ui.md：TimelineCard 和 TranslateCard 接口
+- 更新 docs/core.md：SubtitleManager 和 SubtitleIO 接口
+- 更新 docs/changelog.md：添加本次变更记录
+
+---
+
 ## 2026-05-06 — Phase 3 重新设计（打轴功能）
 
 ### 重大调整：打轴功能重新设计

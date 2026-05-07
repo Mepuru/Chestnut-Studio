@@ -393,9 +393,10 @@ frame = int(ms * fps / 1000)
 
 | 信号 | 参数 | 说明 |
 |------|------|------|
-| `subtitle_selected(start_ms)` | `int` | 字幕被选中 |
+| `subtitle_selected(col, start_ms)` | `int, int` | 字幕被选中（用于翻译面板） |
 | `subtitle_changed()` | 无 | 字幕数据变化 |
 | `jump_to_position(ms)` | `int` | 跳转到指定位置 |
+| `edit_subtitle_requested(col, start_ms, end_ms)` | `int, int, int` | 请求编辑字幕（发射到波形图） |
 
 ### 设计理念
 
@@ -426,6 +427,20 @@ frame = int(ms * fps / 1000)
 | `remove_subtitle(subtitle_id)` | `int` | 删除字幕条 |
 | `get_subtitles()` | 无 | 获取所有字幕列表 |
 | `jump_to_subtitle(subtitle_id)` | `int` | 跳转到指定字幕起始点 |
+| `set_subtitle_text(col, start_ms, text)` | `int, int, str` | 设置字幕文本 |
+| `highlight_subtitle(col, start_ms)` | `int, int` | 高亮指定字幕行（翻译面板调用） |
+| `get_next_subtitle(col, start_ms)` | `int, int` | 获取下一条字幕 |
+| `get_prev_subtitle(col, start_ms)` | `int, int` | 获取上一条字幕 |
+| `apply_subtitle_edit(col, old_start, new_start, new_end)` | `int, int, int, int` | 应用字幕编辑结果 |
+
+### 复制轴功能
+
+底部工具栏提供复制轴功能：
+- 源轨道选择（下拉框）
+- 目标轨道选择（下拉框）
+- 复制按钮
+
+复制时会覆盖目标轨道的现有数据，需要用户确认。
 
 ### 交互操作
 
@@ -446,3 +461,56 @@ frame = int(ms * fps / 1000)
 | 粉色 `#FA8072` | 持续时间 > 4.5s |
 | 红色 `#B22222` | 持续时间异常（< 100ms 或 > 8s） |
 | 灰色 `#52525b` | 已锁定 |
+
+---
+
+## 八、翻译面板卡片 (`cards/translate_card.py`)
+
+`TranslateCard(QDockWidget)` — 翻译面板，编辑当前轨道的字幕文本。
+
+### 信号
+
+| 信号 | 参数 | 说明 |
+|------|------|------|
+| `text_saved(col, start_ms, text)` | `int, int, str` | 文本保存时发射 |
+| `jump_to_next(col, start_ms)` | `int, int` | 请求跳转到下一条 |
+| `jump_to_prev(col, start_ms)` | `int, int` | 请求跳转到上一条 |
+| `editing_subtitle(col, start_ms)` | `int, int` | 正在编辑的字幕（用于高亮时间轴） |
+
+### 布局
+
+```
+┌─ 翻译 ─────────────────────────────────────────────┐
+│ 0:01.00    轨道 2 (绿色)    Ctrl+Enter: 保存/下一条 │
+│ ┌─────────────────────────────────────────────────┐│
+│ │ ┌─────────────────────────────────────────────┐││
+│ │ │ こんにちは世界                              │││
+│ │ └─────────────────────────────────────────────┘││
+│ └─────────────────────────────────────────────────┘│
+│                           [清空] [上一条] [保存/下一条] │
+└─────────────────────────────────────────────────────┘
+```
+
+### 快捷键
+
+| 快捷键 | 功能 |
+|--------|------|
+| `Ctrl+Enter` | 保存并跳转到下一条字幕 |
+| `Shift+Enter` | 跳转到上一条字幕 |
+| `Enter` | 换行（文本框内） |
+
+### 公有方法
+
+| 方法 | 参数 | 说明 |
+|------|------|------|
+| `show_subtitle(col, start_ms)` | `int, int` | 显示选中的字幕 |
+| `save_text()` | 无 | 保存当前文本 |
+| `clear_input()` | 无 | 清空输入框 |
+| `set_subtitle_data(data)` | `dict` | 设置字幕数据引用 |
+
+### 设计理念
+
+- 每个轨道只存储一种语言（不是源语言+目标语言）
+- 翻译工作流：轨道1打轴填写源语言 → 复制到轨道2 → 在轨道2修改为目标语言
+- 选中字幕时，时间轴表格会高亮对应行
+- 保存后自动跳转到下一条，提高翻译效率

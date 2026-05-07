@@ -97,6 +97,7 @@ mgr = SubtitleManager()
 | `split(col, time_point)` | 列号, 时间点 | 在时间点切割字幕条，返回是否成功 |
 | `clear(col)` | 列号 | 清空指定列 |
 | `clear_all()` | 无 | 清空所有列 |
+| `copy_track(source_col, target_col)` | 源列号, 目标列号 | 复制轨道数据到另一个轨道，返回是否成功 |
 
 **叠轴检测：**
 
@@ -120,7 +121,7 @@ mgr.redo()         # 重做，返回是否成功
 
 ## 三、字幕导入/导出 (`subtitle_io.py`)
 
-支持 SRT 格式的导入导出（Phase 4 扩展 ASS/VTT/LRC）。
+支持 SRT 和 ASS 格式的导入导出。
 
 ### SubtitleIO 类
 
@@ -129,20 +130,38 @@ mgr.redo()         # 重做，返回是否成功
 | 方法 | 参数 | 返回 | 说明 |
 |------|------|------|------|
 | `import_srt(path)` | SRT 文件路径 | `dict[int, list]` | 导入为 `{start: [duration, text]}` |
+| `import_ass(path)` | ASS 文件路径 | `dict[int, list]` | 导入为 `{start: [duration, text]}` |
 | `export_srt(path, data, video_start, sub_start)` | 输出路径, 字幕数据, 视频起始ms, 字幕偏移ms | `None` | 导出 SRT 文件 |
+| `export_ass(path, tracks, track_styles, fontname, fontsize)` | 输出路径, 多轨道数据, 轨道样式名, 字体名, 字体大小 | `None` | 导出多轨道 ASS 文件 |
 
 **用法示例：**
 
 ```python
 from chestnut_studio.core.subtitle_io import SubtitleIO
 
-# 导入
+# 导入 SRT
 subs = SubtitleIO.import_srt("subtitle.srt")
 # {1000: [2000, "你好"], 4000: [1500, "世界"]}
 
-# 导出
+# 导入 ASS
+subs = SubtitleIO.import_ass("subtitle.ass")
+
+# 导出 SRT
 SubtitleIO.export_srt("output.srt", subs, video_start=0, sub_start=0)
+
+# 导出多轨道 ASS
+tracks = {
+    1: {1000: [2000, "你好"], 4000: [1500, "世界"]},
+    2: {1000: [2000, "こんにちは"], 4000: [1500, "世界"]},
+}
+track_styles = {1: "轨道 1", 2: "轨道 2"}
+SubtitleIO.export_ass("output.ass", tracks, track_styles)
 ```
+
+**ASS 导出说明：**
+- 样式名根据轨道自动命名：`轨道 1`、`轨道 2` 等
+- 不同样式自动分配不同颜色（白色、黄色、绿色、蓝色）
+- 输出文件使用 UTF-8-BOM 编码
 
 **时间格式辅助函数：**
 
