@@ -16,7 +16,15 @@ import tempfile
 import pyqtgraph as pg
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QFont, QMouseEvent, QWheelEvent
-from PySide6.QtWidgets import QDockWidget, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QComboBox,
+    QDockWidget,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from chestnut_studio.core.audio import compute_envelope_fast, downsample_waveform, load_waveform
 from chestnut_studio.core.ffmpeg import FFmpeg
@@ -320,7 +328,7 @@ class WaveformCard(QDockWidget):
 
     # 信号
     position_clicked = Signal(int)  # 点击位置 (ms)
-    subtitle_created = Signal(int, int)  # 打轴完成 (start_ms, end_ms)
+    subtitle_created = Signal(int, int, int)  # 打轴完成 (start_ms, end_ms, track)
     subtitle_edited = Signal(int, int, int, int)  # 编辑完成 (col, old_start, new_start, new_end)
 
     # 默认停靠区域
@@ -343,6 +351,7 @@ class WaveformCard(QDockWidget):
 
         # 打轴状态
         self._mark_start_ms: int = -1  # 标记的开始点，-1 表示未设置
+        self._current_track: int = 0  # 当前轨道号（0-4）
 
         # 编辑模式状态
         self._edit_mode: bool = False
@@ -490,6 +499,20 @@ class WaveformCard(QDockWidget):
         self._mark_status_label = QLabel("就绪")
         self._mark_status_label.setStyleSheet("color: #a1a1aa; font-size: 9pt; font-family: Consolas;")
 
+        # 轨道选择器
+        track_label = QLabel("轨道:")
+        track_label.setStyleSheet("color: #a1a1aa; font-size: 9pt;")
+
+        self._track_combo = QComboBox()
+        self._track_combo.setFixedWidth(80)
+        # 添加轨道选项，带颜色标识
+        track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#a855f7"]
+        for i, color in enumerate(track_colors):
+            self._track_combo.addItem(f"轨道 {i}")
+            self._track_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
+        self._track_combo.setCurrentIndex(0)
+        self._track_combo.currentIndexChanged.connect(self._on_track_changed)
+
         # 标记开始按钮
         self._mark_start_btn = QPushButton("标记开始 [I]")
         self._mark_start_btn.setStyleSheet(MARK_BTN_STYLE)
@@ -576,6 +599,9 @@ class WaveformCard(QDockWidget):
         self._edit_cancel_btn.setVisible(False)
 
         mark_layout.addWidget(self._mark_status_label)
+        mark_layout.addSpacing(12)
+        mark_layout.addWidget(track_label)
+        mark_layout.addWidget(self._track_combo)
         mark_layout.addStretch()
 
         # 打轴模式按钮
@@ -836,12 +862,14 @@ class WaveformCard(QDockWidget):
             self._mark_status_label.setText("结束点必须在开始点之后")
             return
 
-        # 发射打轴完成信号
-        self.subtitle_created.emit(start_ms, end_ms)
+        # 发射打轴完成信号（包含轨道号）
+        self.subtitle_created.emit(start_ms, end_ms, self._current_track)
 
         # 清除标记状态
         self._clear_mark_state()
-        self._mark_status_label.setText(f"已打轴: {ms_to_time_str(start_ms)} - {ms_to_time_str(end_ms)}")
+        self._mark_status_label.setText(
+            f"已打轴: {ms_to_time_str(start_ms)} - {ms_to_time_str(end_ms)} [轨道{self._current_track}]"
+        )
 
     def cancel_marking(self):
         """取消当前打轴标记"""
@@ -871,6 +899,20 @@ class WaveformCard(QDockWidget):
     def get_mark_start(self) -> int:
         """获取当前标记的开始点，-1 表示未设置"""
         return self._mark_start_ms
+
+    def get_current_track(self) -> int:
+        """获取当前轨道号"""
+        return self._current_track
+
+    def set_current_track(self, track: int):
+        """设置当前轨道号"""
+        if 0 <= track <= 4:
+            self._current_track = track
+            self._track_combo.setCurrentIndex(track)
+
+    def _on_track_changed(self, index: int):
+        """轨道选择变化"""
+        self._current_track = index
 
     # ========== 编辑模式 ==========
 

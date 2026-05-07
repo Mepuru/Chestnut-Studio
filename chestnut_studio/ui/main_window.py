@@ -487,10 +487,10 @@ class MainWindow(QMainWindow):
 
     # ========== 打轴功能 ==========
 
-    def _on_subtitle_created(self, start_ms: int, end_ms: int):
+    def _on_subtitle_created(self, start_ms: int, end_ms: int, track: int):
         """打轴完成 → 添加字幕到时间轴 + 同步波形覆盖"""
-        self.timeline_card.add_subtitle(start_ms, end_ms)
-        self.status_bar.set_status(f"已打轴: {split_time(start_ms)} - {split_time(end_ms)}")
+        self.timeline_card.add_subtitle(start_ms, end_ms, col=track)
+        self.status_bar.set_status(f"已打轴: {split_time(start_ms)} - {split_time(end_ms)} [轨道{track}]")
 
     def _sync_subtitle_overlay(self):
         """同步字幕数据到波形卡片的覆盖显示"""
