@@ -1,7 +1,11 @@
 """FFmpeg 封装"""
 
 import subprocess
+import sys
 from dataclasses import dataclass
+
+# Windows 下隐藏控制台窗口的标志
+CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 
 
 @dataclass
@@ -45,7 +49,7 @@ class FFmpeg:
             VideoInfo 数据对象
         """
         cmd = [self._path, "-i", video_path]
-        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", creationflags=CREATE_NO_WINDOW)
         output = result.stderr
 
         info = VideoInfo()
@@ -76,7 +80,7 @@ class FFmpeg:
             是否成功
         """
         cmd = [self._path, "-y", "-i", video_path, "-vn", "-ar", str(sample_rate), output_path]
-        result = subprocess.run(cmd, capture_output=True, encoding="utf-8", errors="replace")
+        result = subprocess.run(cmd, capture_output=True, encoding="utf-8", errors="replace", creationflags=CREATE_NO_WINDOW)
         return result.returncode == 0
 
     def _parse_duration(self, line: str) -> int:
