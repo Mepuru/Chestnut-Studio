@@ -130,5 +130,7 @@ class MenuBar(QMenuBar):
 
     def _show_hotkey_dialog(self):
         """显示快捷键说明对话框"""
-        # TODO: 实现快捷键说明对话框
-        pass
+        from chestnut_studio.ui.dialogs.hotkey_dialog import HotkeyDialog
+
+        dialog = HotkeyDialog(self)
+        dialog.exec()
