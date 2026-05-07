@@ -397,15 +397,15 @@ class WaveformCard(QDockWidget):
         self._scroll_hint.setStyleSheet("color: #52525b; font-size: 8pt;")
 
         # 轨道选择器
-        track_label = QLabel("轨道:")
+        track_label = QLabel("轨:")
         track_label.setStyleSheet("color: #a1a1aa; font-size: 9pt;")
 
         self._track_combo = QComboBox()
-        self._track_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        self._track_combo.setFixedWidth(60)
         # 添加轨道选项，下拉列表中显示颜色
         track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#a855f7"]
         for i, color in enumerate(track_colors):
-            self._track_combo.addItem(f"轨道 {i}")
+            self._track_combo.addItem(f"轨{i}")
             self._track_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
         self._track_combo.setCurrentIndex(0)
         self._track_combo.currentIndexChanged.connect(self._on_track_changed)
@@ -839,7 +839,7 @@ class WaveformCard(QDockWidget):
         self._mark_start_btn.setStyleSheet(MARK_ACTIVE_STYLE)
         self._mark_start_btn.setText(f"开始: {ms_to_time_str(self._mark_start_ms)}")
         self._mark_cancel_btn.setEnabled(True)
-        self._mark_status_label.setText(f"标记开始: {ms_to_time_str(self._mark_start_ms)}，按 O 标记结束")
+        self._mark_status_label.setText(f"开始: {ms_to_time_str(self._mark_start_ms)}  O结束")
 
     def mark_end(self):
         """标记字幕结束点（使用当前播放位置），完成打轴"""
@@ -868,7 +868,7 @@ class WaveformCard(QDockWidget):
         # 清除标记状态
         self._clear_mark_state()
         self._mark_status_label.setText(
-            f"已打轴: {ms_to_time_str(start_ms)} - {ms_to_time_str(end_ms)} [轨道{self._current_track}]"
+            f"已打轴: {ms_to_time_str(start_ms)}-{ms_to_time_str(end_ms)} 轨{self._current_track}"
         )
 
     def cancel_marking(self):
@@ -945,9 +945,13 @@ class WaveformCard(QDockWidget):
         self._set_mark_buttons_visible(False)
         self._set_edit_buttons_visible(True)
 
-        # 更新状态提示
+        # 更新状态提示（缩短避免拉长卡片）
         self._mark_status_label.setText(
-            f"编辑模式: {ms_to_time_str(start_ms)} - {ms_to_time_str(end_ms)}  |  按 I 设起点，按 O 设终点，Enter 确认"
+            f"编辑: {ms_to_time_str(start_ms)}-{ms_to_time_str(end_ms)}  I起点 O终点 Enter确认"
+        )
+        self._mark_status_label.setToolTip(
+            f"编辑模式: {ms_to_time_str(start_ms)} - {ms_to_time_str(end_ms)}\n"
+            f"按 I 设起点，按 O 设终点，Enter 确认，Escape 取消"
         )
 
         # 视窗跳转到编辑区域
@@ -990,8 +994,7 @@ class WaveformCard(QDockWidget):
         self._edit_start_ms = new_start
         self._update_edit_lines()
         self._mark_status_label.setText(
-            f"起点已更新: {ms_to_time_str(self._edit_start_ms)} - {ms_to_time_str(self._edit_end_ms)}  |  "
-            f"按 O 设终点，Enter 确认"
+            f"起点: {ms_to_time_str(self._edit_start_ms)}-{ms_to_time_str(self._edit_end_ms)}  O终点 Enter确认"
         )
 
     def edit_set_end(self):
@@ -1008,8 +1011,7 @@ class WaveformCard(QDockWidget):
         self._edit_end_ms = new_end
         self._update_edit_lines()
         self._mark_status_label.setText(
-            f"终点已更新: {ms_to_time_str(self._edit_start_ms)} - {ms_to_time_str(self._edit_end_ms)}  |  "
-            f"按 I 设起点，Enter 确认"
+            f"终点: {ms_to_time_str(self._edit_start_ms)}-{ms_to_time_str(self._edit_end_ms)}  I起点 Enter确认"
         )
 
     def edit_confirm(self):
@@ -1026,7 +1028,7 @@ class WaveformCard(QDockWidget):
         )
 
         self._mark_status_label.setText(
-            f"已更新: {ms_to_time_str(self._edit_start_ms)} - {ms_to_time_str(self._edit_end_ms)}"
+            f"已更新: {ms_to_time_str(self._edit_start_ms)}-{ms_to_time_str(self._edit_end_ms)}"
         )
         self.exit_edit_mode()
 
