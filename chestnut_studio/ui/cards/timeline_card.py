@@ -116,11 +116,12 @@ class TimelineCard(QDockWidget):
         super().__init__("时间轴", parent)
         self._subtitle_mgr = SubtitleManager()
         self._duration_ms = 0
+        self._fps = 30.0  # 默认帧率
 
         # 锁定状态集合 {(col, start_ms), ...}
         self._locked_states: set[tuple[int, int]] = set()
 
-        # 轨道筛选 (-1 = 全部，0-4 = 指定轨道)
+        # 轨道筛选 (-1 = 全部，1-4 = 指定轨道)
         self._filter_track: int = -1
 
         # 撤销/重做后端
@@ -181,17 +182,19 @@ class TimelineCard(QDockWidget):
         self._table.setSelectionMode(QTableWidget.ExtendedSelection)  # 支持多选
 
         # 设置列头
-        self._table.setHorizontalHeaderLabels(["#", "轨道", "开始时间", "结束时间", "时长", "操作"])
+        self._table.setHorizontalHeaderLabels(["#", "轨道", "开始时间", "结束时间", "开始帧", "结束帧", "时长", "操作"])
         header = self._table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Fixed)
         self._table.setColumnWidth(0, 36)
         header.setSectionResizeMode(1, QHeaderView.Fixed)
-        self._table.setColumnWidth(1, 50)
+        self._table.setColumnWidth(1, 60)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.Fixed)
-        self._table.setColumnWidth(5, 180)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(7, QHeaderView.Fixed)
+        self._table.setColumnWidth(7, 140)
 
         # 隐藏垂直表头
         self._table.verticalHeader().setVisible(False)
@@ -225,12 +228,6 @@ class TimelineCard(QDockWidget):
         self._redo_btn.setToolTip("重做 (Ctrl+Y)")
         self._redo_btn.clicked.connect(self._redo)
         self._redo_btn.setEnabled(False)
-
-        # 删除按钮
-        self._delete_btn = QPushButton("删除")
-        self._delete_btn.setStyleSheet(TOOL_BTN_STYLE)
-        self._delete_btn.setToolTip("删除选中的字幕 (Delete)")
-        self._delete_btn.clicked.connect(self._delete_selected)
 
         self._delete_all_btn = QPushButton("清空")
         self._delete_all_btn.setStyleSheet(TOOL_BTN_STYLE)
@@ -273,7 +270,6 @@ class TimelineCard(QDockWidget):
         bottom_layout.addStretch()
         bottom_layout.addWidget(self._undo_btn)
         bottom_layout.addWidget(self._redo_btn)
-        bottom_layout.addWidget(self._delete_btn)
         bottom_layout.addWidget(self._delete_all_btn)
         bottom_layout.addStretch()
         bottom_layout.addWidget(self._lock_all_btn)
@@ -348,14 +344,26 @@ class TimelineCard(QDockWidget):
             end_item.setTextAlignment(Qt.AlignCenter)
             self._table.setItem(row, 3, end_item)
 
+            # 开始帧
+            start_frame = int(start * self._fps / 1000)
+            start_frame_item = QTableWidgetItem(str(start_frame))
+            start_frame_item.setTextAlignment(Qt.AlignCenter)
+            self._table.setItem(row, 4, start_frame_item)
+
+            # 结束帧
+            end_frame = int((start + duration) * self._fps / 1000)
+            end_frame_item = QTableWidgetItem(str(end_frame))
+            end_frame_item.setTextAlignment(Qt.AlignCenter)
+            self._table.setItem(row, 5, end_frame_item)
+
             # 时长
             duration_item = QTableWidgetItem(f"{duration / 1000:.2f}s")
             duration_item.setTextAlignment(Qt.AlignCenter)
-            self._table.setItem(row, 4, duration_item)
+            self._table.setItem(row, 6, duration_item)
 
             # 操作按钮
             op_widget = self._create_operation_buttons(col, start, is_locked)
-            self._table.setCellWidget(row, 5, op_widget)
+            self._table.setCellWidget(row, 7, op_widget)
 
             # 轨道背景颜色方案
             track_colors_bg = [
@@ -374,7 +382,7 @@ class TimelineCard(QDockWidget):
                 col_idx = max(0, min(col - 1, len(track_colors_bg) - 1))
                 bg_color = track_colors_bg[col_idx]
 
-            for c in range(6):
+            for c in range(8):
                 item = self._table.item(row, c)
                 if item:
                     item.setBackground(bg_color)
@@ -692,6 +700,10 @@ class TimelineCard(QDockWidget):
     def set_duration(self, duration_ms: int):
         """设置视频时长"""
         self._duration_ms = duration_ms
+
+    def set_fps(self, fps: float):
+        """设置帧率"""
+        self._fps = fps if fps > 0 else 30.0
 
     def get_subtitle_data(self) -> dict:
         """获取字幕数据"""

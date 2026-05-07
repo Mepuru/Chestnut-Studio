@@ -416,6 +416,10 @@ class MainWindow(QMainWindow):
                 )
                 # 传递帧率给工具栏（用于逐帧和帧号显示）
                 self.toolbar.set_fps(info.fps)
+                # 传递帧率给时间轴（用于帧号显示）
+                self.timeline_card.set_fps(info.fps)
+                # 传递帧率给波形图（用于帧号显示）
+                self.waveform_card.set_fps(info.fps)
             except Exception:
                 # FFmpeg 不可用时不报错，只是不显示视频信息
                 self.status_bar.clear_video_info()

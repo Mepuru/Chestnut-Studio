@@ -349,6 +349,9 @@ class WaveformCard(QDockWidget):
         # 字幕条数据 {start_ms: end_ms}
         self._subtitle_regions: dict[int, int] = {}
 
+        # 帧率
+        self._fps = 30.0
+
         # 打轴状态
         self._mark_start_ms: int = -1  # 标记的开始点，-1 表示未设置
         self._current_track: int = 1  # 当前轨道号（1-4）
@@ -392,21 +395,26 @@ class WaveformCard(QDockWidget):
         self._range_label = QLabel("0:00 - 0:30")
         self._range_label.setStyleSheet("color: #a1a1aa; font-size: 9pt; font-family: Consolas;")
 
+        # 帧号标签
+        self._frame_label = QLabel("帧: 0")
+        self._frame_label.setStyleSheet("color: #a1a1aa; font-size: 9pt; font-family: Consolas;")
+        self._frame_label.setFixedWidth(80)
+
         # 模式标签（左下角显示）
         self._mode_label = QLabel("打轴模式")
         self._mode_label.setStyleSheet("color: #22c55e; font-size: 9pt; font-weight: bold;")
 
         # 模式提示图标
         self._mode_hint = QLabel("?")
-        self._mode_hint.setFixedSize(18, 18)
+        self._mode_hint.setFixedSize(14, 14)
         self._mode_hint.setAlignment(Qt.AlignCenter)
         self._mode_hint.setStyleSheet("""
             QLabel {
                 color: #6b7280;
-                font-size: 9pt;
+                font-size: 8pt;
                 background: #27272a;
                 border: 1px solid #3f3f46;
-                border-radius: 9px;
+                border-radius: 7px;
             }
             QLabel:hover {
                 background: #3f3f46;
@@ -432,6 +440,7 @@ class WaveformCard(QDockWidget):
 
         info_layout.addWidget(self._zoom_label)
         info_layout.addWidget(self._range_label)
+        info_layout.addWidget(self._frame_label)
         info_layout.addSpacing(12)
         info_layout.addWidget(self._mode_label)
         info_layout.addWidget(self._mode_hint)
@@ -729,12 +738,20 @@ class WaveformCard(QDockWidget):
             self._plot_widget.setXRange(0, view_end, padding=0)
             self._update_range_label()
 
+    def set_fps(self, fps: float):
+        """设置帧率"""
+        self._fps = fps if fps > 0 else 30.0
+
     def update_position(self, position_ms: int):
         """更新播放位置，移动红线和视窗"""
         self._current_position_ms = position_ms
 
         # 移动红线
         self._red_line.setPos(position_ms)
+
+        # 更新帧号
+        frame = int(position_ms * self._fps / 1000) if self._fps > 0 else 0
+        self._frame_label.setText(f"帧: {frame}")
 
         # 获取当前视窗范围
         view_range = self._plot_widget.plotItem.vb.viewRange()[0]
