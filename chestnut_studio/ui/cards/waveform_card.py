@@ -351,7 +351,7 @@ class WaveformCard(QDockWidget):
 
         # 打轴状态
         self._mark_start_ms: int = -1  # 标记的开始点，-1 表示未设置
-        self._current_track: int = 0  # 当前轨道号（0-3，对应轨道1-4）
+        self._current_track: int = 1  # 当前轨道号（1-4）
 
         # 编辑模式状态
         self._edit_mode: bool = False
@@ -422,10 +422,10 @@ class WaveformCard(QDockWidget):
 
         self._track_combo = QComboBox()
         self._track_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-        # 添加轨道选项 0-4，下拉列表中显示颜色
-        track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#a855f7"]
+        # 添加轨道选项 1-4，下拉列表中显示颜色
+        track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899"]
         for i, color in enumerate(track_colors):
-            self._track_combo.addItem(f"轨道 {i}")
+            self._track_combo.addItem(f"轨道 {i + 1}")
             self._track_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
         self._track_combo.setCurrentIndex(0)
         self._track_combo.currentIndexChanged.connect(self._on_track_changed)
@@ -930,7 +930,7 @@ class WaveformCard(QDockWidget):
 
     def _on_track_changed(self, index: int):
         """轨道选择变化"""
-        self._current_track = index
+        self._current_track = index + 1  # combo index 0 = track 1
 
     # ========== 编辑模式 ==========
 
@@ -1222,13 +1222,12 @@ class WaveformCard(QDockWidget):
         # 判断是否是正在编辑的字幕条
         is_editing = self._edit_mode and start_ms == self._edit_old_start
 
-        # 轨道颜色方案（5个轨道，颜色不同）
+        # 轨道颜色方案（4个轨道，颜色不同）
         track_colors = [
-            (QColor(59, 130, 246), QColor(59, 130, 246, 40)),  # 轨道0: 蓝色
-            (QColor(16, 185, 129), QColor(16, 185, 129, 40)),  # 轨道1: 绿色
-            (QColor(245, 158, 11), QColor(245, 158, 11, 40)),  # 轨道2: 橙色
-            (QColor(236, 72, 153), QColor(236, 72, 153, 40)),  # 轨道3: 粉色
-            (QColor(168, 85, 247), QColor(168, 85, 247, 40)),  # 轨道4: 紫色
+            (QColor(59, 130, 246), QColor(59, 130, 246, 40)),  # 轨道1: 蓝色
+            (QColor(16, 185, 129), QColor(16, 185, 129, 40)),  # 轨道2: 绿色
+            (QColor(245, 158, 11), QColor(245, 158, 11, 40)),  # 轨道3: 橙色
+            (QColor(236, 72, 153), QColor(236, 72, 153, 40)),  # 轨道4: 粉色
         ]
 
         # 根据状态选择颜色
@@ -1243,7 +1242,7 @@ class WaveformCard(QDockWidget):
             border_color = QColor(178, 34, 34, 100)
         else:
             # 正常：使用轨道颜色
-            col_idx = max(0, min(col, len(track_colors) - 1))
+            col_idx = max(0, min(col - 1, len(track_colors) - 1))
             border_color, fill_color = track_colors[col_idx]
 
         # 创建半透明色块

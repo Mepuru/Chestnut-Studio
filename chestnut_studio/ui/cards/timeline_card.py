@@ -259,9 +259,9 @@ class TimelineCard(QDockWidget):
         self._track_filter = QComboBox()
         self._track_filter.setFixedWidth(80)
         self._track_filter.addItem("全部")
-        track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#a855f7"]
+        track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899"]
         for i, color in enumerate(track_colors):
-            self._track_filter.addItem(f"轨{i}")
+            self._track_filter.addItem(f"轨道 {i + 1}")
             self._track_filter.setItemData(i + 1, QColor(color), Qt.ForegroundRole)
         self._track_filter.setCurrentIndex(0)
         self._track_filter.currentIndexChanged.connect(self._on_track_filter_changed)
@@ -318,11 +318,10 @@ class TimelineCard(QDockWidget):
 
             # 轨道颜色
             track_colors_fg = [
-                QColor(59, 130, 246),  # 轨道0: 蓝色
-                QColor(16, 185, 129),  # 轨道1: 绿色
-                QColor(245, 158, 11),  # 轨道2: 橙色
-                QColor(236, 72, 153),  # 轨道3: 粉色
-                QColor(168, 85, 247),  # 轨道4: 紫色
+                QColor(59, 130, 246),  # 轨道1: 蓝色
+                QColor(16, 185, 129),  # 轨道2: 绿色
+                QColor(245, 158, 11),  # 轨道3: 橙色
+                QColor(236, 72, 153),  # 轨道4: 粉色
             ]
 
             # # 列（编号）
@@ -332,10 +331,10 @@ class TimelineCard(QDockWidget):
             self._table.setItem(row, 0, num_item)
 
             # 轨道列
-            track_item = QTableWidgetItem(f"轨{col}")
+            track_item = QTableWidgetItem(f"轨道 {col}")
             track_item.setTextAlignment(Qt.AlignCenter)
             track_item.setData(Qt.UserRole + 1, col)
-            col_idx = max(0, min(col, len(track_colors_fg) - 1))
+            col_idx = max(0, min(col - 1, len(track_colors_fg) - 1))
             track_item.setForeground(track_colors_fg[col_idx])
             self._table.setItem(row, 1, track_item)
 
@@ -360,11 +359,10 @@ class TimelineCard(QDockWidget):
 
             # 轨道背景颜色方案
             track_colors_bg = [
-                QColor(59, 130, 246, 30),  # 轨道0: 蓝色
-                QColor(16, 185, 129, 30),  # 轨道1: 绿色
-                QColor(245, 158, 11, 30),  # 轨道2: 橙色
-                QColor(236, 72, 153, 30),  # 轨道3: 粉色
-                QColor(168, 85, 247, 30),  # 轨道4: 紫色
+                QColor(59, 130, 246, 30),  # 轨道1: 蓝色
+                QColor(16, 185, 129, 30),  # 轨道2: 绿色
+                QColor(245, 158, 11, 30),  # 轨道3: 橙色
+                QColor(236, 72, 153, 30),  # 轨道4: 粉色
             ]
 
             # 设置行颜色
@@ -373,7 +371,7 @@ class TimelineCard(QDockWidget):
             elif duration < 100 or duration > 8000:
                 bg_color = QColor(178, 34, 34, 40)  # 异常：红色
             else:
-                col_idx = max(0, min(col, len(track_colors_bg) - 1))
+                col_idx = max(0, min(col - 1, len(track_colors_bg) - 1))
                 bg_color = track_colors_bg[col_idx]
 
             for c in range(6):

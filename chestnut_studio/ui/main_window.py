@@ -347,6 +347,13 @@ class MainWindow(QMainWindow):
             event.accept()
             return
 
+        # 1-4：快速切换轨道
+        if key in (Qt.Key_1, Qt.Key_2, Qt.Key_3, Qt.Key_4) and modifiers == Qt.NoModifier:
+            track = key - Qt.Key_0  # 1-4
+            self.waveform_card.set_current_track(track)
+            event.accept()
+            return
+
         # Enter：确认编辑
         if key in (Qt.Key_Return, Qt.Key_Enter):
             if self.waveform_card.is_in_edit_mode():

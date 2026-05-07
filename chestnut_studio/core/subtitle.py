@@ -3,7 +3,7 @@
 import copy
 
 # 字幕字典类型
-# key: 列号 (0-4)
+# key: 列号 (1-4)
 # value: {start_ms: [duration_ms, "text"], ...}
 SubtitleDict = dict[int, dict[int, list]]
 
@@ -14,7 +14,7 @@ class SubtitleManager:
     MAX_UNDO = 100
 
     def __init__(self):
-        self._data: SubtitleDict = {0: {}, 1: {}, 2: {}, 3: {}, 4: {}}
+        self._data: SubtitleDict = {1: {}, 2: {}, 3: {}, 4: {}}
         self._undo_stack: list[SubtitleDict] = []
         self._undo_index: int = -1
         self._in_undo_mode: bool = False
@@ -126,4 +126,4 @@ class SubtitleManager:
 
     def clear_all(self):
         """清空所有"""
-        self._data = {0: {}, 1: {}, 2: {}, 3: {}, 4: {}}
+        self._data = {1: {}, 2: {}, 3: {}, 4: {}}
