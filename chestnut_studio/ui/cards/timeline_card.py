@@ -381,6 +381,8 @@ class TimelineCard(QDockWidget):
             self._locked_states.discard(key)
         else:
             self._locked_states.add(key)
+        # 锁定操作也需要保存到撤销栈
+        self._push_undo()
         self._update_table()
 
     def _on_double_click(self, index):
@@ -444,11 +446,13 @@ class TimelineCard(QDockWidget):
         for col, sub_data in self._subtitle_mgr.data.items():
             for start in sub_data:
                 self._locked_states.add((col, start))
+        self._push_undo()
         self._update_table()
 
     def _unlock_all(self):
         """解锁所有字幕"""
         self._locked_states.clear()
+        self._push_undo()
         self._update_table()
 
     # ========== 快捷键 ==========

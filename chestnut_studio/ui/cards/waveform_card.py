@@ -1131,9 +1131,16 @@ class WaveformCard(QDockWidget):
         y_range = self._plot_widget.plotItem.vb.viewRange()[1]
         y_min, y_max = y_range
 
-        # 根据持续时间选择颜色
+        # 判断是否是正在编辑的字幕条
+        is_editing = self._edit_mode and start_ms == self._edit_old_start
+
+        # 根据状态选择颜色
         duration = end_ms - start_ms
-        if duration < 100 or duration > 8000:
+        if is_editing:
+            # 正在编辑：紫色高亮
+            fill_color = QColor(139, 92, 246, 60)
+            border_color = QColor(139, 92, 246, 120)
+        elif duration < 100 or duration > 8000:
             # 异常：红色
             fill_color = QColor(178, 34, 34, 50)
             border_color = QColor(178, 34, 34, 100)
@@ -1155,7 +1162,7 @@ class WaveformCard(QDockWidget):
             y=y,
             fillLevel=0,
             brush=pg.mkBrush(color=fill_color),
-            pen=pg.mkPen(color=border_color, width=1),
+            pen=pg.mkPen(color=border_color, width=2 if is_editing else 1),
         )
         self._plot_widget.addItem(item)
         self._subtitle_items.append(item)
