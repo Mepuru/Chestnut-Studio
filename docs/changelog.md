@@ -4,6 +4,80 @@
 
 ---
 
+## 2026-05-08 — 文档结构重组
+
+### 重大调整：文档按模块分层组织
+
+- **文档层级**：将文档按代码模块分层组织，每个模块都有独立的文档
+- **导航首页**：创建 `docs/README.md` 作为文档导航中心
+- **模块文档**：为每个模块创建详细的接口和用法文档
+
+### 新增文档
+
+- `docs/README.md` - 文档导航首页
+- `docs/core/README.md` - 核心层概述
+- `docs/core/ffmpeg.md` - FFmpeg 封装文档
+- `docs/core/audio.md` - 音频处理文档
+- `docs/core/subtitle.md` - 字幕数据结构文档
+- `docs/core/subtitle_io.md` - 字幕导入导出文档
+- `docs/ui/README.md` - UI 层概述
+- `docs/ui/main_window.md` - 主窗口文档
+- `docs/ui/toolbar.md` - 工具栏文档
+- `docs/ui/menubar.md` - 菜单栏文档
+- `docs/ui/statusbar.md` - 状态栏文档
+- `docs/ui/cards/README.md` - 卡片组件概述
+- `docs/ui/cards/player_card.md` - 视频播放卡片文档
+- `docs/ui/cards/waveform_card.md` - 音频波形卡片文档
+- `docs/ui/cards/timeline_card.md` - 时间轴列表卡片文档
+- `docs/ui/cards/translate_card.md` - 翻译面板卡片文档
+- `docs/ui/dialogs/README.md` - 弹窗概述
+- `docs/ui/dialogs/edit_subtitle_dialog.md` - 字幕编辑对话框文档
+- `docs/utils/README.md` - 工具层概述
+- `docs/utils/time_utils.md` - 时间格式转换文档
+
+### 文档结构
+
+```
+docs/
+├── README.md                    # 文档导航首页
+├── architecture.md              # 架构文档
+├── development.md               # 开发指南
+├── changelog.md                 # 变更日志
+├── core/                        # 核心层模块文档
+│   ├── README.md                # 核心层概述
+│   ├── ffmpeg.md                # FFmpeg 封装
+│   ├── audio.md                 # 音频处理
+│   ├── subtitle.md              # 字幕数据结构
+│   └── subtitle_io.md           # 字幕导入导出
+├── ui/                          # UI 层模块文档
+│   ├── README.md                # UI 层概述
+│   ├── main_window.md           # 主窗口
+│   ├── toolbar.md               # 工具栏
+│   ├── menubar.md               # 菜单栏
+│   ├── statusbar.md             # 状态栏
+│   ├── cards/                   # 卡片组件文档
+│   │   ├── README.md            # 卡片组件概述
+│   │   ├── player_card.md       # 视频播放卡片
+│   │   ├── waveform_card.md     # 音频波形卡片
+│   │   ├── timeline_card.md     # 时间轴列表卡片
+│   │   └── translate_card.md    # 翻译面板卡片
+│   └── dialogs/                 # 弹窗文档
+│       ├── README.md            # 弹窗概述
+│       └── edit_subtitle_dialog.md  # 字幕编辑对话框
+└── utils/                       # 工具层模块文档
+    ├── README.md                # 工具层概述
+    └── time_utils.md            # 时间格式转换
+```
+
+### 设计原则
+
+- **模块对应**：文档结构与代码模块结构一一对应
+- **详细接口**：每个模块文档包含完整的接口说明
+- **用法示例**：提供代码示例方便开发者理解
+- **注意事项**：列出使用时需要注意的问题
+
+---
+
 ## 2026-05-07 — Phase 4 完成（翻译面板 + 字幕导入导出）
 
 ### 数据结构优化

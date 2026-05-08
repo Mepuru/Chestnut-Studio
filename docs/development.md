@@ -29,7 +29,8 @@ D:\ChestnutStudio\
 │   │   │   ├── timeline_card.py   # 字幕列表卡片
 │   │   │   └── translate_card.py  # 翻译面板卡片
 │   │   └── dialogs/               # 弹窗
-│   │       └── __init__.py
+│   │       ├── __init__.py
+│   │       └── edit_subtitle_dialog.py  # 字幕编辑对话框
 │   ├── resources/                 # 资源文件
 │   │   ├── style.qss              # 暗色主题样式表
 │   │   └── fonts/                 # 字体（HarmonyOS Sans）
@@ -37,16 +38,43 @@ D:\ChestnutStudio\
 │       ├── __init__.py
 │       └── time_utils.py          # 时间格式转换
 ├── docs/                          # 文档
+│   ├── README.md                  # 文档导航首页
 │   ├── architecture.md            # 架构文档
-│   └── development.md             # 开发指南（本文件）
+│   ├── development.md             # 开发指南（本文件）
+│   ├── changelog.md               # 变更日志
+│   ├── core/                      # 核心层模块文档
+│   │   ├── README.md              # 核心层概述
+│   │   ├── ffmpeg.md              # FFmpeg 封装
+│   │   ├── audio.md               # 音频处理
+│   │   ├── subtitle.md            # 字幕数据结构
+│   │   └── subtitle_io.md         # 字幕导入导出
+│   ├── ui/                        # UI 层模块文档
+│   │   ├── README.md              # UI 层概述
+│   │   ├── main_window.md         # 主窗口
+│   │   ├── toolbar.md             # 工具栏
+│   │   ├── menubar.md             # 菜单栏
+│   │   ├── statusbar.md           # 状态栏
+│   │   ├── cards/                 # 卡片组件文档
+│   │   │   ├── README.md          # 卡片组件概述
+│   │   │   ├── player_card.md     # 视频播放卡片
+│   │   │   ├── waveform_card.md   # 音频波形卡片
+│   │   │   ├── timeline_card.md   # 时间轴列表卡片
+│   │   │   └── translate_card.md  # 翻译面板卡片
+│   │   └── dialogs/               # 弹窗文档
+│   │       ├── README.md          # 弹窗概述
+│   │       └── edit_subtitle_dialog.md  # 字幕编辑对话框
+│   └── utils/                     # 工具层模块文档
+│       ├── README.md              # 工具层概述
+│       └── time_utils.md          # 时间格式转换
 ├── prototypes/                    # 设计文档
 │   ├── prototype.md               # 主文档
 │   ├── roadmap.md                 # 路线图
-│   ├── development-guide.md       # 原始开发规范（已迁移）
 │   └── modules/                   # 模块设计文档
 ├── tests/                         # 测试
 │   ├── conftest.py                # 测试配置
 │   ├── test_phase0.py             # Phase 0 测试
+│   ├── test_phase1.py             # Phase 1 测试
+│   ├── test_phase2.py             # Phase 2 测试
 │   └── test_subtitle.py           # 字幕测试
 ├── main.py                        # 入口文件
 ├── pyproject.toml                 # 项目配置
@@ -229,6 +257,7 @@ tests/
 ├── conftest.py           # 测试配置，共享 fixtures
 ├── test_phase0.py        # Phase 0 基础设施测试
 ├── test_phase1.py        # Phase 1 视频播放测试
+├── test_phase2.py        # Phase 2 音频波形测试
 └── test_subtitle.py      # 字幕数据结构测试
 ```
 
@@ -366,3 +395,38 @@ uv add --dev <package>
 | **ruff** | 代码检查 + 格式化 | `uv run ruff check chestnut_studio/` / `uv run ruff format chestnut_studio/` |
 | **pytest** | 测试框架 | `uv run pytest tests/` |
 | **PyInstaller** | 打包 | `uv run pyinstaller chestnut.spec` |
+
+---
+
+## 九、文档规范
+
+### 9.1 文档结构
+
+文档按模块分层组织，与代码结构对应：
+
+```
+docs/
+├── README.md                    # 文档导航首页
+├── architecture.md              # 架构文档
+├── development.md               # 开发指南
+├── changelog.md                 # 变更日志
+├── core/                        # 核心层模块文档
+├── ui/                          # UI 层模块文档
+└── utils/                       # 工具层模块文档
+```
+
+### 9.2 文档编写规范
+
+每个模块文档应包含：
+
+1. **标题** - 模块名称和简要说明
+2. **职责** - 模块的主要功能
+3. **接口** - 公有方法、信号、属性
+4. **用法示例** - 代码示例
+5. **注意事项** - 使用时需要注意的问题
+
+### 9.3 文档更新要求
+
+- 代码变更时同步更新文档
+- 新增功能必须补充文档
+- 修复 Bug 时更新相关说明
