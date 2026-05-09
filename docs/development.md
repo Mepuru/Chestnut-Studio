@@ -429,3 +429,48 @@ docs/
 - 代码变更时同步更新文档
 - 新增功能必须补充文档
 - 修复 Bug 时更新相关说明
+
+---
+
+## 十、版本号管理
+
+版本号遵循 [Semantic Versioning](https://semver.org/)（`MAJOR.MINOR.PATCH`）。
+
+### 10.1 需要同步版本号的位置
+
+发布新版本时，以下位置的版本号**必须保持一致**：
+
+| 位置 | 文件 | 字段 |
+|------|------|------|
+| 项目元数据 | `pyproject.toml` | `version = "x.y.z"` |
+| 应用入口 | `main.py` | `app.setApplicationVersion("x.y.z")` |
+| 依赖锁定 | `uv.lock` | 自动同步（`uv lock` 更新） |
+| 变更日志 | `docs/changelog.md` | 顶部新增版本条目 |
+| Git tag | `git tag -a vx.y.z` | 标签名称 |
+
+### 10.2 发布流程
+
+```bash
+# 1. 更新 pyproject.toml 版本号
+# 2. 更新 main.py 版本号
+# 3. 更新 docs/changelog.md
+# 4. 同步 uv.lock
+uv lock
+
+# 5. 提交
+git add -A
+git commit -m "build: 版本号升级为 x.y.z"
+
+# 6. 打包
+uv run pyinstaller chestnut_studio.spec --clean --noconfirm
+
+# 7. 创建 tag 并推送
+git tag -a vx.y.z -m "vx.y.z - 版本摘要"
+git push; git push origin vx.y.z
+```
+
+### 10.3 注意事项
+
+- `uv.lock` 的版本号由 `uv lock` 自动从 `pyproject.toml` 同步，无需手动修改
+- 打包前确保所有版本号已同步，否则 exe 内嵌的版本号会不一致
+- tag 格式为 `v` + 版本号（如 `v1.1.0`），与 GitHub Release 对应
