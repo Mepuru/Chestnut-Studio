@@ -9,9 +9,10 @@
 """
 
 import copy
+import os
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import (
     QComboBox,
     QDockWidget,
@@ -113,6 +114,7 @@ class TimelineCard(QDockWidget):
     subtitle_changed = Signal()  # 字幕数据变化
     subtitle_selected = Signal(int, int)  # 字幕被选中 (col, start_ms)
     edit_subtitle_requested = Signal(int, int, int)  # 请求编辑 (col, start_ms, end_ms)
+    subtitle_dropped = Signal(str)  # 字幕文件拖放导入 (path)
 
     # 默认停靠区域
     default_area = Qt.RightDockWidgetArea
@@ -122,6 +124,8 @@ class TimelineCard(QDockWidget):
         self._subtitle_mgr = SubtitleManager()
         self._duration_ms = 0
         self._fps = 30.0  # 默认帧率
+
+        self.setAcceptDrops(True)
 
         # 锁定状态集合 {(col, start_ms), ...}
         self._locked_states: set[tuple[int, int]] = set()
@@ -316,6 +320,26 @@ class TimelineCard(QDockWidget):
         layout.addWidget(bottom_bar)
 
         self.setWidget(content)
+
+    # ========== 拖放 ==========
+
+    SUBTITLE_EXTENSIONS = {".srt", ".ass", ".vtt", ".lrc"}
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                ext = os.path.splitext(url.toLocalFile())[1].lower()
+                if ext in self.SUBTITLE_EXTENSIONS:
+                    event.acceptProposedAction()
+                    return
+
+    def dropEvent(self, event: QDropEvent):
+        for url in event.mimeData().urls():
+            path = url.toLocalFile()
+            ext = os.path.splitext(path)[1].lower()
+            if ext in self.SUBTITLE_EXTENSIONS:
+                self.subtitle_dropped.emit(path)
+                return
 
     # ========== 表格更新 ==========
 

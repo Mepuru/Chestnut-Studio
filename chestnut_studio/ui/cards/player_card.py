@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (
 )
 
 VIDEO_EXTENSIONS = {".mp4", ".avi", ".flv", ".mkv", ".mov", ".wmv", ".mp3", ".wav", ".aac", ".flac", ".ogg"}
-SUBTITLE_EXTENSIONS = {".srt", ".ass", ".vtt", ".lrc"}
 
 
 class VideoView(QGraphicsView):
@@ -26,7 +25,6 @@ class VideoView(QGraphicsView):
     def __init__(self, scene, video_item, parent=None):
         super().__init__(scene, parent)
         self._video_item = video_item
-        self.setAcceptDrops(True)
 
     def resizeEvent(self, event: QResizeEvent):
         super().resizeEvent(event)
@@ -42,18 +40,6 @@ class VideoView(QGraphicsView):
         if bounds.width() <= 0 or bounds.height() <= 0:
             return
         self.fitInView(self._video_item, Qt.KeepAspectRatio)
-
-    def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-
-    def dropEvent(self, event: QDropEvent):
-        # 转发给父级 PlayerCard 处理
-        parent = self.parent()
-        while parent and not isinstance(parent, PlayerCard):
-            parent = parent.parent()
-        if parent:
-            parent.dropEvent(event)
 
 
 class PlayerCard(QDockWidget):
@@ -71,7 +57,6 @@ class PlayerCard(QDockWidget):
     duration_changed = Signal(int)
     video_opened = Signal(str)
     playback_state_changed = Signal(bool)
-    subtitle_dropped = Signal(str)
     ab_loop_changed = Signal(int, int)  # AB 循环状态变化 (a_point, b_point)，-1 表示未设置
 
     default_area = Qt.LeftDockWidgetArea
@@ -312,7 +297,4 @@ class PlayerCard(QDockWidget):
             ext = os.path.splitext(path)[1].lower()
             if ext in VIDEO_EXTENSIONS:
                 self.open_video(path)
-                return
-            elif ext in SUBTITLE_EXTENSIONS:
-                self.subtitle_dropped.emit(path)
                 return

@@ -248,8 +248,8 @@ class MainWindow(QMainWindow):
         # --- 播放卡片 → 视频打开后处理（拖放或菜单打开均触发） ---
         self.player_card.video_opened.connect(self._on_video_opened)
 
-        # --- 播放卡片 → 字幕拖放导入 ---
-        self.player_card.subtitle_dropped.connect(self._import_subtitle_file)
+        # --- 时间轴卡片 → 字幕拖放导入 ---
+        self.timeline_card.subtitle_dropped.connect(self._import_subtitle_file)
 
         # --- 播放卡片 → 波形卡片 ---
         self.player_card.position_changed.connect(self.waveform_card.update_position)

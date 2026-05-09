@@ -97,7 +97,6 @@ class TestPlayerCard:
         assert hasattr(player, "duration_changed")
         assert hasattr(player, "video_opened")
         assert hasattr(player, "playback_state_changed")
-        assert hasattr(player, "subtitle_dropped")
 
     def test_player_card_initial_state(self, main_window):
         player = main_window.player_card
