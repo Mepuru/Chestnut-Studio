@@ -101,5 +101,5 @@ if success:
 
 ## 依赖
 
-- 系统 FFmpeg（需要加入 PATH）
+- 系统 FFmpeg（需要加入 PATH，详见 [FFmpeg 安装指南](../ffmpeg-setup.md)）
 - Python 标准库：`subprocess`, `dataclasses`

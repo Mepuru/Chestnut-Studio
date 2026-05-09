@@ -48,7 +48,7 @@ Chestnut Studio 是一款面向字幕组/烤肉组的现代化字幕工具，采
 ### 环境要求
 
 - Python 3.12+
-- FFmpeg（需要加入 PATH）
+- FFmpeg（需要加入 PATH，详见 [FFmpeg 安装指南](docs/ffmpeg-setup.md)）
 
 ### 安装
 
