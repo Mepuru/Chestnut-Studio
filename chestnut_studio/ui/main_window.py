@@ -510,6 +510,11 @@ class MainWindow(QMainWindow):
 
     def _on_open_subtitle(self):
         """导入字幕文件"""
+        # 未加载视频时不允许导入字幕
+        if not self.player_card._video_path:
+            self.status_bar.set_status("请先加载视频文件")
+            return
+
         path, _ = QFileDialog.getOpenFileName(self, "导入字幕", "", self.SUBTITLE_FILTER)
         if path:
             self._import_subtitle_file(path)
@@ -520,6 +525,10 @@ class MainWindow(QMainWindow):
         Args:
             path: 字幕文件路径
         """
+        # 未加载视频时不允许导入字幕
+        if not self.player_card._video_path:
+            self.status_bar.set_status("请先加载视频文件")
+            return
         try:
             ext = Path(path).suffix.lower()
             if ext == ".srt":
