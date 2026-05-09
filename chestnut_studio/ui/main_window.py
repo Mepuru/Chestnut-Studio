@@ -245,6 +245,9 @@ class MainWindow(QMainWindow):
         self.player_card.duration_changed.connect(self._on_duration_changed)
         self.player_card.position_changed.connect(self._on_position_changed)
 
+        # --- 播放卡片 → 视频打开后处理（拖放或菜单打开均触发） ---
+        self.player_card.video_opened.connect(self._on_video_opened)
+
         # --- 播放卡片 → 波形卡片 ---
         self.player_card.position_changed.connect(self.waveform_card.update_position)
         self.player_card.duration_changed.connect(self.waveform_card.set_duration)
@@ -457,43 +460,50 @@ class MainWindow(QMainWindow):
             self._open_video_file(path)
 
     def _open_video_file(self, path: str):
-        """打开视频文件并更新状态栏
+        """打开视频文件（由菜单调用）
 
         Args:
             path: 视频文件路径
         """
-        if self.player_card.open_video(path):
-            # 更新状态栏
-            self.status_bar.set_status(f"已打开: {Path(path).name}")
+        self.player_card.open_video(path)
 
-            # 使用 FFmpeg 解析视频信息
-            try:
-                info = self._ffmpeg.get_video_info(path)
-                self.status_bar.set_video_info(
-                    resolution=f"{info.width}×{info.height}" if info.width else "",
-                    fps=f"{info.fps:.0f}fps" if info.fps else "",
-                    bitrate=f"{info.bitrate}kbps" if info.bitrate else "",
-                )
-                # 传递帧率给工具栏（用于逐帧和帧号显示）
-                self.toolbar.set_fps(info.fps)
-                # 传递帧率给时间轴（用于帧号显示）
-                self.timeline_card.set_fps(info.fps)
-                # 传递帧率给波形图（用于帧号显示）
-                self.waveform_card.set_fps(info.fps)
+    def _on_video_opened(self, path: str):
+        """视频打开后的处理（菜单打开和拖放均触发）
 
-                # 调试输出
-                if self._debug_console and self._debug_console.isVisible():
-                    print(f"[FFmpeg] 视频信息: {info.width}x{info.height}, {info.fps}fps, {info.bitrate}kbps, {info.duration}ms")
-            except Exception as e:
-                # FFmpeg 不可用时不报错，只是不显示视频信息
-                self.status_bar.clear_video_info()
-                if self._debug_console and self._debug_console.isVisible():
-                    print(f"[FFmpeg] 错误: {str(e)}")
+        Args:
+            path: 视频文件路径
+        """
+        # 更新状态栏
+        self.status_bar.set_status(f"已打开: {Path(path).name}")
 
-            # 加载波形（异步处理，避免阻塞 UI）
-            from PySide6.QtCore import QTimer
+        # 使用 FFmpeg 解析视频信息
+        try:
+            info = self._ffmpeg.get_video_info(path)
+            self.status_bar.set_video_info(
+                resolution=f"{info.width}×{info.height}" if info.width else "",
+                fps=f"{info.fps:.0f}fps" if info.fps else "",
+                bitrate=f"{info.bitrate}kbps" if info.bitrate else "",
+            )
+            # 传递帧率给工具栏（用于逐帧和帧号显示）
+            self.toolbar.set_fps(info.fps)
+            # 传递帧率给时间轴（用于帧号显示）
+            self.timeline_card.set_fps(info.fps)
+            # 传递帧率给波形图（用于帧号显示）
+            self.waveform_card.set_fps(info.fps)
 
-            QTimer.singleShot(100, lambda: self._load_waveform(path))
+            # 调试输出
+            if self._debug_console and self._debug_console.isVisible():
+                print(f"[FFmpeg] 视频信息: {info.width}x{info.height}, {info.fps}fps, {info.bitrate}kbps, {info.duration}ms")
+        except Exception as e:
+            # FFmpeg 不可用时不报错，只是不显示视频信息
+            self.status_bar.clear_video_info()
+            if self._debug_console and self._debug_console.isVisible():
+                print(f"[FFmpeg] 错误: {str(e)}")
+
+        # 加载波形（异步处理，避免阻塞 UI）
+        from PySide6.QtCore import QTimer
+
+        QTimer.singleShot(100, lambda: self._load_waveform(path))
 
     def _on_open_subtitle(self):
         """导入字幕文件"""
