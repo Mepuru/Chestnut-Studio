@@ -26,6 +26,7 @@ class VideoView(QGraphicsView):
     def __init__(self, scene, video_item, parent=None):
         super().__init__(scene, parent)
         self._video_item = video_item
+        self.setAcceptDrops(True)
 
     def resizeEvent(self, event: QResizeEvent):
         super().resizeEvent(event)
@@ -41,6 +42,18 @@ class VideoView(QGraphicsView):
         if bounds.width() <= 0 or bounds.height() <= 0:
             return
         self.fitInView(self._video_item, Qt.KeepAspectRatio)
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent):
+        # 转发给父级 PlayerCard 处理
+        parent = self.parent()
+        while parent and not isinstance(parent, PlayerCard):
+            parent = parent.parent()
+        if parent:
+            parent.dropEvent(event)
 
 
 class PlayerCard(QDockWidget):
