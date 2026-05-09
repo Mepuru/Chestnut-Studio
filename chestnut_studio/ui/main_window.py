@@ -74,6 +74,9 @@ class MainWindow(QMainWindow):
         self._ffmpeg = FFmpeg()
         self._layout_initialized = False
 
+        # 调试控制台
+        self._debug_console = None
+
         # 创建 UI 组件
         self._create_cards()
         self._setup_default_layout()
@@ -211,6 +214,7 @@ class MainWindow(QMainWindow):
         self.menu_bar.toggle_fullscreen.connect(self._toggle_fullscreen)
         self.menu_bar.reset_layout.connect(self._setup_default_layout)
         self.menu_bar.dump_layout.connect(self._dump_layout_info)
+        self.menu_bar.toggle_debug_console.connect(self._toggle_debug_console)
 
     def _create_statusbar(self):
         """创建状态栏"""
@@ -476,9 +480,15 @@ class MainWindow(QMainWindow):
                 self.timeline_card.set_fps(info.fps)
                 # 传递帧率给波形图（用于帧号显示）
                 self.waveform_card.set_fps(info.fps)
-            except Exception:
+
+                # 调试输出
+                if self._debug_console and self._debug_console.isVisible():
+                    print(f"[FFmpeg] 视频信息: {info.width}x{info.height}, {info.fps}fps, {info.bitrate}kbps, {info.duration}ms")
+            except Exception as e:
                 # FFmpeg 不可用时不报错，只是不显示视频信息
                 self.status_bar.clear_video_info()
+                if self._debug_console and self._debug_console.isVisible():
+                    print(f"[FFmpeg] 错误: {str(e)}")
 
             # 加载波形（异步处理，避免阻塞 UI）
             from PySide6.QtCore import QTimer
@@ -565,6 +575,23 @@ class MainWindow(QMainWindow):
         else:
             self.showFullScreen()
 
+    def _toggle_debug_console(self):
+        """切换调试控制台"""
+        from chestnut_studio.ui.dialogs.debug_console import DebugConsole
+
+        if self._debug_console is None:
+            self._debug_console = DebugConsole(self)
+            self._debug_console.enable_redirect()
+            self._debug_console.show()
+            print("[调试模式] 已开启，所有输出将显示在此控制台")
+        elif self._debug_console.isVisible():
+            self._debug_console.disable_redirect()
+            self._debug_console.hide()
+        else:
+            self._debug_console.enable_redirect()
+            self._debug_console.show()
+            print("[调试模式] 已重新开启")
+
     # ========== 跳转/逐帧 ==========
 
     def _on_skip_forward(self, ms: int):
@@ -609,11 +636,18 @@ class MainWindow(QMainWindow):
         Args:
             video_path: 视频文件路径
         """
+        if self._debug_console and self._debug_console.isVisible():
+            print(f"[波形] 开始加载: {video_path}")
+
         success = self.waveform_card.load_waveform(video_path)
         if success:
             self.status_bar.set_status("波形加载完成")
+            if self._debug_console and self._debug_console.isVisible():
+                print("[波形] 加载完成")
         else:
             self.status_bar.set_status("波形加载失败")
+            if self._debug_console and self._debug_console.isVisible():
+                print("[波形] 加载失败")
 
     # ========== 打轴功能 ==========
 

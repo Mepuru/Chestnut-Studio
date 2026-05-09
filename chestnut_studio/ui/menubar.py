@@ -22,6 +22,7 @@ class MenuBar(QMenuBar):
     toggle_fullscreen = Signal()
     reset_layout = Signal()  # 重置为默认布局
     dump_layout = Signal()  # 打印当前布局信息
+    toggle_debug_console = Signal()  # 切换调试控制台
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -114,6 +115,15 @@ class MenuBar(QMenuBar):
         fullscreen_action.setShortcut(QKeySequence("F11"))
         fullscreen_action.triggered.connect(self.toggle_fullscreen.emit)
         view_menu.addAction(fullscreen_action)
+
+        # 分隔线
+        view_menu.addSeparator()
+
+        # 调试控制台
+        debug_console_action = QAction("调试控制台(&D)", self)
+        debug_console_action.setShortcut(QKeySequence("F12"))
+        debug_console_action.triggered.connect(self.toggle_debug_console.emit)
+        view_menu.addAction(debug_console_action)
 
     def _create_help_menu(self):
         """创建帮助菜单"""
