@@ -128,6 +128,31 @@ class SubtitleManager:
         """清空所有"""
         self._data = {1: {}, 2: {}, 3: {}, 4: {}}
 
+    def ensure_track(self, col: int):
+        """确保指定轨道存在，如果不存在则创建"""
+        if col not in self._data:
+            self._data[col] = {}
+
+    def get_max_track(self) -> int:
+        """获取当前最大轨道号"""
+        if not self._data:
+            return 0
+        return max(self._data.keys())
+
+    def add_track(self, col: int) -> bool:
+        """添加新轨道
+
+        Args:
+            col: 轨道号
+
+        Returns:
+            是否成功添加（如果已存在则返回False）
+        """
+        if col in self._data:
+            return False
+        self._data[col] = {}
+        return True
+
     def copy_track(self, source_col: int, target_col: int) -> bool:
         """复制轨道数据到另一个轨道
 

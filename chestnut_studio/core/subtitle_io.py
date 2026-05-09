@@ -92,12 +92,29 @@ class SubtitleIO:
 
     @staticmethod
     def import_ass(path: str) -> dict[int, list]:
-        """导入 ASS 文件（读取第一个样式的字幕）
+        """导入 ASS 文件（读取第一个样式的字幕，兼容旧接口）
 
         Returns:
             {start_ms: [duration_ms, "text"], ...}
         """
+        multi_data = SubtitleIO.import_ass_multi_track(path)
+        if not multi_data:
+            return {}
+
+        # 合并所有样式到一个字典
         result = {}
+        for style_data in multi_data.values():
+            result.update(style_data)
+        return result
+
+    @staticmethod
+    def import_ass_multi_track(path: str) -> dict[str, dict[int, list]]:
+        """导入 ASS 文件（按样式分轨道）
+
+        Returns:
+            {style_name: {start_ms: [duration_ms, "text"], ...}}
+        """
+        result: dict[str, dict[int, list]] = {}
 
         with open(path, encoding="utf-8-sig") as f:
             for line in f:
@@ -105,13 +122,17 @@ class SubtitleIO:
                 if line.startswith("Dialogue:"):
                     parts = line.split(",", 9)
                     if len(parts) >= 10:
+                        style = parts[3].strip()
                         start = ass_time_to_ms(parts[1])
                         end = ass_time_to_ms(parts[2])
                         text = parts[9].replace("\\N", "\n").replace("\\n", "\n")
-                        # 移除 ASS 标签
-                        if text.startswith("{") and "}" in text:
+                        # 移除 ASS 标签（保留标签后的文本）
+                        while text.startswith("{") and "}" in text:
                             text = text[text.index("}") + 1:]
-                        result[start] = [end - start, text]
+
+                        if style not in result:
+                            result[style] = {}
+                        result[style][start] = [end - start, text]
 
         return result
 

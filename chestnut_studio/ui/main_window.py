@@ -511,26 +511,64 @@ class MainWindow(QMainWindow):
             ext = Path(path).suffix.lower()
             if ext == ".srt":
                 data = SubtitleIO.import_srt(path)
+                if data:
+                    # SRT 导入到轨道1
+                    subtitle_mgr = self.timeline_card.get_subtitle_manager()
+                    for start_ms, (duration, text) in data.items():
+                        subtitle_mgr.set(1, start_ms, duration, text)
+                    self._sync_subtitle_overlay()
+                    self.status_bar.set_status(f"已导入 {len(data)} 条字幕")
+                else:
+                    self.status_bar.set_status("字幕文件为空或格式错误")
+
             elif ext == ".ass":
-                data = SubtitleIO.import_ass(path)
+                multi_data = SubtitleIO.import_ass_multi_track(path)
+                if multi_data:
+                    subtitle_mgr = self.timeline_card.get_subtitle_manager()
+
+                    # 样式到轨道的映射
+                    style_to_track: dict[str, int] = {}
+                    current_track = 1
+                    total_count = 0
+
+                    for style_name, style_data in multi_data.items():
+                        if not style_data:
+                            continue
+
+                        # 分配轨道号
+                        if style_name not in style_to_track:
+                            # 确保轨道存在
+                            subtitle_mgr.ensure_track(current_track)
+                            style_to_track[style_name] = current_track
+                            current_track += 1
+
+                        track = style_to_track[style_name]
+
+                        # 导入字幕数据
+                        for start_ms, (duration, text) in style_data.items():
+                            subtitle_mgr.set(track, start_ms, duration, text)
+                            total_count += 1
+
+                    # 刷新界面
+                    self._sync_subtitle_overlay()
+                    self.timeline_card.refresh_track_combos()
+
+                    # 构建状态信息
+                    track_info = ", ".join([f"{style}→轨道{track}" for style, track in style_to_track.items()])
+                    self.status_bar.set_status(f"已导入 {total_count} 条字幕 ({track_info})")
+
+                    # 调试输出
+                    if self._debug_console and self._debug_console.isVisible():
+                        print(f"[导入] 样式映射: {track_info}")
+                else:
+                    self.status_bar.set_status("字幕文件为空或格式错误")
             else:
                 self.status_bar.set_status(f"不支持的字幕格式: {ext}")
-                return
-
-            if data:
-                # 导入到当前选中的轨道（默认轨道1）
-                subtitle_mgr = self.timeline_card.get_subtitle_manager()
-                for start_ms, (duration, text) in data.items():
-                    subtitle_mgr.set(1, start_ms, duration, text)
-
-                # 刷新界面
-                self._sync_subtitle_overlay()
-                self.status_bar.set_status(f"已导入 {len(data)} 条字幕")
-            else:
-                self.status_bar.set_status("字幕文件为空或格式错误")
 
         except Exception as e:
             self.status_bar.set_status(f"导入失败: {str(e)}")
+            if self._debug_console and self._debug_console.isVisible():
+                print(f"[导入] 错误: {str(e)}")
 
     def _on_save_subtitle(self):
         """导出字幕文件"""

@@ -907,6 +907,61 @@ class TimelineCard(QDockWidget):
         """获取指定轨道的字幕数量"""
         return len(self._subtitle_mgr.data.get(col, {}))
 
+    def refresh_track_combos(self):
+        """刷新所有轨道相关的下拉框（当轨道数量变化时调用）"""
+        track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4", "#f97316", "#84cc16"]
+
+        # 获取当前最大轨道号
+        max_track = self._subtitle_mgr.get_max_track()
+        if max_track < 4:
+            max_track = 4  # 至少显示4个轨道
+
+        # 更新轨道筛选器
+        current_filter = self._track_filter.currentIndex()
+        self._track_filter.blockSignals(True)
+        self._track_filter.clear()
+        self._track_filter.addItem("全部")
+        for i in range(max_track):
+            color = track_colors[i % len(track_colors)]
+            self._track_filter.addItem(f"轨道 {i + 1}")
+            self._track_filter.setItemData(i + 1, QColor(color), Qt.ForegroundRole)
+        # 恢复选择
+        if current_filter <= max_track:
+            self._track_filter.setCurrentIndex(current_filter)
+        else:
+            self._track_filter.setCurrentIndex(0)
+        self._track_filter.blockSignals(False)
+
+        # 更新复制源轨道下拉框
+        current_source = self._copy_source_combo.currentIndex()
+        self._copy_source_combo.blockSignals(True)
+        self._copy_source_combo.clear()
+        for i in range(max_track):
+            color = track_colors[i % len(track_colors)]
+            self._copy_source_combo.addItem(f"轨道 {i + 1}")
+            self._copy_source_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
+        if current_source < max_track:
+            self._copy_source_combo.setCurrentIndex(current_source)
+        else:
+            self._copy_source_combo.setCurrentIndex(0)
+        self._copy_source_combo.blockSignals(False)
+
+        # 更新复制目标轨道下拉框
+        current_target = self._copy_target_combo.currentIndex()
+        self._copy_target_combo.blockSignals(True)
+        self._copy_target_combo.clear()
+        for i in range(max_track):
+            color = track_colors[i % len(track_colors)]
+            self._copy_target_combo.addItem(f"轨道 {i + 1}")
+            self._copy_target_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
+        if current_target < max_track:
+            self._copy_target_combo.setCurrentIndex(current_target)
+        elif max_track > 1:
+            self._copy_target_combo.setCurrentIndex(1)
+        else:
+            self._copy_target_combo.setCurrentIndex(0)
+        self._copy_target_combo.blockSignals(False)
+
     def highlight_subtitle(self, col: int, start_ms: int):
         """高亮指定的字幕行
 
