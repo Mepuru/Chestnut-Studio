@@ -10,7 +10,6 @@
 - 视频渲染（QGraphicsVideoItem + 字幕叠加预览）
 - 播放控制（播放/暂停/停止/跳转）
 - AB 循环功能
-- 拖放打开文件
 - 空状态提示
 
 ---
@@ -23,7 +22,6 @@
 | `duration_changed(ms)` | `int` | 视频时长变化 (ms) |
 | `video_opened(path)` | `str` | 视频已打开 |
 | `playback_state_changed(playing)` | `bool` | 播放状态变化 |
-| `subtitle_dropped(path)` | `str` | 字幕文件拖入 |
 | `ab_loop_changed(a, b)` | `int, int` | AB 循环状态变化，-1 表示未设置 |
 
 ---
@@ -141,24 +139,6 @@ a, b = player_card.get_ab_loop_points()  # 获取 AB 点
 `VideoView(QGraphicsView)` — 自动 `fitInView` 保持宽高比居中显示：
 - `resizeEvent` 时重新适配
 - 视频尺寸变化时通过 `nativeSizeChanged` 信号自动调用 `fit_video()`
-
----
-
-## 拖放支持
-
-### 接受的文件类型
-
-**视频文件：**
-- `.mp4`, `.avi`, `.flv`, `.mkv`, `.mov`, `.wmv`
-- `.mp3`, `.wav`, `.aac`, `.flac`, `.ogg`
-
-**字幕文件：**
-- `.srt`, `.ass`, `.vtt`, `.lrc`
-
-### 拖放处理
-
-- 视频文件：自动打开并播放
-- 字幕文件：发射 `subtitle_dropped` 信号
 
 ---
 

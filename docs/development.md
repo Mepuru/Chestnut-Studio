@@ -169,7 +169,6 @@ class PlayerCard(QDockWidget):
     
     功能：
     - 视频渲染（QGraphicsVideoItem）+ 字幕叠加预览
-    - 拖放打开文件
     - 播放控制全部由工具栏负责
     """
     

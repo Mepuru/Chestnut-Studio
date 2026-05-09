@@ -13,6 +13,7 @@
 - 处理菜单事件（打开视频、布局重置等）
 - 处理全局快捷键（Space、[、]、\）
 - 窗口缩放时按固定比例维护卡片尺寸
+- 拦截全局拖放事件，显示覆盖层并分发文件
 
 ---
 
@@ -27,6 +28,7 @@
 | `toolbar` | `ToolBar` | 工具栏 |
 | `menu_bar` | `MenuBar` | 菜单栏 |
 | `status_bar` | `StatusBar` | 状态栏 |
+| `_drag_overlay` | `DragOverlay` | 拖放覆盖层 |
 
 ---
 

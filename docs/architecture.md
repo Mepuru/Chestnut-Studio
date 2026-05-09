@@ -42,11 +42,12 @@
 
 | 模块 | 职责 |
 |------|------|
-| `main_window.py` | 主窗口，管理四个 DockWidget 卡片的布局，连接各组件信号，处理全局快捷键 |
+| `main_window.py` | 主窗口，管理四个 DockWidget 卡片的布局，连接各组件信号，处理全局快捷键，拦截拖放事件 |
 | `toolbar.py` | 工具栏，播放控制（播放/暂停、跳转、倍速、帧号显示、AB 循环） |
 | `menubar.py` | 菜单栏，文件/视图/帮助菜单 |
 | `statusbar.py` | 状态栏，三段式显示（状态/视频参数/当前时间/总时间） |
-| `cards/player_card.py` | 视频播放卡片，QMediaPlayer + 拖放打开 + 字幕叠加 + AB 循环 |
+| `drag_overlay.py` | 拖放覆盖层，全局文件拖放、类型识别、视觉反馈 |
+| `cards/player_card.py` | 视频播放卡片，QMediaPlayer + 字幕叠加 + AB 循环 |
 | `cards/timeline_card.py` | 时间轴列表卡片，显示已打轴的字幕条（编号 + 起止时间 + 查看/编辑/锁定） |
 | `cards/waveform_card.py` | 音频波形卡片，波形显示 + 包络线 + AB 循环区域 + 滚轮缩放 + Shift 拖动 + 打轴功能 |
 | `cards/translate_card.py` | 翻译面板卡片，编辑当前轨道的字幕文本，支持快速跳转 |
