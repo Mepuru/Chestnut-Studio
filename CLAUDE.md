@@ -12,10 +12,12 @@ Chestnut Studio 是一款面向字幕组/烤肉组的现代化字幕工具，基
 
 **核心特性**: 
 - 音频波形区：用户通过快捷键打轴（标记开始/结束点）
-- 时间轴列表：显示已打轴的字幕条（编号 + 起止时间）
+- 时间轴列表：显示已打轴的字幕条（编号 + 起止时间 + 文本）
 - 翻译面板：编辑当前轨道的字幕文本，支持快速跳转
 - 复制轴功能：将一个轨道的字幕复制到另一个轨道
-- ASS 导出：支持多轨道导出，样式名根据轨道自动命名
+- ASS 导出：支持多轨道导出，按起始时间排序
+- 拖放导入：全局覆盖层，自动识别视频/字幕文件
+- 多轨道：最多 8 个轨道，颜色由 track_config.py 集中配置
 
 ---
 
@@ -106,6 +108,10 @@ TranslateCard
   │ jump_to_next(col, start_ms) ──────→ MainWindow._on_jump_to_next
   │ jump_to_prev(col, start_ms) ──────→ MainWindow._on_jump_to_prev
   │ editing_subtitle(col, start_ms) ──→ TimelineCard.highlight_subtitle
+
+DragOverlay
+  │ video_dropped(path) ─────────────→ MainWindow._open_video_file
+  │ subtitle_dropped(path) ──────────→ MainWindow._import_subtitle_file
 ```
 
 ---

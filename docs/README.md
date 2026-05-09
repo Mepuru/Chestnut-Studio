@@ -17,13 +17,15 @@ docs/
 │   ├── ffmpeg.md                # FFmpeg 封装
 │   ├── audio.md                 # 音频处理
 │   ├── subtitle.md              # 字幕数据结构
-│   └── subtitle_io.md           # 字幕导入导出
+│   ├── subtitle_io.md           # 字幕导入导出
+│   └── track_config.md          # 轨道配置
 ├── ui/                          # UI 层模块文档
 │   ├── README.md                # UI 层概述
 │   ├── main_window.md           # 主窗口
 │   ├── toolbar.md               # 工具栏
 │   ├── menubar.md               # 菜单栏
 │   ├── statusbar.md             # 状态栏
+│   ├── drag_overlay.md          # 拖放覆盖层
 │   ├── cards/                   # 卡片组件文档
 │   │   ├── README.md            # 卡片组件概述
 │   │   ├── player_card.md       # 视频播放卡片
@@ -59,6 +61,7 @@ docs/
 | [音频处理](core/audio.md) | 波形加载、包络计算、人声增强 |
 | [字幕数据结构](core/subtitle.md) | SubtitleDict 定义、撤销重做、叠轴检测 |
 | [字幕导入导出](core/subtitle_io.md) | SRT/ASS/VTT/LRC 格式支持 |
+| [轨道配置](core/track_config.md) | 轨道颜色、数量等集中配置 |
 
 ### UI 层 (ui/)
 
@@ -69,6 +72,7 @@ docs/
 | [工具栏](ui/toolbar.md) | 播放控制、AB 循环、倍速选择 |
 | [菜单栏](ui/menubar.md) | 文件/视图/帮助菜单 |
 | [状态栏](ui/statusbar.md) | 三段式状态显示 |
+| [拖放覆盖层](ui/drag_overlay.md) | 全局文件拖放、类型识别 |
 
 ### 卡片组件 (ui/cards/)
 

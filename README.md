@@ -21,7 +21,7 @@ Chestnut Studio 是一款面向字幕组/烤肉组的现代化字幕工具，采
 - **音频波形** - 实时波形显示，红线跟随播放，包络线增强
 - **打轴功能** - 在音频波形区通过快捷键打轴，时间轴列表显示
 - **编辑模式** - 可视化调整字幕起止点，实时预览
-- **多轨道支持** - 支持 4 个轨道，不同颜色区分
+- **多轨道支持** - 最多 8 个轨道，不同颜色区分
 - **复制轴功能** - 将一个轨道的字幕复制到另一个轨道
 - **翻译面板** - 编辑当前轨道字幕文本，支持快速跳转（Ctrl+Enter）
 - **字幕导入导出** - 支持 SRT/ASS 格式导入，多轨道 ASS 导出
@@ -149,13 +149,15 @@ ChestnutStudio/
 │   │   ├── ffmpeg.py              # FFmpeg 封装
 │   │   ├── audio.py               # 音频数据处理
 │   │   ├── subtitle.py            # 字幕数据结构
-│   │   └── subtitle_io.py         # 字幕导入/导出
+│   │   ├── subtitle_io.py         # 字幕导入/导出
+│   │   └── track_config.py        # 轨道配置（颜色、数量）
 │   ├── ui/                        # UI 层
 │   │   ├── __init__.py
 │   │   ├── main_window.py         # 主窗口
 │   │   ├── toolbar.py             # 工具栏
 │   │   ├── menubar.py             # 菜单栏
 │   │   ├── statusbar.py           # 状态栏
+│   │   ├── drag_overlay.py        # 拖放覆盖层
 │   │   ├── cards/                 # 卡片组件
 │   │   │   ├── __init__.py
 │   │   │   ├── player_card.py     # 视频播放卡片
@@ -175,9 +177,11 @@ ChestnutStudio/
 ├── docs/                          # 文档
 │   ├── architecture.md            # 架构文档
 │   ├── development.md             # 开发指南
-│   ├── core.md                    # 核心层模块文档
-│   ├── ui.md                      # UI 层模块文档
-│   ├── utils.md                   # 工具层模块文档
+│   ├── README.md                  # 文档导航
+│   ├── core/                      # 核心层模块文档
+│   │   └── track_config.md        # 轨道配置
+│   ├── ui/                        # UI 层模块文档
+│   │   └── drag_overlay.md        # 拖放覆盖层
 │   └── changelog.md               # 变更日志
 ├── tests/                         # 测试
 │   ├── conftest.py                # 测试配置
