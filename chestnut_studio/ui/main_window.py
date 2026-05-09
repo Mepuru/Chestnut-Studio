@@ -1,8 +1,9 @@
 """主窗口模块"""
 
+import os
 from pathlib import Path
 
-from PySide6.QtCore import QSettings, Qt
+from PySide6.QtCore import QEvent, QSettings, Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QFileDialog, QMainWindow
 
@@ -13,6 +14,7 @@ from chestnut_studio.ui.cards.player_card import PlayerCard
 from chestnut_studio.ui.cards.timeline_card import TimelineCard
 from chestnut_studio.ui.cards.translate_card import TranslateCard
 from chestnut_studio.ui.cards.waveform_card import WaveformCard
+from chestnut_studio.ui.drag_overlay import SUBTITLE_EXTENSIONS, VIDEO_EXTENSIONS, DragOverlay
 from chestnut_studio.ui.menubar import MenuBar
 from chestnut_studio.ui.statusbar import StatusBar
 from chestnut_studio.ui.toolbar import ToolBar
@@ -83,7 +85,12 @@ class MainWindow(QMainWindow):
         self._create_toolbar()
         self._create_menubar()
         self._create_statusbar()
+        self._create_drag_overlay()
         self._connect_signals()
+
+        # 拖放事件过滤
+        self.setAcceptDrops(True)
+        self.installEventFilter(self)
 
         # 开发阶段：不恢复布局，每次都使用默认布局
         # TODO: 发布时取消注释以下代码
@@ -195,6 +202,38 @@ class MainWindow(QMainWindow):
         super().resizeEvent(event)
         if self._layout_initialized:
             self._apply_layout_size()
+        # 保持覆盖层与窗口同尺寸
+        if hasattr(self, "_drag_overlay"):
+            self._drag_overlay.resize(self.size())
+
+    def eventFilter(self, obj, event):
+        """全局事件过滤器，拦截拖放事件显示覆盖层"""
+        if obj is self and hasattr(self, "_drag_overlay"):
+            etype = event.type()
+            if etype == QEvent.DragEnter:
+                mime = event.mimeData()
+                if mime.hasUrls():
+                    paths = [url.toLocalFile() for url in mime.urls()]
+                    has_valid = any(
+                        os.path.splitext(p)[1].lower() in VIDEO_EXTENSIONS | SUBTITLE_EXTENSIONS
+                        for p in paths
+                    )
+                    if has_valid:
+                        self._drag_overlay.update_for_files(paths)
+                        self._drag_overlay.show()
+                        self._drag_overlay.raise_()
+                        event.acceptProposedAction()
+                        return True
+            elif etype == QEvent.DragLeave:
+                self._drag_overlay.hide()
+            elif etype == QEvent.Drop:
+                mime = event.mimeData()
+                if mime.hasUrls():
+                    paths = [url.toLocalFile() for url in mime.urls()]
+                    self._drag_overlay.handle_drop(paths)
+                    event.acceptProposedAction()
+                    return True
+        return super().eventFilter(obj, event)
 
     def _create_toolbar(self):
         """创建工具栏"""
@@ -220,6 +259,12 @@ class MainWindow(QMainWindow):
         """创建状态栏"""
         self.status_bar = StatusBar(self)
         self.setStatusBar(self.status_bar)
+
+    def _create_drag_overlay(self):
+        """创建拖放覆盖层"""
+        self._drag_overlay = DragOverlay(self)
+        self._drag_overlay.video_dropped.connect(self._open_video_file)
+        self._drag_overlay.subtitle_dropped.connect(self._import_subtitle_file)
 
     def _connect_signals(self):
         """连接各组件间的信号"""
@@ -247,9 +292,6 @@ class MainWindow(QMainWindow):
 
         # --- 播放卡片 → 视频打开后处理（拖放或菜单打开均触发） ---
         self.player_card.video_opened.connect(self._on_video_opened)
-
-        # --- 时间轴卡片 → 字幕拖放导入 ---
-        self.timeline_card.subtitle_dropped.connect(self._import_subtitle_file)
 
         # --- 播放卡片 → 波形卡片 ---
         self.player_card.position_changed.connect(self.waveform_card.update_position)

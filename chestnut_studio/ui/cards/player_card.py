@@ -3,7 +3,7 @@
 import os
 
 from PySide6.QtCore import Qt, QUrl, Signal
-from PySide6.QtGui import QColor, QDragEnterEvent, QDropEvent, QFont, QResizeEvent
+from PySide6.QtGui import QColor, QFont, QResizeEvent
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtMultimediaWidgets import QGraphicsVideoItem
 from PySide6.QtWidgets import (
@@ -15,8 +15,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
-VIDEO_EXTENSIONS = {".mp4", ".avi", ".flv", ".mkv", ".mov", ".wmv", ".mp3", ".wav", ".aac", ".flac", ".ogg"}
 
 
 class VideoView(QGraphicsView):
@@ -77,8 +75,6 @@ class PlayerCard(QDockWidget):
         self._setup_ui()
         self._setup_player()
         self._connect_signals()
-
-        self.setAcceptDrops(True)
 
     def _setup_ui(self):
         """初始化 UI"""
@@ -284,17 +280,3 @@ class PlayerCard(QDockWidget):
         # 延迟一帧调用 fitInView，确保布局已完成
         from PySide6.QtCore import QTimer
         QTimer.singleShot(0, self._view.fit_video)
-
-    # ========== 拖放 ==========
-
-    def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-
-    def dropEvent(self, event: QDropEvent):
-        for url in event.mimeData().urls():
-            path = url.toLocalFile()
-            ext = os.path.splitext(path)[1].lower()
-            if ext in VIDEO_EXTENSIONS:
-                self.open_video(path)
-                return

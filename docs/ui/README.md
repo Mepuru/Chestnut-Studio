@@ -15,6 +15,7 @@
 | [工具栏](toolbar.md) | `toolbar.py` | 播放控制、AB 循环、倍速选择 |
 | [菜单栏](menubar.md) | `menubar.py` | 文件/视图/帮助菜单 |
 | [状态栏](statusbar.md) | `statusbar.py` | 三段式状态显示 |
+| [拖放覆盖层](drag_overlay.md) | `drag_overlay.py` | 全局文件拖放、类型识别、视觉反馈 |
 
 ### 卡片组件
 

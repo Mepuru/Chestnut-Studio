@@ -45,6 +45,7 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 | 文件 | 职责 |
 |------|------|
 | `chestnut_studio/ui/main_window.py` | 主窗口，信号连接中心 |
+| `chestnut_studio/ui/drag_overlay.py` | 全局拖放覆盖层，统一处理文件导入 |
 | `chestnut_studio/ui/cards/player_card.py` | 视频播放 + AB 循环 |
 | `chestnut_studio/ui/cards/waveform_card.py` | 音频波形显示 + 打轴功能 |
 | `chestnut_studio/ui/cards/timeline_card.py` | 时间轴列表，显示已打轴的字幕 |
