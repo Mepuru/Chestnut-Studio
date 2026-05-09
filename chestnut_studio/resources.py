@@ -1,12 +1,31 @@
 """资源管理模块
 
 统一管理应用程序的资源文件路径。
+支持开发环境和 PyInstaller 打包环境。
 """
 
+import sys
 from pathlib import Path
 
+
+def _get_resources_dir() -> Path:
+    """获取资源目录路径
+    
+    支持开发环境和 PyInstaller 打包环境
+    
+    Returns:
+        资源目录的绝对路径
+    """
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        # PyInstaller 打包环境
+        return Path(sys._MEIPASS) / "chestnut_studio" / "resources"
+    else:
+        # 开发环境
+        return Path(__file__).parent / "resources"
+
+
 # 资源目录路径
-_RESOURCES_DIR = Path(__file__).parent / "resources"
+_RESOURCES_DIR = _get_resources_dir()
 
 
 def get_resource_path(relative_path: str) -> Path:
