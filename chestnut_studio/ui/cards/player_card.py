@@ -28,6 +28,9 @@ class VideoView(QGraphicsView):
         super().resizeEvent(event)
         self._fit_video()
 
+    def wheelEvent(self, event):
+        event.ignore()
+
     def fit_video(self):
         """公开方法：视频画面居中铺满，保持宽高比"""
         self._fit_video()
