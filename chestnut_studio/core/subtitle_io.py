@@ -1,7 +1,5 @@
 """字幕导入/导出"""
 
-import os
-
 
 def ms_to_srt_time(ms: int) -> str:
     """毫秒 → SRT 时间格式 (h:m:s,ms)"""
@@ -192,22 +190,22 @@ class SubtitleIO:
                 )
             f.write("\n")
 
-            # Events
+            # Events（按起始时间排序，跨轨道合并）
             f.write("[Events]\n")
             f.write("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
 
-            for col in sorted(tracks.keys()):
-                sub_data = tracks[col]
-                style_name = track_styles.get(col, f"轨道 {col}")
-
-                for start_ms in sorted(sub_data.keys()):
-                    duration, text = sub_data[start_ms]
+            all_entries: list[tuple[int, int, int, str]] = []  # (start_ms, duration, col, text)
+            for col, sub_data in tracks.items():
+                for start_ms, (duration, text) in sub_data.items():
                     if text.strip():
-                        start_time = ms_to_ass_time(start_ms)
-                        end_time = ms_to_ass_time(start_ms + duration)
-                        # 换行符转换为 \N
-                        ass_text = text.replace("\n", "\\N")
-                        f.write(f"Dialogue: 0,{start_time},{end_time},{style_name},,0,0,0,,{ass_text}\n")
+                        all_entries.append((start_ms, duration, col, text))
+
+            for start_ms, duration, col, text in sorted(all_entries, key=lambda x: x[0]):
+                style_name = track_styles.get(col, f"轨道 {col}")
+                start_time = ms_to_ass_time(start_ms)
+                end_time = ms_to_ass_time(start_ms + duration)
+                ass_text = text.replace("\n", "\\N")
+                f.write(f"Dialogue: 0,{start_time},{end_time},{style_name},,0,0,0,,{ass_text}\n")
 
     @staticmethod
     def export_ass_single(
