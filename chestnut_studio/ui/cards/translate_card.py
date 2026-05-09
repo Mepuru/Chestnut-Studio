@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from chestnut_studio.core.track_config import get_track_color
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
 # 按钮样式
@@ -255,9 +256,7 @@ class TranslateCard(QDockWidget):
         self._time_label.setText(f"{ms_to_time_str(start_ms)}")
 
         # 更新轨道显示
-        track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899"]
-        color_idx = max(0, min(col - 1, len(track_colors) - 1))
-        color = track_colors[color_idx]
+        color = get_track_color(col)
         self._track_label.setText(f"轨道 {col}")
         self._track_label.setStyleSheet(f"""
             QLabel {{

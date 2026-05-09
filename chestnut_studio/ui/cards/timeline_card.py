@@ -27,6 +27,11 @@ from PySide6.QtWidgets import (
 )
 
 from chestnut_studio.core.subtitle import SubtitleManager
+from chestnut_studio.core.track_config import (
+    TRACK_COLORS_HEX,
+    get_effective_track_count,
+    get_track_color,
+)
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
 # 操作按钮样式
@@ -148,7 +153,7 @@ class TimelineCard(QDockWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         # --- 字幕列表表格 ---
-        self._table = QTableWidget(0, 8, self)
+        self._table = QTableWidget(0, 9, self)
         self._table.setStyleSheet("""
             QTableWidget {
                 background: #0f0f14;
@@ -182,7 +187,7 @@ class TimelineCard(QDockWidget):
         self._table.setSelectionMode(QTableWidget.NoSelection)  # 默认禁用选择，仅翻译区域高亮时启用
 
         # 设置列头 - 使用 Stretch 模式自动调整列宽
-        self._table.setHorizontalHeaderLabels(["#", "轨道", "开始时间", "结束时间", "开始帧", "结束帧", "时长", "操作"])
+        self._table.setHorizontalHeaderLabels(["#", "轨道", "开始时间", "结束时间", "开始帧", "结束帧", "时长", "文本", "操作"])
         header = self._table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Fixed)
         self._table.setColumnWidth(0, 40)
@@ -193,8 +198,9 @@ class TimelineCard(QDockWidget):
         header.setSectionResizeMode(4, QHeaderView.Stretch)
         header.setSectionResizeMode(5, QHeaderView.Stretch)
         header.setSectionResizeMode(6, QHeaderView.Stretch)
-        header.setSectionResizeMode(7, QHeaderView.Fixed)
-        self._table.setColumnWidth(7, 170)
+        header.setSectionResizeMode(7, QHeaderView.Stretch)
+        header.setSectionResizeMode(8, QHeaderView.Fixed)
+        self._table.setColumnWidth(8, 170)
 
         # 隐藏垂直表头
         self._table.verticalHeader().setVisible(False)
@@ -255,8 +261,7 @@ class TimelineCard(QDockWidget):
 
         self._copy_source_combo = QComboBox()
         self._copy_source_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-        track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899"]
-        for i, color in enumerate(track_colors):
+        for i, color in enumerate(TRACK_COLORS_HEX):
             self._copy_source_combo.addItem(f"轨道 {i + 1}")
             self._copy_source_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
         self._copy_source_combo.setCurrentIndex(0)
@@ -266,7 +271,7 @@ class TimelineCard(QDockWidget):
 
         self._copy_target_combo = QComboBox()
         self._copy_target_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-        for i, color in enumerate(track_colors):
+        for i, color in enumerate(TRACK_COLORS_HEX):
             self._copy_target_combo.addItem(f"轨道 {i + 1}")
             self._copy_target_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
         self._copy_target_combo.setCurrentIndex(1)
@@ -283,8 +288,7 @@ class TimelineCard(QDockWidget):
         self._track_filter = QComboBox()
         self._track_filter.setFixedWidth(80)
         self._track_filter.addItem("全部")
-        track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899"]
-        for i, color in enumerate(track_colors):
+        for i, color in enumerate(TRACK_COLORS_HEX):
             self._track_filter.addItem(f"轨道 {i + 1}")
             self._track_filter.setItemData(i + 1, QColor(color), Qt.ForegroundRole)
         self._track_filter.setCurrentIndex(0)
@@ -346,12 +350,7 @@ class TimelineCard(QDockWidget):
             is_locked = (col, start) in self._locked_states
 
             # 轨道颜色
-            track_colors_fg = [
-                QColor(59, 130, 246),  # 轨道1: 蓝色
-                QColor(16, 185, 129),  # 轨道2: 绿色
-                QColor(245, 158, 11),  # 轨道3: 橙色
-                QColor(236, 72, 153),  # 轨道4: 粉色
-            ]
+            track_colors_fg = [QColor(c) for c in TRACK_COLORS_HEX]
 
             # # 列（编号）
             num_item = QTableWidgetItem(str(idx + 1))
@@ -394,17 +393,22 @@ class TimelineCard(QDockWidget):
             duration_item.setTextAlignment(Qt.AlignCenter)
             self._table.setItem(row, 6, duration_item)
 
+            # 文本
+            text_display = text.replace("\n", " ") if text else ""
+            text_item = QTableWidgetItem(text_display)
+            text_item.setToolTip(text if text else "")
+            self._table.setItem(row, 7, text_item)
+
             # 操作按钮
             op_widget = self._create_operation_buttons(col, start, is_locked)
-            self._table.setCellWidget(row, 7, op_widget)
+            self._table.setCellWidget(row, 8, op_widget)
 
             # 轨道背景颜色方案
-            track_colors_bg = [
-                QColor(59, 130, 246, 30),  # 轨道1: 蓝色
-                QColor(16, 185, 129, 30),  # 轨道2: 绿色
-                QColor(245, 158, 11, 30),  # 轨道3: 橙色
-                QColor(236, 72, 153, 30),  # 轨道4: 粉色
-            ]
+            track_colors_bg = []
+            for c in TRACK_COLORS_HEX:
+                qc = QColor(c)
+                qc.setAlpha(30)
+                track_colors_bg.append(qc)
 
             # 设置行颜色
             if is_locked:
@@ -415,7 +419,7 @@ class TimelineCard(QDockWidget):
                 col_idx = max(0, min(col - 1, len(track_colors_bg) - 1))
                 bg_color = track_colors_bg[col_idx]
 
-            for c in range(8):
+            for c in range(9):
                 item = self._table.item(row, c)
                 if item:
                     item.setBackground(bg_color)
@@ -610,7 +614,7 @@ class TimelineCard(QDockWidget):
 
     def delete_by_track(self, track: int):
         """删除指定轨道的所有字幕"""
-        if track < 0 or track > 4:
+        if track < 0:
             return
 
         sub_data = self._subtitle_mgr.data.get(track, {})
@@ -638,7 +642,8 @@ class TimelineCard(QDockWidget):
         # 发射预览信号或打开预览对话框
         # 暂时打印到控制台
         print("\n===== 轨道预览 =====")
-        for col in range(1, 5):
+        max_track = self._subtitle_mgr.get_max_track()
+        for col in range(1, max_track + 1):
             sub_data = self._subtitle_mgr.data.get(col, {})
             if sub_data:
                 print(f"轨道 {col}: {len(sub_data)} 条")
@@ -909,12 +914,8 @@ class TimelineCard(QDockWidget):
 
     def refresh_track_combos(self):
         """刷新所有轨道相关的下拉框（当轨道数量变化时调用）"""
-        track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4", "#f97316", "#84cc16"]
-
         # 获取当前最大轨道号
-        max_track = self._subtitle_mgr.get_max_track()
-        if max_track < 4:
-            max_track = 4  # 至少显示4个轨道
+        max_track = get_effective_track_count(self._subtitle_mgr.get_max_track())
 
         # 更新轨道筛选器
         current_filter = self._track_filter.currentIndex()
@@ -922,7 +923,7 @@ class TimelineCard(QDockWidget):
         self._track_filter.clear()
         self._track_filter.addItem("全部")
         for i in range(max_track):
-            color = track_colors[i % len(track_colors)]
+            color = get_track_color(i + 1)
             self._track_filter.addItem(f"轨道 {i + 1}")
             self._track_filter.setItemData(i + 1, QColor(color), Qt.ForegroundRole)
         # 恢复选择
@@ -937,7 +938,7 @@ class TimelineCard(QDockWidget):
         self._copy_source_combo.blockSignals(True)
         self._copy_source_combo.clear()
         for i in range(max_track):
-            color = track_colors[i % len(track_colors)]
+            color = get_track_color(i + 1)
             self._copy_source_combo.addItem(f"轨道 {i + 1}")
             self._copy_source_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
         if current_source < max_track:
@@ -951,7 +952,7 @@ class TimelineCard(QDockWidget):
         self._copy_target_combo.blockSignals(True)
         self._copy_target_combo.clear()
         for i in range(max_track):
-            color = track_colors[i % len(track_colors)]
+            color = get_track_color(i + 1)
             self._copy_target_combo.addItem(f"轨道 {i + 1}")
             self._copy_target_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
         if current_target < max_track:

@@ -13,6 +13,7 @@
 | [音频处理](audio.md) | `audio.py` | 波形加载、包络计算、人声增强 |
 | [字幕数据结构](subtitle.md) | `subtitle.py` | SubtitleDict 定义、撤销重做、叠轴检测 |
 | [字幕导入导出](subtitle_io.md) | `subtitle_io.py` | SRT/ASS/VTT/LRC 格式支持 |
+| [轨道配置](track_config.md) | `track_config.py` | 轨道颜色、数量等集中配置 |
 
 ---
 
@@ -64,6 +65,7 @@ from chestnut_studio.core.ffmpeg import FFmpeg
 from chestnut_studio.core.audio import load_waveform
 from chestnut_studio.core.subtitle import SubtitleManager
 from chestnut_studio.core.subtitle_io import SubtitleIO
+from chestnut_studio.core.track_config import get_track_color, get_effective_track_count
 
 # FFmpeg 视频信息解析
 ffmpeg = FFmpeg()
@@ -81,6 +83,10 @@ text = mgr.get(1, 1000)  # [2000, "你好"]
 # 字幕导入导出
 subs = SubtitleIO.import_srt("subtitle.srt")
 SubtitleIO.export_srt("output.srt", subs, video_start=0, sub_start=0)
+
+# 轨道配置
+color = get_track_color(1)  # "#3b82f6"
+max_track = get_effective_track_count(mgr.get_max_track())
 ```
 
 ---

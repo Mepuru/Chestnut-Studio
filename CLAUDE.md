@@ -52,6 +52,7 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 | `chestnut_studio/ui/toolbar.py` | 工具栏按钮 |
 | `chestnut_studio/core/audio.py` | 音频处理函数 |
 | `chestnut_studio/core/ffmpeg.py` | FFmpeg 封装 |
+| `chestnut_studio/core/track_config.py` | 轨道颜色、数量等集中配置 |
 
 ---
 

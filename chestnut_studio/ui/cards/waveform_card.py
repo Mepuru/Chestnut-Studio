@@ -28,6 +28,12 @@ from PySide6.QtWidgets import (
 
 from chestnut_studio.core.audio import compute_envelope_fast, downsample_waveform, load_waveform
 from chestnut_studio.core.ffmpeg import FFmpeg
+from chestnut_studio.core.track_config import (
+    DEFAULT_TRACK_COUNT,
+    TRACK_COLORS_HEX,
+    get_effective_track_count,
+    get_track_color,
+)
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
 # 打轴按钮样式
@@ -432,9 +438,8 @@ class WaveformCard(QDockWidget):
 
         self._track_combo = QComboBox()
         self._track_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-        # 添加轨道选项 1-4，下拉列表中显示颜色
-        track_colors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899"]
-        for i, color in enumerate(track_colors):
+        # 添加轨道选项，下拉列表中显示颜色
+        for i, color in enumerate(TRACK_COLORS_HEX):
             self._track_combo.addItem(f"轨道 {i + 1}")
             self._track_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
         self._track_combo.setCurrentIndex(0)
@@ -938,10 +943,34 @@ class WaveformCard(QDockWidget):
         return self._current_track
 
     def set_current_track(self, track: int):
-        """设置当前轨道号（1-4）"""
-        if 1 <= track <= 4:
-            self._current_track = track - 1
-            self._track_combo.setCurrentIndex(self._current_track)
+        """设置当前轨道号"""
+        max_track = self._track_combo.count()
+        if 1 <= track <= max_track:
+            self._current_track = track
+            self._track_combo.setCurrentIndex(track - 1)
+
+    def refresh_track_combo(self, max_track: int = DEFAULT_TRACK_COUNT):
+        """刷新轨道选择下拉框
+
+        Args:
+            max_track: 当前数据中的最大轨道号
+        """
+        max_track = get_effective_track_count(max_track)
+
+        current_track = self._current_track
+        self._track_combo.blockSignals(True)
+        self._track_combo.clear()
+        for i in range(max_track):
+            color = get_track_color(i + 1)
+            self._track_combo.addItem(f"轨道 {i + 1}")
+            self._track_combo.setItemData(i, QColor(color), Qt.ForegroundRole)
+        # 恢复选择
+        if 1 <= current_track <= max_track:
+            self._track_combo.setCurrentIndex(current_track - 1)
+        else:
+            self._track_combo.setCurrentIndex(0)
+            self._current_track = 1
+        self._track_combo.blockSignals(False)
 
     def _on_track_changed(self, index: int):
         """轨道选择变化"""
@@ -1238,13 +1267,13 @@ class WaveformCard(QDockWidget):
         # 判断是否是正在编辑的字幕条
         is_editing = self._edit_mode and start_ms == self._edit_old_start
 
-        # 轨道颜色方案（4个轨道，颜色不同）
-        track_colors = [
-            (QColor(59, 130, 246), QColor(59, 130, 246, 40)),  # 轨道1: 蓝色
-            (QColor(16, 185, 129), QColor(16, 185, 129, 40)),  # 轨道2: 绿色
-            (QColor(245, 158, 11), QColor(245, 158, 11, 40)),  # 轨道3: 橙色
-            (QColor(236, 72, 153), QColor(236, 72, 153, 40)),  # 轨道4: 粉色
-        ]
+        # 轨道颜色方案（不同轨道颜色不同）
+        track_colors = []
+        for hex_color in TRACK_COLORS_HEX:
+            border = QColor(hex_color)
+            fill = QColor(hex_color)
+            fill.setAlpha(40)
+            track_colors.append((border, fill))
 
         # 根据状态选择颜色
         duration = end_ms - start_ms

@@ -53,7 +53,7 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle("Chestnut Studio")
         self.resize(1280, 720)
-        
+
         # 设置窗口图标
         icon_path = get_icon_path()
         if icon_path.exists():
@@ -517,6 +517,7 @@ class MainWindow(QMainWindow):
                     for start_ms, (duration, text) in data.items():
                         subtitle_mgr.set(1, start_ms, duration, text)
                     self._sync_subtitle_overlay()
+                    self.timeline_card._update_table()
                     self.status_bar.set_status(f"已导入 {len(data)} 条字幕")
                 else:
                     self.status_bar.set_status("字幕文件为空或格式错误")
@@ -552,6 +553,13 @@ class MainWindow(QMainWindow):
                     # 刷新界面
                     self._sync_subtitle_overlay()
                     self.timeline_card.refresh_track_combos()
+
+                    # 刷新波形卡片的轨道选择器
+                    max_track = subtitle_mgr.get_max_track()
+                    self.waveform_card.refresh_track_combo(max_track)
+
+                    # 刷新时间轴表格显示
+                    self.timeline_card._update_table()
 
                     # 构建状态信息
                     track_info = ", ".join([f"{style}→轨道{track}" for style, track in style_to_track.items()])
