@@ -11,6 +11,7 @@ docs/
 ├── README.md                    # 文档导航首页（本文件）
 ├── architecture.md              # 架构文档
 ├── development.md               # 开发指南
+├── performance-optimization.md  # 性能优化方案
 ├── changelog.md                 # 变更日志
 ├── core/                        # 核心层模块文档
 │   ├── README.md                # 核心层概述
@@ -50,6 +51,7 @@ docs/
 |------|------|
 | [架构文档](architecture.md) | 项目整体架构、模块职责、数据流设计 |
 | [开发指南](development.md) | 代码风格、项目结构、提交规范、协作约定 |
+| [性能优化与架构改进](performance-optimization.md) | 字幕列表操作卡顿的瓶颈分析、短期修复与长期架构改进方案 |
 | [变更日志](changelog.md) | 项目重要变更和里程碑记录 |
 
 ### 核心层 (core/)
