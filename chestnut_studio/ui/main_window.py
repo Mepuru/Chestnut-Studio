@@ -71,13 +71,10 @@ class MainWindow(QMainWindow):
         # 初始化设置
         self.settings = QSettings("ChestnutStudio", "KaoRouTool")
 
-        # 布局比例常量
-        self._layout_left_ratio = 0.39
-        self._layout_top_ratio = 0.56
-
         # FFmpeg 实例
         self._ffmpeg = FFmpeg()
         self._layout_initialized = False
+        self._current_layout = None  # 当前布局配置
 
         # 调试控制台
         self._debug_console = None
@@ -213,24 +210,12 @@ class MainWindow(QMainWindow):
             card.setVisible(True)
 
     def _apply_layout_size(self):
-        """按固定比例设置卡片尺寸"""
-        win_w = self.width()
-        win_h = self.height() - 45
-        left_w = int(win_w * self._layout_left_ratio)
-        right_w = win_w - left_w - 4
-        top_h = int(win_h * self._layout_top_ratio)
-        bottom_h = win_h - top_h - 4
+        """按当前布局配置设置卡片尺寸"""
+        if not self._current_layout:
+            return
 
-        self.resizeDocks(
-            [self.player_card, self.timeline_card, self.waveform_card, self.translate_card],
-            [left_w, right_w, left_w, right_w],
-            Qt.Horizontal,
-        )
-        self.resizeDocks(
-            [self.player_card, self.waveform_card, self.timeline_card, self.translate_card],
-            [top_h, bottom_h, top_h, bottom_h],
-            Qt.Vertical,
-        )
+        from chestnut_studio.ui.layout_engine import _apply_sizes
+        _apply_sizes(self, self._current_layout, self._cards)
 
     def resizeEvent(self, event):
         """窗口大小变化时保持卡片比例"""
