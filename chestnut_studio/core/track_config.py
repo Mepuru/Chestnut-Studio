@@ -4,7 +4,7 @@
 """
 
 # 默认初始显示的轨道数
-DEFAULT_TRACK_COUNT = 4
+DEFAULT_TRACK_COUNT = 8
 
 # 最大支持的轨道数
 MAX_TRACK_COUNT = 8

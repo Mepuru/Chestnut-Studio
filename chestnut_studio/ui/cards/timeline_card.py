@@ -547,7 +547,7 @@ class TimelineCard(QDockWidget):
 
     def _on_track_filter_changed(self, index: int):
         """轨道筛选变化"""
-        self._filter_track = index - 1  # -1=全部, 0-4=指定轨道
+        self._filter_track = -1 if index == 0 else index  # 0=全部(-1), 1-4=指定轨道
         self._update_table()
 
     # ========== 删除功能 ==========

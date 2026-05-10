@@ -26,7 +26,7 @@ class SubtitleManager:
     """字幕管理器"""
 
     def __init__(self):
-        self._data: SubtitleDict = {1: {}, 2: {}, 3: {}, 4: {}}
+        self._data: SubtitleDict = {i: {} for i in range(1, 9)}
 
     @property
     def data(self) -> SubtitleDict:
