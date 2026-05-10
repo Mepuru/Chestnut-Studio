@@ -277,8 +277,29 @@ class MainWindow(QMainWindow):
 
     def _create_menubar(self):
         """创建菜单栏"""
+        from chestnut_studio.ui.auto_menu import build_card_submenu, build_layout_submenu
+        from chestnut_studio.ui.layout_config import get_builtin_layouts
+
         self.menu_bar = MenuBar(self)
         self.setMenuBar(self.menu_bar)
+
+        # 自动生成卡片子菜单
+        card_submenu = build_card_submenu(
+            parent=self.menu_bar,
+            cards=self._cards,
+            on_toggle_card=self._on_toggle_card,
+        )
+        self.menu_bar.set_card_submenu(card_submenu)
+
+        # 自动生成布局子菜单
+        layouts = get_builtin_layouts()
+        layout_submenu = build_layout_submenu(
+            parent=self.menu_bar,
+            layouts=layouts,
+            on_apply_layout=self._on_apply_layout,
+            on_reset_layout=self._setup_default_layout,
+        )
+        self.menu_bar.set_layout_submenu(layout_submenu)
 
         # 连接菜单信号
         self.menu_bar.open_video.connect(self._on_open_video)
@@ -289,6 +310,23 @@ class MainWindow(QMainWindow):
         self.menu_bar.reset_layout.connect(self._setup_default_layout)
         self.menu_bar.dump_layout.connect(self._dump_layout_info)
         self.menu_bar.toggle_debug_console.connect(self._toggle_debug_console)
+
+    def _on_toggle_card(self, card_id: str, visible: bool):
+        """切换卡片显示/隐藏"""
+        card = self._cards.get(card_id)
+        if card:
+            card.setVisible(visible)
+
+    def _on_apply_layout(self, layout_name: str):
+        """应用指定布局"""
+        from chestnut_studio.ui.layout_config import get_builtin_layouts
+        from chestnut_studio.ui.layout_engine import apply_layout
+
+        layouts = get_builtin_layouts()
+        config = layouts.get(layout_name)
+        if config:
+            apply_layout(self, config, self._cards)
+            self._current_layout = config
 
     def _create_statusbar(self):
         """创建状态栏"""

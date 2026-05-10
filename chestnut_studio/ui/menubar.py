@@ -2,7 +2,7 @@
 
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QAction, QKeySequence
-from PySide6.QtWidgets import QMenuBar
+from PySide6.QtWidgets import QMenu, QMenuBar
 
 
 class MenuBar(QMenuBar):
@@ -26,7 +26,21 @@ class MenuBar(QMenuBar):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._card_submenu = None
+        self._layout_submenu = None
         self._setup_menus()
+
+    def set_card_submenu(self, submenu: QMenu):
+        """设置自动生成的卡片子菜单"""
+        self._card_submenu = submenu
+        # 重新构建视图菜单
+        self._rebuild_view_menu()
+
+    def set_layout_submenu(self, submenu: QMenu):
+        """设置自动生成的布局子菜单"""
+        self._layout_submenu = submenu
+        # 重新构建视图菜单
+        self._rebuild_view_menu()
 
     def _setup_menus(self):
         """设置菜单结构"""
@@ -72,58 +86,73 @@ class MenuBar(QMenuBar):
 
     def _create_view_menu(self):
         """创建视图菜单"""
-        view_menu = self.addMenu("视图(&V)")
+        self._view_menu = self.addMenu("视图(&V)")
 
-        # 卡片子菜单
-        cards_menu = view_menu.addMenu("卡片(&C)")
-
-        # 获取主窗口的卡片引用
-        main_window = self.parent()
-        if main_window:
-            # 添加卡片切换动作
-            if hasattr(main_window, "player_card"):
-                cards_menu.addAction(main_window.player_card.toggleViewAction())
-            if hasattr(main_window, "timeline_card"):
-                cards_menu.addAction(main_window.timeline_card.toggleViewAction())
-            if hasattr(main_window, "waveform_card"):
-                cards_menu.addAction(main_window.waveform_card.toggleViewAction())
-            if hasattr(main_window, "translate_card"):
-                cards_menu.addAction(main_window.translate_card.toggleViewAction())
-
-        # 分隔线
-        view_menu.addSeparator()
-
-        # 布局子菜单
-        layout_menu = view_menu.addMenu("布局(&L)")
-
-        # 默认布局
-        default_layout_action = QAction("默认布局", self)
-        default_layout_action.triggered.connect(self._reset_layout)
-        layout_menu.addAction(default_layout_action)
-
-        # 打印布局信息（调试用）
-        layout_menu.addSeparator()
-        dump_layout_action = QAction("打印当前布局", self)
-        dump_layout_action.triggered.connect(self.dump_layout.emit)
-        layout_menu.addAction(dump_layout_action)
+        # 卡片子菜单（使用自动生成的或手动创建的）
+        if self._card_submenu:
+            self._view_menu.addMenu(self._card_submenu)
+        else:
+            # 备用：手动创建卡片子菜单
+            cards_menu = self._view_menu.addMenu("卡片(&C)")
+            main_window = self.parent()
+            if main_window:
+                if hasattr(main_window, "player_card"):
+                    cards_menu.addAction(main_window.player_card.toggleViewAction())
+                if hasattr(main_window, "timeline_card"):
+                    cards_menu.addAction(main_window.timeline_card.toggleViewAction())
+                if hasattr(main_window, "waveform_card"):
+                    cards_menu.addAction(main_window.waveform_card.toggleViewAction())
+                if hasattr(main_window, "translate_card"):
+                    cards_menu.addAction(main_window.translate_card.toggleViewAction())
 
         # 分隔线
-        view_menu.addSeparator()
+        self._view_menu.addSeparator()
+
+        # 布局子菜单（使用自动生成的或手动创建的）
+        if self._layout_submenu:
+            self._view_menu.addMenu(self._layout_submenu)
+        else:
+            # 备用：手动创建布局子菜单
+            layout_menu = self._view_menu.addMenu("布局(&L)")
+            default_layout_action = QAction("默认布局", self)
+            default_layout_action.triggered.connect(self._reset_layout)
+            layout_menu.addAction(default_layout_action)
+
+            # 打印布局信息（调试用）
+            layout_menu.addSeparator()
+            dump_layout_action = QAction("打印当前布局", self)
+            dump_layout_action.triggered.connect(self.dump_layout.emit)
+            layout_menu.addAction(dump_layout_action)
+
+        # 分隔线
+        self._view_menu.addSeparator()
 
         # 全屏
         fullscreen_action = QAction("全屏(&F)", self)
         fullscreen_action.setShortcut(QKeySequence("F11"))
         fullscreen_action.triggered.connect(self.toggle_fullscreen.emit)
-        view_menu.addAction(fullscreen_action)
+        self._view_menu.addAction(fullscreen_action)
 
         # 分隔线
-        view_menu.addSeparator()
+        self._view_menu.addSeparator()
 
         # 调试控制台
         debug_console_action = QAction("调试控制台(&D)", self)
         debug_console_action.setShortcut(QKeySequence("F12"))
         debug_console_action.triggered.connect(self.toggle_debug_console.emit)
-        view_menu.addAction(debug_console_action)
+        self._view_menu.addAction(debug_console_action)
+
+    def _rebuild_view_menu(self):
+        """重新构建视图菜单"""
+        # 找到视图菜单的位置
+        for action in self.actions():
+            if action.menu() and action.menu().title() == "视图(&V)":
+                # 移除旧的视图菜单
+                self.removeAction(action)
+                break
+
+        # 重新创建视图菜单
+        self._create_view_menu()
 
     def _create_help_menu(self):
         """创建帮助菜单"""
