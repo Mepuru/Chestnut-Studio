@@ -5,7 +5,7 @@ import pytest
 
 def test_main_window_creation(main_window):
     """测试主窗口创建"""
-    assert main_window.windowTitle() == "Chestnut Studio"
+    assert main_window.windowTitle().startswith("Chestnut Studio")
     # 允许一定的误差（边框、标题栏等会影响实际大小）
     assert abs(main_window.size().width() - 1280) < 50
     assert abs(main_window.size().height() - 720) < 50

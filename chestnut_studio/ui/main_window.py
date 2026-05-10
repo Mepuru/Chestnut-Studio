@@ -19,6 +19,7 @@ from chestnut_studio.ui.menubar import MenuBar
 from chestnut_studio.ui.statusbar import StatusBar
 from chestnut_studio.ui.toolbar import ToolBar
 from chestnut_studio.utils.time_utils import split_time
+from chestnut_studio.utils.version import get_version
 
 
 class MainWindow(QMainWindow):
@@ -53,7 +54,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Chestnut Studio")
+        self.setWindowTitle(f"Chestnut Studio v{get_version()}")
         self.resize(1280, 720)
 
         # 设置窗口图标

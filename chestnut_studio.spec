@@ -1,11 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
 """PyInstaller 打包配置文件"""
 
-import sys
+import tomllib
 from pathlib import Path
 
 # 项目根目录
 ROOT_DIR = Path(SPECPATH)
+
+# 从 pyproject.toml 读取版本号
+with open(ROOT_DIR / "pyproject.toml", "rb") as f:
+    _pyproject = tomllib.load(f)
+VERSION = _pyproject["project"]["version"]
 
 # 资源文件路径
 RESOURCES_DIR = ROOT_DIR / "chestnut_studio" / "resources"
@@ -44,7 +49,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="Chestnut Studio",
+    name=f"Chestnut Studio {VERSION}",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

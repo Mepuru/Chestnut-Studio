@@ -2,9 +2,15 @@
 """PyInstaller 打包配置 - 单文件版本"""
 
 import os
+import tomllib
 
 # 项目根目录
 ROOT_DIR = os.path.dirname(os.path.abspath(SPEC))
+
+# 从 pyproject.toml 读取版本号（打包命名用）
+with open(os.path.join(ROOT_DIR, 'pyproject.toml'), 'rb') as f:
+    _pyproject = tomllib.load(f)
+VERSION = _pyproject['project']['version']
 
 # 收集数据文件
 datas = []
@@ -80,7 +86,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='ChestnutStudio',
+    name=f'Chestnut Studio {VERSION}',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
