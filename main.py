@@ -48,7 +48,7 @@ def main():
     """应用入口"""
     app = QApplication(sys.argv)
     app.setApplicationName("Chestnut Studio")
-    app.setApplicationVersion("1.1.0")
+    app.setApplicationVersion("1.1.1")
     app.setOrganizationName("ChestnutStudio")
     
     # 设置应用图标

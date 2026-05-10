@@ -4,7 +4,7 @@
 
 ---
 
-## v1.1.1 — 2026-05-10 — Phase A 性能优化（数据类型 + 代码清理）
+## v1.1.1 — 2026-05-10 — Phase A 性能优化 + 轨道修复
 
 ### 新增
 
@@ -26,6 +26,11 @@
   - `WaveformCard.__init__` 中预计算 `_track_overlay_colors`，`_draw_subtitle_region()` 不再为每个字幕区域重建颜色列表
 - **修复未声明的动态属性**：
   - `WaveformCard._subtitle_full_data` 现在在 `__init__` 中声明，移除 `_update_subtitle_overlay()` 中的 `hasattr` 防御检查
+
+### 修复
+
+- **轨道筛选偏移一位**：`_on_track_filter_changed` 中 `index - 1` 导致轨道 1 显示为空、轨道 2 显示轨道 1 的数据，修正为 `-1 if index == 0 else index`
+- **默认轨道数从 4 扩展为 8**：`DEFAULT_TRACK_COUNT` 和 `SubtitleManager` 初始数据均更新为 8 轨道
 
 ### 受影响文件
 
