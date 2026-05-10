@@ -69,6 +69,15 @@ class ToolBar(QToolBar):
         self._fps = 30.0
         self._setup_ui()
 
+    def listens_to(self) -> dict[str, str]:
+        """声明本组件关心的外部信号"""
+        return {
+            "player.position_changed": "update_position",
+            "player.duration_changed": "set_duration",
+            "player.playback_state_changed": "set_playing",
+            "player.ab_loop_changed": "update_ab_loop_state",
+        }
+
     def _setup_ui(self):
         """初始化 UI"""
         self.setObjectName("toolbar")

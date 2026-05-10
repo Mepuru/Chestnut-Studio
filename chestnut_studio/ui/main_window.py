@@ -349,26 +349,6 @@ class MainWindow(QMainWindow):
         # 自动连接所有信号
         self._signal_manager.connect_all()
 
-        # 手动连接 toolbar 信号（toolbar 不是 BaseCard）
-        self.toolbar.play_clicked.connect(self.player_card.play_pause)
-        self.toolbar.rate_changed.connect(self.player_card.set_playback_rate)
-        self.toolbar.skip_forward.connect(self._on_skip_forward)
-        self.toolbar.skip_backward.connect(self._on_skip_backward)
-        self.toolbar.ab_loop_a_clicked.connect(self._on_ab_loop_set_a)
-        self.toolbar.ab_loop_b_clicked.connect(self._on_ab_loop_set_b)
-        self.toolbar.ab_loop_clear_clicked.connect(self._on_ab_loop_clear)
-
-        # 播放卡片 → 工具栏
-        self.player_card.position_changed.connect(self.toolbar.update_position)
-        self.player_card.duration_changed.connect(self.toolbar.set_duration)
-        self.player_card.playback_state_changed.connect(self.toolbar.set_playing)
-        self.player_card.ab_loop_changed.connect(self.toolbar.update_ab_loop_state)
-
-        # 编辑模式相关信号
-        self.timeline_card.edit_subtitle_requested.connect(self.waveform_card.enter_edit_mode)
-        self.waveform_card.subtitle_edited.connect(self.timeline_card.apply_subtitle_edit)
-        self.translate_card.editing_subtitle.connect(self.timeline_card.highlight_subtitle)
-
     @relay("player.video_opened")
     def _on_video_opened(self, path: str):
         """视频打开后的处理（菜单打开和拖放均触发）"""

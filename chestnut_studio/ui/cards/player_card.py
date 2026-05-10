@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from chestnut_studio.ui.cards.base_card import BaseCard
 from chestnut_studio.ui.cards.registry import register_card
+from chestnut_studio.ui.signal_decorator import subscribe
 
 
 class VideoView(QGraphicsView):
@@ -90,7 +91,64 @@ class PlayerCard(BaseCard):
         return {
             "waveform.position_clicked": "set_position",
             "timeline.jump_to_position": "set_position",
+            "toolbar.play_clicked": "play_pause",
+            "toolbar.rate_changed": "set_playback_rate",
+            "toolbar.skip_forward": "_on_skip_forward",
+            "toolbar.skip_backward": "_on_skip_backward",
+            "toolbar.ab_loop_a_clicked": "set_ab_loop_a",
+            "toolbar.ab_loop_b_clicked": "set_ab_loop_b",
+            "toolbar.ab_loop_clear_clicked": "clear_ab_loop",
         }
+
+    @subscribe("toolbar.play_clicked")
+    def play_pause(self):
+        """播放/暂停切换"""
+        if self._is_playing:
+            self.pause()
+        else:
+            self.play()
+
+    @subscribe("toolbar.rate_changed")
+    def set_playback_rate(self, rate: float):
+        """设置播放倍速"""
+        self._playback_rate = max(0.1, min(2.0, rate))
+        self._player.setPlaybackRate(self._playback_rate)
+
+    @subscribe("toolbar.skip_forward")
+    def _on_skip_forward(self, ms: int):
+        """前进指定毫秒"""
+        new_pos = min(self._position + ms, self._duration)
+        self.set_position(new_pos)
+
+    @subscribe("toolbar.skip_backward")
+    def _on_skip_backward(self, ms: int):
+        """后退指定毫秒"""
+        new_pos = max(self._position - ms, 0)
+        self.set_position(new_pos)
+
+    @subscribe("toolbar.ab_loop_a_clicked")
+    def set_ab_loop_a(self):
+        """设置 AB 循环 A 点"""
+        self._ab_loop_a = self._position
+        if self._ab_loop_b > 0 and self._ab_loop_a < self._ab_loop_b:
+            self._ab_loop_enabled = True
+        self.ab_loop_changed.emit(self._ab_loop_a, self._ab_loop_b)
+
+    @subscribe("toolbar.ab_loop_b_clicked")
+    def set_ab_loop_b(self):
+        """设置 AB 循环 B 点"""
+        self._ab_loop_b = self._position
+        if self._ab_loop_a > 0 and self._ab_loop_a < self._ab_loop_b:
+            self._ab_loop_enabled = True
+        self.ab_loop_changed.emit(self._ab_loop_a, self._ab_loop_b)
+
+    @subscribe("toolbar.ab_loop_clear_clicked")
+    def clear_ab_loop(self):
+        """清除 AB 循环"""
+        self._ab_loop_a = -1
+        self._ab_loop_b = -1
+        self._ab_loop_enabled = False
+        self.ab_loop_changed.emit(-1, -1)
 
     def _setup_ui(self):
         """初始化 UI"""
@@ -188,22 +246,12 @@ class PlayerCard(BaseCard):
         self._player.stop()
         self._player.setPosition(0)
 
-    def play_pause(self):
-        if self._is_playing:
-            self.pause()
-        else:
-            self.play()
-
     def set_position(self, ms: int):
         self._player.setPosition(ms)
 
     def set_volume(self, value: int):
         self._volume = max(0, min(100, value))
         self._audio_output.setVolume(self._volume / 100.0)
-
-    def set_playback_rate(self, rate: float):
-        self._playback_rate = max(0.1, min(2.0, rate))
-        self._player.setPlaybackRate(self._playback_rate)
 
     def set_muted(self, muted: bool):
         self._audio_output.setMuted(muted)
@@ -233,25 +281,6 @@ class PlayerCard(BaseCard):
         return self._is_playing
 
     # ========== AB 循环 ==========
-
-    def set_ab_loop_a(self):
-        """设置 A 点为当前播放位置"""
-        self._ab_loop_a = self._player.position()
-        self._check_ab_loop()
-        self.ab_loop_changed.emit(self._ab_loop_a, self._ab_loop_b)
-
-    def set_ab_loop_b(self):
-        """设置 B 点为当前播放位置"""
-        self._ab_loop_b = self._player.position()
-        self._check_ab_loop()
-        self.ab_loop_changed.emit(self._ab_loop_a, self._ab_loop_b)
-
-    def clear_ab_loop(self):
-        """清除 AB 循环"""
-        self._ab_loop_a = -1
-        self._ab_loop_b = -1
-        self._ab_loop_enabled = False
-        self.ab_loop_changed.emit(-1, -1)
 
     def get_ab_loop_points(self) -> tuple[int, int]:
         """获取 AB 循环点"""
