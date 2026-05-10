@@ -330,6 +330,9 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self):
         """连接所有信号（使用 SignalManager）"""
+        # 注册主窗口（收集 @relay 装饰器声明）
+        self._signal_manager.register_main_window(self)
+
         # 注册卡片和特殊组件
         self._signal_manager.register_cards(self._cards)
         self._signal_manager.register_special("toolbar", self.toolbar)

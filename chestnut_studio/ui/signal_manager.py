@@ -39,6 +39,18 @@ class SignalManager:
         # 动态中转处理函数（由组件动态注册）
         self._dynamic_relays: dict[str, list[Callable]] = {}
 
+    def register_main_window(self, main_window: Any) -> None:
+        """注册主窗口，自动收集 @relay 装饰器声明"""
+        self._main_window = main_window
+
+        # 自动收集 MainWindow 的 @relay 装饰器声明
+        from chestnut_studio.ui.signal_decorator import collect_relays
+        relays = collect_relays(main_window)
+        for source_key, handler_name in relays.items():
+            handler = getattr(main_window, handler_name, None)
+            if handler:
+                self._relay_handlers[source_key] = handler
+
     def register_cards(self, cards: dict[str, BaseCard]) -> None:
         """注册所有卡片"""
         self._cards = cards
