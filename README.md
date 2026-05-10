@@ -217,8 +217,8 @@ ChestnutStudio/
 | Phase 2 | 音频波形（波形图卡片 + FFmpeg） | ✅ |
 | Phase 3 | 打轴功能（音频波形打轴 + 时间轴列表 + 编辑模式） | ✅ |
 | Phase 4 | 翻译面板（翻译卡片 + 字幕导入导出） | ✅ |
-| Phase 5 | 打磨收尾（布局持久化 + 打包） | 🚧 |
-| Phase 6 | 可扩展架构（BaseCard + 注册表 + 声明式信号 + 配置驱动布局） | ✅ |
+| Phase 5 | 可扩展架构（BaseCard + 注册表 + 声明式信号 + 配置驱动布局） | ✅ |
+| Phase 6 | 持续优化（布局持久化、打包、性能优化、新功能） | 🚧 |
 
 详见 [roadmap.md](prototypes/roadmap.md)
 
