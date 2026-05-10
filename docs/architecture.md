@@ -42,11 +42,17 @@
 
 | 模块 | 职责 |
 |------|------|
-| `main_window.py` | 主窗口，管理四个 DockWidget 卡片的布局，连接各组件信号，处理全局快捷键，拦截拖放事件 |
+| `main_window.py` | 主窗口，初始化和协调各组件 |
+| `signal_manager.py` | 信号管理器，集中管理所有信号连接（声明式 + 中转） |
+| `layout_config.py` | 布局配置数据类，从 JSON 加载布局 |
+| `layout_engine.py` | 布局应用引擎，根据配置自动布局 |
+| `auto_menu.py` | 菜单自动生成，从注册表构建视图菜单 |
 | `toolbar.py` | 工具栏，播放控制（播放/暂停、跳转、倍速、帧号显示、AB 循环） |
 | `menubar.py` | 菜单栏，文件/视图/帮助菜单 |
 | `statusbar.py` | 状态栏，三段式显示（状态/视频参数/当前时间/总时间） |
 | `drag_overlay.py` | 拖放覆盖层，全局文件拖放、类型识别、视觉反馈 |
+| `cards/base_card.py` | BaseCard 基类，所有卡片的统一父类，提供生命周期钩子 |
+| `cards/registry.py` | 卡片注册表，@register_card 装饰器自动注册 |
 | `cards/player_card.py` | 视频播放卡片，QMediaPlayer + 字幕叠加 + AB 循环 |
 | `cards/timeline_card.py` | 时间轴列表卡片，显示已打轴的字幕条（编号 + 起止时间 + 查看/编辑/锁定） |
 | `cards/waveform_card.py` | 音频波形卡片，波形显示 + 包络线 + AB 循环区域 + 滚轮缩放 + Shift 拖动 + 打轴功能 |
@@ -143,49 +149,39 @@ class VideoInfo:
 ### 4.1 卡片间通信原则
 
 - 卡片间通过 **信号 (Signal)** 通信，不直接引用
-- MainWindow 负责连接各卡片的信号
+- **SignalManager** 集中管理所有信号连接
+- 卡片通过 `listens_to()` 声明订阅的信号
 - 信号命名：小写 + 下划线，描述事件
 
-### 4.2 信号流
+### 4.2 信号架构
 
 ```
-ToolBar                          MainWindow                         PlayerCard
-  │ play_clicked ──────────────→ play_pause ───────────────────→ QMediaPlayer
-  │ skip_forward ──────────────→ _on_skip_forward ──────────────→ set_position
-  │ skip_backward ─────────────→ _on_skip_backward ─────────────→ set_position
-  │ rate_changed ──────────────→ set_playback_rate ─────────────→ QMediaPlayer
-  │ ab_loop_a_clicked ─────────→ _on_ab_loop_set_a ────────────→ set_ab_loop_a
-  │ ab_loop_b_clicked ─────────→ _on_ab_loop_set_b ────────────→ set_ab_loop_b
-  │ ab_loop_clear_clicked ─────→ _on_ab_loop_clear ────────────→ clear_ab_loop
-  │ ←───────────────────────── update_position ←──────────────── position_changed
-  │ ←───────────────────────── set_duration ←─────────────────── duration_changed
-  │ ←───────────────────────── set_playing ←──────────────────── playback_state_changed
-  │ ←───────────────────── update_ab_loop_state ←─────────────── ab_loop_changed
-                              │
-                              ├──→ WaveformCard.update_position
-                              ├──→ WaveformCard.set_duration
-                              ├──→ WaveformCard.set_ab_loop_region
-                              ├──→ TimelineCard.set_duration
-                              ├──→ StatusBar.set_time (位置变化)
-                              ├──→ StatusBar.set_status (时长变化)
-                              └──→ StatusBar.set_video_info (FFmpeg 解析)
+┌─────────────────────────────────────────────────────────────────┐
+│                        SignalManager                            │
+│                                                                 │
+│  卡片声明 listens_to():                                         │
+│    WaveformCard ← player.position_changed/duration_changed     │
+│    TimelineCard ← player.duration_changed                      │
+│    TranslateCard ← timeline.subtitle_selected                  │
+│    PlayerCard ← waveform.position_clicked                      │
+│                ← timeline.jump_to_position                     │
+│                                                                 │
+│  中转处理 (_get_relay_handlers):                                │
+│    player.video_opened → MainWindow._on_video_opened           │
+│    player.ab_loop_changed → MainWindow._on_ab_loop_changed     │
+│    waveform.subtitle_created → MainWindow._on_subtitle_created │
+│    timeline.subtitle_selected → MainWindow._on_subtitle_selected│
+│    translate.jump_to_next/prev → MainWindow._on_jump_to_*      │
+│                                                                 │
+│  动态订阅 (状态栏等):                                            │
+│    player.position_changed → StatusBar.set_time                │
+│    player.duration_changed → StatusBar.set_status              │
+└─────────────────────────────────────────────────────────────────┘
 
-WaveformCard
-  │ position_clicked ──────────→ PlayerCard.set_position
-  │ subtitle_created ──────────→ MainWindow._on_subtitle_created → TimelineCard.add_subtitle
-  │ subtitle_edited ───────────→ TimelineCard.apply_subtitle_edit
-
-TimelineCard
-  │ subtitle_selected ─────────→ TranslateCard.show_subtitle
-  │ subtitle_changed ───────────→ MainWindow._sync_subtitle_overlay → WaveformCard.update_subtitle_overlay_from_data
-  │ jump_to_position ──────────→ PlayerCard.set_position
-  │ edit_subtitle_requested ───→ WaveformCard.enter_edit_mode
-
-TranslateCard
-  │ text_saved(col, start_ms, text) ──→ TimelineCard.set_subtitle_text
-  │ jump_to_next(col, start_ms) ──────→ MainWindow._on_jump_to_next
-  │ jump_to_prev(col, start_ms) ──────→ MainWindow._on_jump_to_prev
-  │ editing_subtitle(col, start_ms) ──→ TimelineCard.highlight_subtitle
+ToolBar (手动连接):
+  play_clicked → PlayerCard.play_pause
+  rate_changed → PlayerCard.set_playback_rate
+  ab_loop_* → MainWindow._on_ab_loop_*
 ```
 
 ### 4.3 AB 循环流程
@@ -200,30 +196,48 @@ TranslateCard
 
 ## 五、布局系统
 
-### 5.1 默认布局
+### 5.1 配置驱动布局
 
-比例：左 39% 右 61%，上 56% 下 44%，窗口缩放时保持比例不变。
+布局配置存储在 `resources/layouts/default.json`，使用 `LayoutConfig` 数据类加载：
 
+```json
+{
+  "name": "默认布局",
+  "description": "左 39% 右 61%，上 56% 下 44%",
+  "version": 1,
+  "columns": [
+    {
+      "width_ratio": 0.39,
+      "rows": [
+        { "card": "player", "height_ratio": 0.56 },
+        { "card": "waveform", "height_ratio": 0.44 }
+      ]
+    },
+    {
+      "width_ratio": 0.61,
+      "rows": [
+        { "card": "timeline", "height_ratio": 0.56 },
+        { "card": "translate", "height_ratio": 0.44 }
+      ]
+    }
+  ]
+}
 ```
-┌──────────────────┬───────────────────────────────┐
-│                  │                               │
-│  Player          │  Timeline (打轴)              │
-│                  │                               │
-├──────────────────┼───────────────────────────────┤
-│  Waveform        │  Translation (翻译)           │
-│                  │                               │
-└──────────────────┴───────────────────────────────┘
-```
 
-布局通过 `addDockWidget` 显式指定左右区域，`splitDockWidget` 在区域内垂直分割，`resizeDocks` 动态计算尺寸。`resizeEvent` 中按固定比例维护。
+### 5.2 布局引擎
 
-### 5.2 布局持久化
+`layout_engine.py` 提供 `apply_layout()` 函数，根据配置自动布局卡片：
+- 移除所有现有卡片
+- 按列布局，支持多列
+- 按比例调整尺寸
+
+### 5.3 布局持久化
 
 使用 `QSettings` 保存和恢复布局：
 - 保存时机：`closeEvent`
 - 恢复时机：`__init__`（开发阶段跳过）
 
-### 5.3 布局调试
+### 5.4 布局调试
 
 菜单 **视图 > 布局 > 打印当前布局** 可输出各卡片的区域、尺寸、位置到控制台。
 

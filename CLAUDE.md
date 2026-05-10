@@ -8,7 +8,7 @@
 
 Chestnut Studio 是一款面向字幕组/烤肉组的现代化字幕工具，基于 PySide6 开发。
 
-**当前进度**: Phase 4 完成（翻译面板 + 字幕导入导出）
+**当前进度**: Phase 6 完成（可扩展架构重构）
 
 **核心特性**: 
 - 音频波形区：用户通过快捷键打轴（标记开始/结束点）
@@ -36,7 +36,8 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 ### 卡片间通信
 
 - 卡片间通过 **Signal** 通信，不直接引用
-- MainWindow 负责连接各卡片的信号
+- **SignalManager** 负责连接所有信号（声明式 + 中转）
+- 卡片通过 `listens_to()` 声明订阅的信号
 - 错误做法: `self.player_card._player.setPosition(1000)`
 - 正确做法: `self.player_card.position_changed.connect(...)`
 
@@ -46,17 +47,22 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 
 | 文件 | 职责 |
 |------|------|
-| `chestnut_studio/ui/main_window.py` | 主窗口，信号连接中心 |
-| `chestnut_studio/ui/drag_overlay.py` | 全局拖放覆盖层，统一处理文件导入 |
-| `chestnut_studio/ui/cards/player_card.py` | 视频播放 + AB 循环 |
-| `chestnut_studio/ui/cards/waveform_card.py` | 音频波形显示 + 打轴功能 |
-| `chestnut_studio/ui/cards/timeline_card.py` | 时间轴列表，显示已打轴的字幕 |
-| `chestnut_studio/ui/cards/translate_card.py` | 翻译面板，填写源语言和目标语言 |
-| `chestnut_studio/ui/toolbar.py` | 工具栏按钮 |
-| `chestnut_studio/core/audio.py` | 音频处理函数 |
-| `chestnut_studio/core/ffmpeg.py` | FFmpeg 封装 |
-| `chestnut_studio/core/track_config.py` | 轨道颜色、数量等集中配置（默认 8 轨道） |
-| `chestnut_studio/utils/version.py` | 版本号工具，从 pyproject.toml 单源读取 |
+| `ui/main_window.py` | 主窗口，初始化和协调 |
+| `ui/signal_manager.py` | 信号管理器，集中管理所有信号连接 |
+| `ui/layout_config.py` | 布局配置数据类 |
+| `ui/layout_engine.py` | 布局应用引擎 |
+| `ui/auto_menu.py` | 菜单自动生成 |
+| `ui/cards/base_card.py` | BaseCard 基类，生命周期钩子 |
+| `ui/cards/registry.py` | 卡片注册表，@register_card 装饰器 |
+| `ui/cards/player_card.py` | 视频播放 + AB 循环 |
+| `ui/cards/waveform_card.py` | 音频波形显示 + 打轴功能 |
+| `ui/cards/timeline_card.py` | 时间轴列表，显示已打轴的字幕 |
+| `ui/cards/translate_card.py` | 翻译面板，填写源语言和目标语言 |
+| `ui/toolbar.py` | 工具栏按钮 |
+| `core/audio.py` | 音频处理函数 |
+| `core/ffmpeg.py` | FFmpeg 封装 |
+| `core/track_config.py` | 轨道颜色、数量等集中配置（默认 8 轨道） |
+| `utils/version.py` | 版本号工具，从 pyproject.toml 单源读取 |
 
 ---
 
@@ -80,39 +86,32 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 ## 信号连接图
 
 ```
-ToolBar                          MainWindow                         PlayerCard
-  │ play_clicked ──────────────→ play_pause ───────────────────→ QMediaPlayer
-  │ skip_forward ──────────────→ _on_skip_forward ──────────────→ set_position
-  │ ab_loop_a_clicked ─────────→ _on_ab_loop_set_a ────────────→ set_ab_loop_a
-  │ ab_loop_b_clicked ─────────→ _on_ab_loop_set_b ────────────→ set_ab_loop_b
-  │ ab_loop_clear_clicked ─────→ _on_ab_loop_clear ────────────→ clear_ab_loop
-  │ ←───────────────────────── update_position ←──────────────── position_changed
-  │ ←───────────────────────── set_duration ←─────────────────── duration_changed
-  │ ←───────────────────── update_ab_loop_state ←─────────────── ab_loop_changed
-                              │
-                              ├──→ WaveformCard.update_position
-                              ├──→ WaveformCard.set_ab_loop_region
-                              ├──→ TimelineCard.set_player_position
-                              └──→ StatusBar.set_time
+┌─────────────────────────────────────────────────────────────────┐
+│                        SignalManager                            │
+│                                                                 │
+│  卡片声明 listens_to():                                         │
+│    WaveformCard ← player.position_changed/duration_changed     │
+│    TimelineCard ← player.duration_changed                      │
+│    TranslateCard ← timeline.subtitle_selected                  │
+│    PlayerCard ← waveform.position_clicked                      │
+│                ← timeline.jump_to_position                     │
+│                                                                 │
+│  中转处理 (_get_relay_handlers):                                │
+│    player.video_opened → MainWindow._on_video_opened           │
+│    player.ab_loop_changed → MainWindow._on_ab_loop_changed     │
+│    waveform.subtitle_created → MainWindow._on_subtitle_created │
+│    timeline.subtitle_selected → MainWindow._on_subtitle_selected│
+│    translate.jump_to_next/prev → MainWindow._on_jump_to_*      │
+│                                                                 │
+│  动态订阅 (状态栏等):                                            │
+│    player.position_changed → StatusBar.set_time                │
+│    player.duration_changed → StatusBar.set_status              │
+└─────────────────────────────────────────────────────────────────┘
 
-WaveformCard
-  │ position_clicked ──────────→ PlayerCard.set_position
-  │ subtitle_created ──────────→ TimelineCard.add_subtitle
-
-TimelineCard
-  │ subtitle_selected(col, start_ms) ──→ TranslateCard.show_subtitle
-  │ subtitle_changed ──────────→ WaveformCard.refresh_overlay
-  │ jump_to_position ──────────→ PlayerCard.set_position
-
-TranslateCard
-  │ text_saved(col, start_ms, text) ──→ TimelineCard.set_subtitle_text
-  │ jump_to_next(col, start_ms) ──────→ MainWindow._on_jump_to_next
-  │ jump_to_prev(col, start_ms) ──────→ MainWindow._on_jump_to_prev
-  │ editing_subtitle(col, start_ms) ──→ TimelineCard.highlight_subtitle
-
-DragOverlay
-  │ video_dropped(path) ─────────────→ MainWindow._open_video_file
-  │ subtitle_dropped(path) ──────────→ MainWindow._import_subtitle_file
+ToolBar (手动连接):
+  play_clicked → PlayerCard.play_pause
+  rate_changed → PlayerCard.set_playback_rate
+  ab_loop_* → MainWindow._on_ab_loop_*
 ```
 
 ---
