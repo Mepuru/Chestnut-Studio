@@ -81,7 +81,7 @@ docs/
 | [信号管理器](ui/signal_manager.md) | SignalManager 声明式信号系统 |
 | [信号装饰器](ui/signal_decorator.md) | @subscribe/@relay 装饰器 |
 | [布局配置](ui/layout_config.md) | LayoutConfig 数据类、JSON 配置加载 |
-| [布局引擎](ui/layout_engine.py) | apply_layout() 布局应用引擎 |
+| [布局引擎](ui/layout_engine.md) | apply_layout() 布局应用引擎 |
 | [菜单自动生成](ui/auto_menu.md) | build_card_submenu/build_layout_submenu |
 | [工具栏](ui/toolbar.md) | 播放控制、AB 循环、倍速选择 |
 | [菜单栏](ui/menubar.md) | 文件/视图/帮助菜单 |
