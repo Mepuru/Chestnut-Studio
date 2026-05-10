@@ -1,0 +1,36 @@
+status: proposed
+title: 可扩展架构方案
+created: 2026-05-10
+updated: 2026-05-10
+author: AI Agent (OpenCode)
+
+# Issue 概述
+
+针对卡片数量增长的可扩展性问题，提出系统性的架构改进方案。
+
+核心思路：让 MainWindow 只做编排，不做具体知识。
+
+# 文档清单
+
+| 文档 | 说明 |
+|------|------|
+| architecture_scalability.md | 总览：问题分析、目标架构、实施计划、工作量估算 |
+| base_card.md | BaseCard 基类：生命周期钩子、状态持久化 |
+| card_registry.md | 卡片注册表：装饰器自动发现、消除硬编码 |
+| declarative_signals.md | 声明式信号：卡片自描述订阅、自动连接 |
+| layout_system.md | 配置驱动布局：JSON 替代硬编码、多套方案支持 |
+| auto_menu.md | 菜单自动生成：注册表驱动、零维护成本 |
+
+# 交付检查清单
+
+- [ ] BaseCard 基类实现
+- [ ] 卡片注册表实现
+- [ ] 4 张现有卡片迁移到 BaseCard
+- [ ] 声明式信号系统实现
+- [ ] 布局引擎实现
+- [ ] 默认布局 JSON 配置
+- [ ] 菜单自动生成实现
+- [ ] MainWindow 简化（~100 行）
+- [ ] 所有现有测试通过
+- [ ] 新增模块测试
+- [ ] 文档合并到 docs/
