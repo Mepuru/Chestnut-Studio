@@ -11,7 +11,7 @@
 |------|------|------|
 | [FFmpeg 封装](ffmpeg.md) | `ffmpeg.py` | 视频信息解析、音轨提取 |
 | [音频处理](audio.md) | `audio.py` | 波形加载、包络计算、人声增强 |
-| [字幕数据结构](subtitle.md) | `subtitle.py` | SubtitleDict 定义、撤销重做、叠轴检测 |
+| [字幕数据结构](subtitle.md) | `subtitle.py` | SubtitleEntry 定义、字幕操作、叠轴检测 |
 | [字幕导入导出](subtitle_io.md) | `subtitle_io.py` | SRT/ASS/VTT/LRC 格式支持 |
 | [轨道配置](track_config.md) | `track_config.py` | 轨道颜色、数量等集中配置 |
 

@@ -74,7 +74,7 @@
 |------|------|
 | `ffmpeg.py` | FFmpeg 封装，视频信息解析、音轨提取 |
 | `audio.py` | 音频数据处理，波形加载、包络计算、人声增强 |
-| `subtitle.py` | 字幕数据结构，SubtitleDict 定义、撤销重做 |
+| `subtitle.py` | 字幕数据结构，SubtitleEntry 定义、字幕操作 |
 | `subtitle_io.py` | 字幕导入导出，SRT/ASS/VTT/LRC 格式 |
 
 **详细文档：**
@@ -91,6 +91,7 @@
 | 模块 | 职责 |
 |------|------|
 | `time_utils.py` | 时间格式转换，毫秒与各格式互转 |
+| `version.py` | 版本号工具，从 pyproject.toml 单源读取 |
 
 **详细文档：**
 - [工具层概述](utils/README.md)
@@ -103,22 +104,23 @@
 ### 3.1 字幕字典 (SubtitleDict)
 
 ```python
+from chestnut_studio.core.subtitle import SubtitleEntry, SubtitleDict
+
 # 字幕字典类型
-# key: 列号 (1-4)
-# value: {start_ms: [duration_ms, "text"], ...}
-SubtitleDict = dict[int, dict[int, list]]
+# key: 列号 (1-8)
+# value: {start_ms: SubtitleEntry(duration_ms, text), ...}
+SubtitleDict = dict[int, dict[int, SubtitleEntry]]
 ```
 
 **示例：**
 ```python
 {
     1: {  # 第 1 列（原文）
-        1000: [2000, "你好"],
-        4000: [1500, "世界"],
+        1000: SubtitleEntry(2000, "你好"),
+        4000: SubtitleEntry(1500, "世界"),
     },
     2: {},  # 第 2 列（翻译）
-    3: {},
-    4: {},
+    ...
 }
 ```
 

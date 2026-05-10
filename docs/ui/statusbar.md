@@ -16,13 +16,14 @@
 ## 布局
 
 ```
-[就绪]  [1920×1080 · 60fps · 2000kbps]  [01:32 / 05:30]
- 左1            中2（拉伸）                  右1
+[就绪]  [1920×1080 · 60fps · 2000kbps]  [01:32 / 05:30]  [v1.1.1]
+ 左1            中2（拉伸）                  右1           右侧永久
 ```
 
 - 左侧：状态信息（就绪、加载中、错误等）
 - 中间：视频参数（分辨率、帧率、码率）
 - 右侧：时间显示（当前时间 / 总时长）
+- 右侧永久：版本号（从 `pyproject.toml` 读取，灰色小字）
 
 ---
 
@@ -164,3 +165,4 @@ self.player_card.video_opened.connect(
 
 - PySide6: `QStatusBar`, `QLabel`
 - chestnut_studio.utils.time_utils: `split_time`
+- chestnut_studio.utils.version: `get_version`

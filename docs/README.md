@@ -61,7 +61,7 @@ docs/
 | [核心层概述](core/README.md) | 核心层整体介绍、依赖关系、设计原则 |
 | [FFmpeg 封装](core/ffmpeg.md) | 视频信息解析、音轨提取 |
 | [音频处理](core/audio.md) | 波形加载、包络计算、人声增强 |
-| [字幕数据结构](core/subtitle.md) | SubtitleDict 定义、撤销重做、叠轴检测 |
+| [字幕数据结构](core/subtitle.md) | SubtitleEntry 定义、字幕操作、叠轴检测 |
 | [字幕导入导出](core/subtitle_io.md) | SRT/ASS/VTT/LRC 格式支持 |
 | [轨道配置](core/track_config.md) | 轨道颜色、数量等集中配置 |
 

@@ -170,7 +170,8 @@ ChestnutStudio/
 │   │       └── edit_subtitle_dialog.py  # 字幕编辑对话框
 │   ├── utils/                     # 工具函数
 │   │   ├── __init__.py
-│   │   └── time_utils.py          # 时间格式转换
+│   │   ├── time_utils.py          # 时间格式转换
+│   │   └── version.py             # 版本号工具（从 pyproject.toml 读取）
 │   └── resources/                 # 资源文件
 │       ├── icon.png               # 应用图标
 │       ├── style.qss              # 暗色主题样式表

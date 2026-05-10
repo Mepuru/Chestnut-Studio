@@ -55,7 +55,8 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 | `chestnut_studio/ui/toolbar.py` | 工具栏按钮 |
 | `chestnut_studio/core/audio.py` | 音频处理函数 |
 | `chestnut_studio/core/ffmpeg.py` | FFmpeg 封装 |
-| `chestnut_studio/core/track_config.py` | 轨道颜色、数量等集中配置 |
+| `chestnut_studio/core/track_config.py` | 轨道颜色、数量等集中配置（默认 8 轨道） |
+| `chestnut_studio/utils/version.py` | 版本号工具，从 pyproject.toml 单源读取 |
 
 ---
 
@@ -140,3 +141,4 @@ uv run ruff format chestnut_studio/
 2. **docs/ 目录的文档要保持面向外部读者** - 不要写"我记得..."
 3. **新增功能要同步更新文档** - 特别是 docs/ui.md 和 docs/core.md
 4. **全局快捷键在 MainWindow.keyPressEvent 中处理** - 确保任何卡片获得焦点都能响应
+5. **版本号唯一来源是 pyproject.toml** - 改版本只需改 `pyproject.toml` + `uv lock`，不要在代码中硬编码

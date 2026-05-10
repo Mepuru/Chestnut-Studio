@@ -44,7 +44,7 @@
 ### DEFAULT_TRACK_COUNT
 
 ```python
-DEFAULT_TRACK_COUNT = 4
+DEFAULT_TRACK_COUNT = 8
 ```
 
 默认初始显示的轨道数。即使数据中没有这么多轨道，UI 也会显示至少这么多轨道选项。

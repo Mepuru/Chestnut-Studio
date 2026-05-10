@@ -10,6 +10,7 @@
 | 模块 | 文件 | 职责 |
 |------|------|------|
 | [时间格式转换](time_utils.md) | `time_utils.py` | 毫秒与各格式互转 |
+| 版本号工具 | `version.py` | 从 pyproject.toml 单源读取版本号 |
 
 ---
 

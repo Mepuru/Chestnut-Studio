@@ -31,14 +31,14 @@ from chestnut_studio.core.subtitle_io import SubtitleIO
 
 ```python
 @staticmethod
-def import_srt(path: str) -> dict[int, list]:
+def import_srt(path: str) -> dict[int, SubtitleEntry]:
     """导入 SRT 文件
-    
+
     Args:
         path: SRT 文件路径
-        
+
     Returns:
-        {start_ms: [duration_ms, "text"], ...}
+        {start_ms: SubtitleEntry(duration_ms, text), ...}
     """
 ```
 
@@ -46,7 +46,7 @@ def import_srt(path: str) -> dict[int, list]:
 
 ```python
 subs = SubtitleIO.import_srt("subtitle.srt")
-# {1000: [2000, "你好"], 4000: [1500, "世界"]}
+# {1000: SubtitleEntry(2000, "你好"), 4000: SubtitleEntry(1500, "世界")}
 ```
 
 ### import_ass
@@ -55,14 +55,14 @@ subs = SubtitleIO.import_srt("subtitle.srt")
 
 ```python
 @staticmethod
-def import_ass(path: str) -> dict[int, list]:
+def import_ass(path: str) -> dict[int, SubtitleEntry]:
     """导入 ASS 文件
-    
+
     Args:
         path: ASS 文件路径
-        
+
     Returns:
-        {start_ms: [duration_ms, "text"], ...}
+        {start_ms: SubtitleEntry(duration_ms, text), ...}
     """
 ```
 
@@ -84,16 +84,16 @@ subs = SubtitleIO.import_ass("subtitle.ass")
 ```python
 @staticmethod
 def export_srt(
-    path: str, 
-    data: dict[int, list], 
-    video_start: int = 0, 
+    path: str,
+    data: dict[int, SubtitleEntry],
+    video_start: int = 0,
     sub_start: int = 0
 ) -> None:
     """导出 SRT 文件
-    
+
     Args:
         path: 输出路径
-        data: 字幕数据 {start_ms: [duration_ms, "text"]}
+        data: 字幕数据 {start_ms: SubtitleEntry(duration_ms, text)}
         video_start: 视频起始ms（时间偏移）
         sub_start: 字幕偏移ms
     """
@@ -102,7 +102,9 @@ def export_srt(
 **用法示例：**
 
 ```python
-subs = {1000: [2000, "你好"], 4000: [1500, "世界"]}
+from chestnut_studio.core.subtitle import SubtitleEntry
+
+subs = {1000: SubtitleEntry(2000, "你好"), 4000: SubtitleEntry(1500, "世界")}
 SubtitleIO.export_srt("output.srt", subs, video_start=0, sub_start=0)
 ```
 
@@ -113,17 +115,17 @@ SubtitleIO.export_srt("output.srt", subs, video_start=0, sub_start=0)
 ```python
 @staticmethod
 def export_ass(
-    path: str, 
-    tracks: dict[int, dict[int, list]], 
+    path: str,
+    tracks: dict[int, dict[int, SubtitleEntry]],
     track_styles: dict[int, str] = None,
     fontname: str = "Arial",
     fontsize: int = 48
 ) -> None:
     """导出多轨道 ASS 文件
-    
+
     Args:
         path: 输出路径
-        tracks: 多轨道数据 {col: {start_ms: [duration_ms, "text"]}}
+        tracks: 多轨道数据 {col: {start_ms: SubtitleEntry(duration_ms, text)}}
         track_styles: 轨道样式名 {col: "样式名"}
         fontname: 字体名称
         fontsize: 字体大小

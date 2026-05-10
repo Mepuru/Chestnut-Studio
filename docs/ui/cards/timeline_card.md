@@ -209,8 +209,8 @@ timeline_card.redo()
 ### 撤销/重做
 
 - 撤销栈最多 100 步
-- 使用 `copy.deepcopy` 隔离状态
-- 每次操作前调用 `push_undo()`
+- 使用浅拷贝隔离状态（SubtitleEntry 是不可变 NamedTuple）
+- 每次操作前调用 `_push_undo()` 保存快照
 
 ---
 
