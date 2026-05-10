@@ -49,7 +49,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name=f"Chestnut Studio {VERSION}",
+    name=f"Chestnut-Studio-v{VERSION}",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
