@@ -362,6 +362,17 @@ class WaveformCard(QDockWidget):
         # 字幕条数据 {start_ms: end_ms}
         self._subtitle_regions: dict[int, int] = {}
 
+        # 完整字幕数据（由 update_subtitle_overlay_from_data 设置）
+        self._subtitle_full_data: dict = {}
+
+        # 缓存轨道覆盖层颜色（避免每次重绘时重复创建 QColor）
+        self._track_overlay_colors: list[tuple[QColor, QColor]] = []
+        for hex_color in TRACK_COLORS_HEX:
+            border = QColor(hex_color)
+            fill = QColor(hex_color)
+            fill.setAlpha(40)
+            self._track_overlay_colors.append((border, fill))
+
         # 帧率
         self._fps = 30.0
 
@@ -794,7 +805,7 @@ class WaveformCard(QDockWidget):
         regions = {}
         for col, sub_dict in subtitle_data.items():
             for start_ms, subtitle in sub_dict.items():
-                duration_ms = subtitle[0]
+                duration_ms = subtitle.duration_ms
                 end_ms = start_ms + duration_ms
                 # 如果该区域已存在，取更大范围
                 if start_ms not in regions or end_ms > regions[start_ms]:
@@ -1239,12 +1250,12 @@ class WaveformCard(QDockWidget):
         self._subtitle_items.clear()
 
         # 绘制新的字幕条（按轨道绘制，后绘制的在上层）
-        if hasattr(self, "_subtitle_full_data") and self._subtitle_full_data:
+        if self._subtitle_full_data:
             # 按轨道顺序绘制，轨道号大的在下层
             for col in sorted(self._subtitle_full_data.keys(), reverse=True):
                 sub_dict = self._subtitle_full_data[col]
                 for start_ms, subtitle in sub_dict.items():
-                    duration_ms = subtitle[0]
+                    duration_ms = subtitle.duration_ms
                     end_ms = start_ms + duration_ms
                     self._draw_subtitle_region(start_ms, end_ms, col)
         else:
@@ -1267,14 +1278,6 @@ class WaveformCard(QDockWidget):
         # 判断是否是正在编辑的字幕条
         is_editing = self._edit_mode and start_ms == self._edit_old_start
 
-        # 轨道颜色方案（不同轨道颜色不同）
-        track_colors = []
-        for hex_color in TRACK_COLORS_HEX:
-            border = QColor(hex_color)
-            fill = QColor(hex_color)
-            fill.setAlpha(40)
-            track_colors.append((border, fill))
-
         # 根据状态选择颜色
         duration = end_ms - start_ms
         if is_editing:
@@ -1286,9 +1289,9 @@ class WaveformCard(QDockWidget):
             fill_color = QColor(178, 34, 34, 50)
             border_color = QColor(178, 34, 34, 100)
         else:
-            # 正常：使用轨道颜色
-            col_idx = max(0, min(col - 1, len(track_colors) - 1))
-            border_color, fill_color = track_colors[col_idx]
+            # 正常：使用缓存的轨道颜色
+            col_idx = max(0, min(col - 1, len(self._track_overlay_colors) - 1))
+            border_color, fill_color = self._track_overlay_colors[col_idx]
 
         # 创建半透明色块
         x = [start_ms, end_ms, end_ms, start_ms, start_ms]

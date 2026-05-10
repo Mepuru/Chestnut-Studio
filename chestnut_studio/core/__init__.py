@@ -2,7 +2,7 @@
 
 from chestnut_studio.core.audio import load_waveform, smooth_waveform
 from chestnut_studio.core.ffmpeg import FFmpeg, FFmpegError, VideoInfo
-from chestnut_studio.core.subtitle import SubtitleDict, SubtitleManager
+from chestnut_studio.core.subtitle import SubtitleDict, SubtitleEntry, SubtitleManager
 from chestnut_studio.core.subtitle_io import SubtitleIO
 from chestnut_studio.core.track_config import (
     DEFAULT_TRACK_COUNT,
@@ -19,6 +19,7 @@ __all__ = [
     "VideoInfo",
     "SubtitleIO",
     "SubtitleManager",
+    "SubtitleEntry",
     "SubtitleDict",
     "load_waveform",
     "smooth_waveform",

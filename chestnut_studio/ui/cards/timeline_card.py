@@ -8,8 +8,6 @@
 - 与音频波形区联动
 """
 
-import copy
-
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
@@ -26,7 +24,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from chestnut_studio.core.subtitle import SubtitleManager
+from chestnut_studio.core.subtitle import SubtitleEntry, SubtitleManager
 from chestnut_studio.core.track_config import (
     TRACK_COLORS_HEX,
     get_effective_track_count,
@@ -128,6 +126,14 @@ class TimelineCard(QDockWidget):
 
         # 轨道筛选 (-1 = 全部，1-4 = 指定轨道)
         self._filter_track: int = -1
+
+        # 缓存轨道颜色（避免每次表格重建时重复创建 QColor）
+        self._track_colors_fg = [QColor(c) for c in TRACK_COLORS_HEX]
+        self._track_colors_bg = []
+        for c in TRACK_COLORS_HEX:
+            qc = QColor(c)
+            qc.setAlpha(30)
+            self._track_colors_bg.append(qc)
 
         # 撤销/重做后端
         # 栈保存每个操作完成后状态快照，point 指向当前状态
@@ -349,10 +355,7 @@ class TimelineCard(QDockWidget):
 
             is_locked = (col, start) in self._locked_states
 
-            # 轨道颜色
-            track_colors_fg = [QColor(c) for c in TRACK_COLORS_HEX]
-
-            # # 列（编号）
+            # 列（编号）
             num_item = QTableWidgetItem(str(idx + 1))
             num_item.setTextAlignment(Qt.AlignCenter)
             num_item.setData(Qt.UserRole, (col, start))
@@ -362,8 +365,8 @@ class TimelineCard(QDockWidget):
             track_item = QTableWidgetItem(f"轨道 {col}")
             track_item.setTextAlignment(Qt.AlignCenter)
             track_item.setData(Qt.UserRole + 1, col)
-            col_idx = max(0, min(col - 1, len(track_colors_fg) - 1))
-            track_item.setForeground(track_colors_fg[col_idx])
+            col_idx = max(0, min(col - 1, len(self._track_colors_fg) - 1))
+            track_item.setForeground(self._track_colors_fg[col_idx])
             self._table.setItem(row, 1, track_item)
 
             # 开始时间
@@ -403,21 +406,14 @@ class TimelineCard(QDockWidget):
             op_widget = self._create_operation_buttons(col, start, is_locked)
             self._table.setCellWidget(row, 8, op_widget)
 
-            # 轨道背景颜色方案
-            track_colors_bg = []
-            for c in TRACK_COLORS_HEX:
-                qc = QColor(c)
-                qc.setAlpha(30)
-                track_colors_bg.append(qc)
-
             # 设置行颜色
             if is_locked:
                 bg_color = QColor(255, 255, 255, 15)  # 锁定时微亮
             elif duration < 100 or duration > 8000:
                 bg_color = QColor(178, 34, 34, 40)  # 异常：红色
             else:
-                col_idx = max(0, min(col - 1, len(track_colors_bg) - 1))
-                bg_color = track_colors_bg[col_idx]
+                col_idx = max(0, min(col - 1, len(self._track_colors_bg) - 1))
+                bg_color = self._track_colors_bg[col_idx]
 
             for c in range(9):
                 item = self._table.item(row, c)
@@ -506,7 +502,7 @@ class TimelineCard(QDockWidget):
         if subtitle is None:
             return
 
-        duration = subtitle[0]
+        duration = subtitle.duration_ms
         end_ms = start_ms + duration
 
         # 发射编辑请求信号，让波形图进入编辑模式
@@ -697,9 +693,11 @@ class TimelineCard(QDockWidget):
 
     def _push_undo(self):
         """保存当前状态到撤销栈（在操作完成后调用）"""
+        # SubtitleEntry 是不可变的 NamedTuple，浅拷贝内层 dict 即可
+        data_snapshot = {col: dict(entries) for col, entries in self._subtitle_mgr.data.items()}
         state = (
-            copy.deepcopy(self._subtitle_mgr.data),
-            copy.deepcopy(self._locked_states),
+            data_snapshot,
+            self._locked_states.copy(),  # set of tuple，浅拷贝足够
         )
         # 截断当前位置之后的栈（丢弃重做历史）
         self._backend = self._backend[: self._backend_point + 1]
@@ -715,9 +713,10 @@ class TimelineCard(QDockWidget):
         """撤销"""
         if self._backend_point > 0:
             self._backend_point -= 1
-            data, locked = copy.deepcopy(self._backend[self._backend_point])
-            self._subtitle_mgr._data = data
-            self._locked_states = locked
+            data, locked = self._backend[self._backend_point]
+            # 恢复快照需要深拷贝，防止后续操作修改快照内容
+            self._subtitle_mgr._data = {col: dict(entries) for col, entries in data.items()}
+            self._locked_states = set(locked)
             self._update_table()
             self.subtitle_changed.emit()
 
@@ -725,9 +724,10 @@ class TimelineCard(QDockWidget):
         """重做"""
         if self._backend_point < len(self._backend) - 1:
             self._backend_point += 1
-            data, locked = copy.deepcopy(self._backend[self._backend_point])
-            self._subtitle_mgr._data = data
-            self._locked_states = locked
+            data, locked = self._backend[self._backend_point]
+            # 恢复快照需要深拷贝，防止后续操作修改快照内容
+            self._subtitle_mgr._data = {col: dict(entries) for col, entries in data.items()}
+            self._locked_states = set(locked)
             self._update_table()
             self.subtitle_changed.emit()
 
@@ -816,8 +816,8 @@ class TimelineCard(QDockWidget):
         if start_ms in self._subtitle_mgr.data[col]:
             if (col, start_ms) in self._locked_states:
                 return  # 锁定状态不可编辑
-            duration = self._subtitle_mgr.data[col][start_ms][0]
-            self._subtitle_mgr.data[col][start_ms] = [duration, text]
+            duration = self._subtitle_mgr.data[col][start_ms].duration_ms
+            self._subtitle_mgr.data[col][start_ms] = SubtitleEntry(duration, text)
             # 操作完成后保存状态
             self._push_undo()
             self._update_table()

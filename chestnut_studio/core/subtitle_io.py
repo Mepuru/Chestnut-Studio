@@ -1,57 +1,20 @@
 """字幕导入/导出"""
 
-
-def ms_to_srt_time(ms: int) -> str:
-    """毫秒 → SRT 时间格式 (h:m:s,ms)"""
-    h, r = divmod(ms, 3600000)
-    m, r = divmod(r, 60000)
-    s, ms = divmod(r, 1000)
-    return f"{h}:{m:02d}:{s:02d},{ms:03d}"
-
-
-def srt_time_to_ms(t: str) -> int:
-    """SRT 时间格式 → 毫秒"""
-    t = t.replace(",", ".").replace("：", ":")
-    h, m, s = t.split(":")
-    if "." in s:
-        s, ms = s.split(".")
-        ms = ms[:3]
-    else:
-        ms = "0"
-    return int(h) * 3600000 + int(m) * 60000 + int(s) * 1000 + int(ms)
-
-
-def ms_to_ass_time(ms: int) -> str:
-    """毫秒 → ASS 时间格式 (h:mm:ss.cc)"""
-    h, r = divmod(ms, 3600000)
-    m, r = divmod(r, 60000)
-    s, ms = divmod(r, 1000)
-    cc = ms // 10  # 百分秒
-    return f"{h}:{m:02d}:{s:02d}.{cc:02d}"
-
-
-def ass_time_to_ms(t: str) -> int:
-    """ASS 时间格式 → 毫秒"""
-    t = t.strip()
-    h, m, s = t.split(":")
-    if "." in s:
-        s, cc = s.split(".")
-    else:
-        cc = "0"
-    return int(h) * 3600000 + int(m) * 60000 + int(s) * 1000 + int(cc) * 10
+from chestnut_studio.core.subtitle import SubtitleEntry
+from chestnut_studio.utils.time_utils import ass_time_to_ms, ms_to_ass_time, ms_to_srt_time, srt_time_to_ms
 
 
 class SubtitleIO:
     """字幕导入/导出"""
 
     @staticmethod
-    def import_srt(path: str) -> dict[int, list]:
+    def import_srt(path: str) -> dict[int, SubtitleEntry]:
         """导入 SRT 文件
 
         Returns:
-            {start_ms: [duration_ms, "text"], ...}
+            {start_ms: SubtitleEntry(duration_ms, text), ...}
         """
-        result = {}
+        result: dict[int, SubtitleEntry] = {}
         with open(path, encoding="utf-8") as f:
             lines = f.readlines()
 
@@ -63,19 +26,19 @@ class SubtitleIO:
                 start = srt_time_to_ms(start_str.strip())
                 end = srt_time_to_ms(end_str.strip())
                 text = lines[i + 1].strip() if i + 1 < len(lines) else ""
-                result[start] = [end - start, text]
+                result[start] = SubtitleEntry(end - start, text)
                 i += 3
             else:
                 i += 1
         return result
 
     @staticmethod
-    def export_srt(path: str, data: dict[int, list], video_start: int = 0, sub_start: int = 0):
+    def export_srt(path: str, data: dict[int, SubtitleEntry], video_start: int = 0, sub_start: int = 0):
         """导出 SRT 文件
 
         Args:
             path: 输出路径
-            data: 字幕数据 {start_ms: [duration_ms, "text"]}
+            data: 字幕数据 {start_ms: SubtitleEntry(duration_ms, text)}
             video_start: 视频起始时间 (ms)
             sub_start: 字幕起始偏移 (ms)
         """
@@ -89,30 +52,30 @@ class SubtitleIO:
                     f.write(f"{num}\n{srt_start} --> {srt_end}\n{text}\n\n")
 
     @staticmethod
-    def import_ass(path: str) -> dict[int, list]:
+    def import_ass(path: str) -> dict[int, SubtitleEntry]:
         """导入 ASS 文件（读取第一个样式的字幕，兼容旧接口）
 
         Returns:
-            {start_ms: [duration_ms, "text"], ...}
+            {start_ms: SubtitleEntry(duration_ms, text), ...}
         """
         multi_data = SubtitleIO.import_ass_multi_track(path)
         if not multi_data:
             return {}
 
         # 合并所有样式到一个字典
-        result = {}
+        result: dict[int, SubtitleEntry] = {}
         for style_data in multi_data.values():
             result.update(style_data)
         return result
 
     @staticmethod
-    def import_ass_multi_track(path: str) -> dict[str, dict[int, list]]:
+    def import_ass_multi_track(path: str) -> dict[str, dict[int, SubtitleEntry]]:
         """导入 ASS 文件（按样式分轨道）
 
         Returns:
-            {style_name: {start_ms: [duration_ms, "text"], ...}}
+            {style_name: {start_ms: SubtitleEntry(duration_ms, text), ...}}
         """
-        result: dict[str, dict[int, list]] = {}
+        result: dict[str, dict[int, SubtitleEntry]] = {}
 
         with open(path, encoding="utf-8-sig") as f:
             for line in f:
@@ -130,14 +93,14 @@ class SubtitleIO:
 
                         if style not in result:
                             result[style] = {}
-                        result[style][start] = [end - start, text]
+                        result[style][start] = SubtitleEntry(end - start, text)
 
         return result
 
     @staticmethod
     def export_ass(
         path: str,
-        tracks: dict[int, dict[int, list]],
+        tracks: dict[int, dict[int, SubtitleEntry]],
         track_styles: dict[int, str] = None,
         fontname: str = "Arial",
         fontsize: int = 20,
@@ -146,7 +109,7 @@ class SubtitleIO:
 
         Args:
             path: 输出路径
-            tracks: {col: {start_ms: [duration, text], ...}}
+            tracks: {col: {start_ms: SubtitleEntry(duration_ms, text), ...}}
             track_styles: {col: "样式名"} 默认使用 "轨道 1", "轨道 2" 等
             fontname: 字体名称
             fontsize: 字体大小
@@ -210,7 +173,7 @@ class SubtitleIO:
     @staticmethod
     def export_ass_single(
         path: str,
-        data: dict[int, list],
+        data: dict[int, SubtitleEntry],
         style_name: str = "Default",
         fontname: str = "Arial",
         fontsize: int = 20,
@@ -219,7 +182,7 @@ class SubtitleIO:
 
         Args:
             path: 输出路径
-            data: {start_ms: [duration, text]}
+            data: {start_ms: SubtitleEntry(duration_ms, text)}
             style_name: 样式名称
             fontname: 字体名称
             fontsize: 字体大小

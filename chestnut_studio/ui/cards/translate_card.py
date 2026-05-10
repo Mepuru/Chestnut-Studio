@@ -298,7 +298,7 @@ class TranslateCard(QDockWidget):
         subtitle = sub_data.get(start_ms)
 
         if subtitle and len(subtitle) >= 2:
-            text = subtitle[1]
+            text = subtitle.text
             self._text_edit.setPlainText(text)
         else:
             self._text_edit.clear()
