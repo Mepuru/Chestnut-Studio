@@ -4,6 +4,85 @@
 
 ---
 
+## v1.2.0 — 2026-05-11 — 可扩展架构重构
+
+### 重大变更
+
+- **可扩展架构重构**：实现 BaseCard 基类、卡片注册表、声明式信号系统、配置驱动布局、菜单自动生成
+- **100% 自动化信号系统**：所有组件通过 `@subscribe`/`@relay` 装饰器或 `listens_to()` 方法声明信号订阅
+- **SignalManager 独立模块**：集中管理所有信号连接，MainWindow 不再包含具体业务逻辑
+
+### 新增模块
+
+| 模块 | 文件 | 职责 |
+|------|------|------|
+| BaseCard | `ui/cards/base_card.py` | 所有卡片的基类，提供生命周期钩子和声明式信号订阅 |
+| 卡片注册表 | `ui/cards/registry.py` | @register_card 装饰器，自动发现和注册卡片 |
+| 信号管理器 | `ui/signal_manager.py` | 集中管理所有信号连接 |
+| 信号装饰器 | `ui/signal_decorator.py` | @subscribe/@relay 装饰器 |
+| 布局配置 | `ui/layout_config.py` | LayoutConfig 数据类，从 JSON 加载布局 |
+| 布局引擎 | `ui/layout_engine.py` | apply_layout() 布局应用引擎 |
+| 菜单自动生成 | `ui/auto_menu.py` | build_card_submenu/build_layout_submenu |
+
+### 新增资源
+
+- `resources/layouts/default.json` — 默认布局配置文件
+
+### 架构改进
+
+| 指标 | 改造前 | 改造后 |
+|------|--------|--------|
+| 新增卡片改动文件数 | 2-3 个 | 1 个（新文件） |
+| 新增卡片改动代码行数 | ~20 行 | 0 行 |
+| MainWindow 信号连接 | 手动连接 | 声明式自动连接 |
+| 布局配置 | 硬编码 | JSON 配置文件 |
+| 菜单维护 | 手动 | 自动生成 |
+
+### 卡片迁移
+
+所有 4 张卡片已迁移到 BaseCard：
+
+| 卡片 | card_id | default_area | default_ratio |
+|------|---------|--------------|---------------|
+| PlayerCard | `player` | LeftDockWidgetArea | 0.39 |
+| WaveformCard | `waveform` | BottomDockWidgetArea | 0.44 |
+| TimelineCard | `timeline` | RightDockWidgetArea | 0.56 |
+| TranslateCard | `translate` | BottomDockWidgetArea | 0.44 |
+
+### 信号系统
+
+**声明方式**：
+
+```python
+# 方式 1：@subscribe 装饰器
+@subscribe("player.position_changed")
+def update_position(self, ms): ...
+
+# 方式 2：listens_to() 方法
+def listens_to(self):
+    return {"player.position_changed": "update_position"}
+
+# 方式 3：@relay 装饰器（MainWindow 中转）
+@relay("player.video_opened")
+def _on_video_opened(self, path): ...
+```
+
+### 文档更新
+
+- 新增 7 个架构文档：base_card.md、registry.md、signal_manager.md、signal_decorator.md、layout_config.md、layout_engine.md、auto_menu.md
+- 更新 CLAUDE.md：信号连接图、关键路径
+- 更新 docs/architecture.md：信号架构、布局系统
+- 更新 docs/README.md：文档结构、快速导航
+- 更新所有卡片文档：QDockWidget → BaseCard
+- 更新开发指南：项目结构
+
+### 测试
+
+- 62 个测试全部通过
+- 无回归问题
+
+---
+
 ## v1.1.1 — 2026-05-10 — Phase A 性能优化 + 轨道修复
 
 ### 新增
