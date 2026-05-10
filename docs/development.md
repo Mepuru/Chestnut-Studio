@@ -10,52 +10,78 @@
 D:\ChestnutStudio\
 ├── chestnut_studio/               # 主模块
 │   ├── __init__.py
+│   ├── resources.py               # 资源路径管理
 │   ├── core/                      # 核心逻辑（无 UI 依赖）
 │   │   ├── __init__.py
 │   │   ├── ffmpeg.py              # FFmpeg 封装
 │   │   ├── audio.py               # 音频数据处理
 │   │   ├── subtitle.py            # 字幕数据结构 + 操作
-│   │   └── subtitle_io.py         # 字幕导入/导出（SRT/ASS/VTT/LRC）
+│   │   ├── subtitle_io.py         # 字幕导入/导出（SRT/ASS/VTT/LRC）
+│   │   └── track_config.py        # 轨道配置（颜色、数量）
 │   ├── ui/                        # UI 层
 │   │   ├── __init__.py
 │   │   ├── main_window.py         # QMainWindow
+│   │   ├── signal_manager.py      # 信号管理器
+│   │   ├── signal_decorator.py    # 信号装饰器
+│   │   ├── layout_config.py       # 布局配置
+│   │   ├── layout_engine.py       # 布局引擎
+│   │   ├── auto_menu.py           # 菜单自动生成
 │   │   ├── toolbar.py             # 工具栏（播放控制）
 │   │   ├── menubar.py             # 菜单栏
 │   │   ├── statusbar.py           # 状态栏
+│   │   ├── drag_overlay.py        # 拖放覆盖层
 │   │   ├── cards/                 # 卡片组件
 │   │   │   ├── __init__.py
+│   │   │   ├── base_card.py       # BaseCard 基类
+│   │   │   ├── registry.py        # 卡片注册表
 │   │   │   ├── player_card.py     # 视频播放卡片
 │   │   │   ├── waveform_card.py   # 音频波形卡片
 │   │   │   ├── timeline_card.py   # 字幕列表卡片
 │   │   │   └── translate_card.py  # 翻译面板卡片
 │   │   └── dialogs/               # 弹窗
 │   │       ├── __init__.py
-│   │       └── edit_subtitle_dialog.py  # 字幕编辑对话框
-│   ├── resources/                 # 资源文件
-│   │   ├── style.qss              # 暗色主题样式表
-│   │   └── fonts/                 # 字体（HarmonyOS Sans）
-│   └── utils/                     # 工具函数
-│       ├── __init__.py
-│       └── time_utils.py          # 时间格式转换
+│   │       ├── edit_subtitle_dialog.py  # 字幕编辑对话框
+│   │       ├── hotkey_dialog.py   # 快捷键说明对话框
+│   │       └── debug_console.py   # 调试控制台
+│   ├── utils/                     # 工具函数
+│   │   ├── __init__.py
+│   │   ├── time_utils.py          # 时间格式转换
+│   │   └── version.py             # 版本号工具
+│   └── resources/                 # 资源文件
+│       ├── icon.png               # 应用图标
+│       ├── style.qss              # 暗色主题样式表
+│       ├── fonts/                 # 字体（HarmonyOS Sans）
+│       └── layouts/               # 布局配置
+│           └── default.json       # 默认布局
 ├── docs/                          # 文档
 │   ├── README.md                  # 文档导航首页
 │   ├── architecture.md            # 架构文档
 │   ├── development.md             # 开发指南（本文件）
 │   ├── changelog.md               # 变更日志
+│   ├── ffmpeg-setup.md            # FFmpeg 安装指南
 │   ├── core/                      # 核心层模块文档
 │   │   ├── README.md              # 核心层概述
 │   │   ├── ffmpeg.md              # FFmpeg 封装
 │   │   ├── audio.md               # 音频处理
 │   │   ├── subtitle.md            # 字幕数据结构
-│   │   └── subtitle_io.md         # 字幕导入导出
+│   │   ├── subtitle_io.md         # 字幕导入导出
+│   │   └── track_config.md        # 轨道配置
 │   ├── ui/                        # UI 层模块文档
 │   │   ├── README.md              # UI 层概述
 │   │   ├── main_window.md         # 主窗口
+│   │   ├── signal_manager.md      # 信号管理器
+│   │   ├── signal_decorator.md    # 信号装饰器
+│   │   ├── layout_config.md       # 布局配置
+│   │   ├── layout_engine.md       # 布局引擎
+│   │   ├── auto_menu.md           # 菜单自动生成
 │   │   ├── toolbar.md             # 工具栏
 │   │   ├── menubar.md             # 菜单栏
 │   │   ├── statusbar.md           # 状态栏
+│   │   ├── drag_overlay.md        # 拖放覆盖层
 │   │   ├── cards/                 # 卡片组件文档
 │   │   │   ├── README.md          # 卡片组件概述
+│   │   │   ├── base_card.md       # BaseCard 基类
+│   │   │   ├── registry.md        # 卡片注册表
 │   │   │   ├── player_card.md     # 视频播放卡片
 │   │   │   ├── waveform_card.md   # 音频波形卡片
 │   │   │   ├── timeline_card.md   # 时间轴列表卡片
@@ -66,6 +92,7 @@ D:\ChestnutStudio\
 │   └── utils/                     # 工具层模块文档
 │       ├── README.md              # 工具层概述
 │       └── time_utils.md          # 时间格式转换
+├── issues/                        # Issue 跟踪
 ├── prototypes/                    # 设计文档
 │   ├── prototype.md               # 主文档
 │   ├── roadmap.md                 # 路线图
@@ -80,6 +107,7 @@ D:\ChestnutStudio\
 ├── pyproject.toml                 # 项目配置
 ├── uv.lock                        # 依赖锁定
 ├── README.md                      # 说明文档
+├── CLAUDE.md                      # AI 开发指南
 ├── .gitignore
 └── LICENSE                        # MIT 协议
 ```
