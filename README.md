@@ -155,12 +155,19 @@ ChestnutStudio/
 │   ├── ui/                        # UI 层
 │   │   ├── __init__.py
 │   │   ├── main_window.py         # 主窗口
+│   │   ├── signal_manager.py      # 信号管理器（声明式信号连接）
+│   │   ├── signal_decorator.py    # 信号装饰器（@subscribe/@relay）
+│   │   ├── layout_config.py       # 布局配置数据类
+│   │   ├── layout_engine.py       # 布局应用引擎
+│   │   ├── auto_menu.py           # 菜单自动生成
 │   │   ├── toolbar.py             # 工具栏
 │   │   ├── menubar.py             # 菜单栏
 │   │   ├── statusbar.py           # 状态栏
 │   │   ├── drag_overlay.py        # 拖放覆盖层
 │   │   ├── cards/                 # 卡片组件
 │   │   │   ├── __init__.py
+│   │   │   ├── base_card.py       # BaseCard 基类
+│   │   │   ├── registry.py        # 卡片注册表
 │   │   │   ├── player_card.py     # 视频播放卡片
 │   │   │   ├── waveform_card.py   # 音频波形卡片
 │   │   │   ├── timeline_card.py   # 打轴编辑卡片
@@ -175,7 +182,9 @@ ChestnutStudio/
 │   └── resources/                 # 资源文件
 │       ├── icon.png               # 应用图标
 │       ├── style.qss              # 暗色主题样式表
-│       └── fonts/                 # 字体（HarmonyOS Sans）
+│       ├── fonts/                 # 字体（HarmonyOS Sans）
+│       └── layouts/               # 布局配置
+│           └── default.json       # 默认布局
 ├── docs/                          # 文档
 │   ├── architecture.md            # 架构文档
 │   ├── development.md             # 开发指南
@@ -191,6 +200,7 @@ ChestnutStudio/
 │   ├── test_phase1.py             # Phase 1 测试
 │   ├── test_phase2.py             # Phase 2 测试
 │   └── test_subtitle.py           # 字幕测试
+├── issues/                        # Issue 跟踪
 ├── prototypes/                    # 设计文档
 ├── pyproject.toml                 # 项目配置
 ├── uv.lock                        # 依赖锁定
@@ -206,6 +216,7 @@ ChestnutStudio/
 - **Phase 3** - 打轴功能（音频波形打轴 + 时间轴列表 + 编辑模式）✅
 - **Phase 4** - 翻译面板（翻译卡片 + 字幕导入导出）✅
 - **Phase 5** - 打磨收尾（布局持久化 + 打包）
+- **Phase 6** - 可扩展架构（BaseCard + 注册表 + 声明式信号 + 配置驱动布局）✅
 
 详见 [roadmap.md](prototypes/roadmap.md)
 

@@ -71,6 +71,7 @@ docs/
 |------|------|
 | [UI 层概述](ui/README.md) | UI 层整体介绍、依赖关系、设计原则 |
 | [主窗口](ui/main_window.md) | MainWindow 布局管理、信号连接、全局快捷键 |
+| [信号管理器](ui/signal_manager.md) | SignalManager 声明式信号系统 |
 | [工具栏](ui/toolbar.md) | 播放控制、AB 循环、倍速选择 |
 | [菜单栏](ui/menubar.md) | 文件/视图/帮助菜单 |
 | [状态栏](ui/statusbar.md) | 三段式状态显示 |
