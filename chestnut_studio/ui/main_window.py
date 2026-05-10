@@ -1,7 +1,6 @@
 """主窗口模块"""
 
 import os
-from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QSettings, Qt
@@ -18,6 +17,7 @@ from chestnut_studio.ui.cards.translate_card import TranslateCard
 from chestnut_studio.ui.cards.waveform_card import WaveformCard
 from chestnut_studio.ui.drag_overlay import SUBTITLE_EXTENSIONS, VIDEO_EXTENSIONS, DragOverlay
 from chestnut_studio.ui.menubar import MenuBar
+from chestnut_studio.ui.signal_manager import SignalManager
 from chestnut_studio.ui.statusbar import StatusBar
 from chestnut_studio.ui.toolbar import ToolBar
 from chestnut_studio.utils.time_utils import split_time
@@ -81,6 +81,9 @@ class MainWindow(QMainWindow):
 
         # 卡片字典 {card_id: BaseCard}
         self._cards: dict[str, BaseCard] = {}
+
+        # 信号管理器
+        self._signal_manager = SignalManager(self)
 
         # 创建 UI 组件
         self._create_cards()
@@ -324,22 +327,15 @@ class MainWindow(QMainWindow):
         self._drag_overlay.video_dropped.connect(self._open_video_file)
         self._drag_overlay.subtitle_dropped.connect(self._import_subtitle_file)
 
-    def _get_special_component(self, component_id: str):
-        """获取非卡片组件（如 toolbar、statusbar）"""
-        special = {
-            "toolbar": self.toolbar,
-            "statusbar": self.status_bar,
-        }
-        return special.get(component_id)
+    def _connect_signals(self):
+        """连接所有信号（使用 SignalManager）"""
+        # 注册卡片和特殊组件
+        self._signal_manager.register_cards(self._cards)
+        self._signal_manager.register_special("toolbar", self.toolbar)
+        self._signal_manager.register_special("statusbar", self.status_bar)
 
-    def _get_relay_handlers(self) -> dict[str, Callable]:
-        """声明需要 MainWindow 中转处理的信号。
-
-        格式: "<source_card_id>.<signal_name>": handler_method
-        """
-        return {
-            "player.position_changed": self._on_position_changed,
-            "player.duration_changed": self._on_duration_changed,
+        # 注册中转处理函数
+        self._signal_manager.register_relays({
             "player.video_opened": self._on_video_opened,
             "player.ab_loop_changed": self._on_ab_loop_changed,
             "waveform.subtitle_created": self._on_subtitle_created,
@@ -348,95 +344,37 @@ class MainWindow(QMainWindow):
             "translate.text_saved": self._on_text_saved,
             "translate.jump_to_next": self._on_jump_to_next,
             "translate.jump_to_prev": self._on_jump_to_prev,
-        }
+        })
 
-    def _connect_declarative_signals(self):
-        """自动连接所有卡片声明的信号"""
-        # 获取中转处理声明
-        relay_handlers = self._get_relay_handlers()
+        # 注册状态栏动态订阅
+        self._signal_manager.register_dynamic_relay(
+            "player.position_changed", self._on_position_changed
+        )
+        self._signal_manager.register_dynamic_relay(
+            "player.duration_changed", self._on_duration_changed
+        )
 
-        # 收集所有需要连接的信号 {source_key: [handlers]}
-        signal_connections: dict[str, list] = {}
+        # 自动连接所有信号
+        self._signal_manager.connect_all()
 
-        # 1. 添加中转处理函数
-        for source_key, handler in relay_handlers.items():
-            if source_key not in signal_connections:
-                signal_connections[source_key] = []
-            signal_connections[source_key].append(handler)
-
-        # 2. 添加卡片间声明式信号
-        for card_id, card in self._cards.items():
-            subscriptions = card.listens_to()
-            for source_key, handler in subscriptions.items():
-                if source_key not in signal_connections:
-                    signal_connections[source_key] = []
-
-                # 获取处理函数
-                if callable(handler):
-                    slot = handler
-                else:
-                    slot = getattr(card, handler, None)
-                if slot is not None:
-                    signal_connections[source_key].append(slot)
-
-        # 3. 统一连接所有信号
-        for source_key, handlers in signal_connections.items():
-            parts = source_key.split(".", 1)
-            if len(parts) != 2:
-                continue
-            src_id, signal_name = parts
-
-            # 获取源卡片
-            source = self._cards.get(src_id)
-            if source is None:
-                source = self._get_special_component(src_id)
-            if source is None:
-                print(f"[Signal] 未知源: {src_id}")
-                continue
-
-            # 获取信号
-            signal = getattr(source, signal_name, None)
-            if signal is None:
-                print(f"[Signal] {src_id} 没有信号 {signal_name}")
-                continue
-
-            # 连接所有处理函数
-            for handler in handlers:
-                signal.connect(handler)
-
-    def _connect_signals(self):
-        """连接各组件间的信号"""
-        # 自动连接声明式信号
-        self._connect_declarative_signals()
-
-        # --- 工具栏 → 播放卡片（toolbar 不是 BaseCard，手动连接） ---
+        # 手动连接 toolbar 信号（toolbar 不是 BaseCard）
         self.toolbar.play_clicked.connect(self.player_card.play_pause)
         self.toolbar.rate_changed.connect(self.player_card.set_playback_rate)
-
-        # 跳转信号
         self.toolbar.skip_forward.connect(self._on_skip_forward)
         self.toolbar.skip_backward.connect(self._on_skip_backward)
-
-        # AB 循环信号
         self.toolbar.ab_loop_a_clicked.connect(self._on_ab_loop_set_a)
         self.toolbar.ab_loop_b_clicked.connect(self._on_ab_loop_set_b)
         self.toolbar.ab_loop_clear_clicked.connect(self._on_ab_loop_clear)
 
-        # --- 播放卡片 → 工具栏 ---
+        # 播放卡片 → 工具栏
         self.player_card.position_changed.connect(self.toolbar.update_position)
         self.player_card.duration_changed.connect(self.toolbar.set_duration)
         self.player_card.playback_state_changed.connect(self.toolbar.set_playing)
-
-        # --- 播放卡片 AB 循环 → 工具栏 ---
         self.player_card.ab_loop_changed.connect(self.toolbar.update_ab_loop_state)
 
-        # --- 时间轴卡片 → 波形卡片（请求编辑字幕） ---
+        # 编辑模式相关信号
         self.timeline_card.edit_subtitle_requested.connect(self.waveform_card.enter_edit_mode)
-
-        # --- 波形卡片 → 时间轴卡片（编辑完成） ---
         self.waveform_card.subtitle_edited.connect(self.timeline_card.apply_subtitle_edit)
-
-        # --- 翻译面板 → 时间轴卡片（高亮当前编辑行） ---
         self.translate_card.editing_subtitle.connect(self.timeline_card.highlight_subtitle)
 
     def _on_subtitle_selected(self, col: int, start_ms: int):
