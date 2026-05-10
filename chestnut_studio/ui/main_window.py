@@ -396,6 +396,9 @@ class MainWindow(QMainWindow):
         # --- 播放卡片 AB 循环 → 工具栏 ---
         self.player_card.ab_loop_changed.connect(self.toolbar.update_ab_loop_state)
 
+        # --- 播放卡片 → 视频打开后处理 ---
+        self.player_card.video_opened.connect(self._on_video_opened)
+
         # --- 时间轴卡片 → 波形卡片（请求编辑字幕） ---
         self.timeline_card.edit_subtitle_requested.connect(self.waveform_card.enter_edit_mode)
 
