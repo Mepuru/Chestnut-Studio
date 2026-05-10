@@ -314,8 +314,32 @@ class MainWindow(QMainWindow):
         # 获取中转处理声明
         relay_handlers = self._get_relay_handlers()
 
-        # 1. 主动连接所有中转处理信号
+        # 收集所有需要连接的信号 {source_key: [handlers]}
+        signal_connections: dict[str, list] = {}
+
+        # 1. 添加中转处理函数
         for source_key, handler in relay_handlers.items():
+            if source_key not in signal_connections:
+                signal_connections[source_key] = []
+            signal_connections[source_key].append(handler)
+
+        # 2. 添加卡片间声明式信号
+        for card_id, card in self._cards.items():
+            subscriptions = card.listens_to()
+            for source_key, handler in subscriptions.items():
+                if source_key not in signal_connections:
+                    signal_connections[source_key] = []
+
+                # 获取处理函数
+                if callable(handler):
+                    slot = handler
+                else:
+                    slot = getattr(card, handler, None)
+                if slot is not None:
+                    signal_connections[source_key].append(slot)
+
+        # 3. 统一连接所有信号
+        for source_key, handlers in signal_connections.items():
             parts = source_key.split(".", 1)
             if len(parts) != 2:
                 continue
@@ -335,48 +359,9 @@ class MainWindow(QMainWindow):
                 print(f"[Signal] {src_id} 没有信号 {signal_name}")
                 continue
 
-            # 连接到中转处理函数
-            signal.connect(handler)
-
-        # 2. 连接卡片间声明式信号
-        for card_id, card in self._cards.items():
-            subscriptions = card.listens_to()
-            for source_key, handler in subscriptions.items():
-                # 跳过已由中转处理连接的信号
-                if source_key in relay_handlers:
-                    continue
-
-                # 解析 "player.position_changed"
-                parts = source_key.split(".", 1)
-                if len(parts) != 2:
-                    continue
-                src_id, signal_name = parts
-
-                # 获取源卡片
-                source = self._cards.get(src_id)
-                if source is None:
-                    source = self._get_special_component(src_id)
-                if source is None:
-                    print(f"[Signal] 未知源: {src_id}")
-                    continue
-
-                # 获取信号
-                signal = getattr(source, signal_name, None)
-                if signal is None:
-                    print(f"[Signal] {src_id} 没有信号 {signal_name}")
-                    continue
-
-                # 获取处理函数
-                if callable(handler):
-                    slot = handler
-                else:
-                    slot = getattr(card, handler, None)
-                if slot is None:
-                    print(f"[Signal] {card_id} 没有方法 {handler}")
-                    continue
-
-                # 连接
-                signal.connect(slot)
+            # 连接所有处理函数
+            for handler in handlers:
+                signal.connect(handler)
 
     def _connect_signals(self):
         """连接各组件间的信号"""
