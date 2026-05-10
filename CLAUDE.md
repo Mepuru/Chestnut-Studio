@@ -89,14 +89,18 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 ┌─────────────────────────────────────────────────────────────────┐
 │                        SignalManager                            │
 │                                                                 │
-│  卡片声明 listens_to():                                         │
+│  卡片声明 @subscribe / listens_to():                            │
 │    WaveformCard ← player.position_changed/duration_changed     │
 │    TimelineCard ← player.duration_changed                      │
 │    TranslateCard ← timeline.subtitle_selected                  │
 │    PlayerCard ← waveform.position_clicked                      │
 │                ← timeline.jump_to_position                     │
+│                ← toolbar.play_clicked/rate_changed/ab_loop_*   │
 │                                                                 │
-│  中转处理 (_get_relay_handlers):                                │
+│    ToolBar ← player.position_changed/duration_changed          │
+│            ← player.playback_state_changed/ab_loop_changed     │
+│                                                                 │
+│  中转处理 (@relay 装饰器):                                       │
 │    player.video_opened → MainWindow._on_video_opened           │
 │    player.ab_loop_changed → MainWindow._on_ab_loop_changed     │
 │    waveform.subtitle_created → MainWindow._on_subtitle_created │
@@ -107,11 +111,6 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 │    player.position_changed → StatusBar.set_time                │
 │    player.duration_changed → StatusBar.set_status              │
 └─────────────────────────────────────────────────────────────────┘
-
-ToolBar (手动连接):
-  play_clicked → PlayerCard.play_pause
-  rate_changed → PlayerCard.set_playback_rate
-  ab_loop_* → MainWindow._on_ab_loop_*
 ```
 
 ---
