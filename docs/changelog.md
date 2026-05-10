@@ -4,6 +4,43 @@
 
 ---
 
+## v1.1.1 — 2026-05-10 — Phase A 性能优化（数据类型 + 代码清理）
+
+### 新增
+
+- **性能优化方案文档**：`docs/performance-optimization.md`，包含瓶颈分析、短期修复方案和长期架构改进规划（SubtitleModel）
+- **SubtitleEntry NamedTuple**：替代 bare list，提供类型安全，支持属性访问（`.duration_ms`、`.text`）和索引访问（`[0]`、`[1]`）
+- 新增 `test_subtitle_entry_access` 测试用例
+
+### 重构
+
+- **删除 SubtitleManager 中未使用的 undo/redo 代码**：移除 `push_undo()`、`undo()`、`redo()` 方法和 `MAX_UNDO`、`_undo_stack`、`_undo_index`、`_in_undo_mode` 属性（均为死代码，UI 层有独立的撤销系统）
+- **subtitle_io.py 消除代码重复**：移除内部重复定义的 `ms_to_srt_time`、`srt_time_to_ms`、`ms_to_ass_time`、`ass_time_to_ms`，改为从 `time_utils.py` 导入
+- **TimelineCard 撤销优化**：`_push_undo()` 中 `locked_states` 使用 `set.copy()` 替代 `copy.deepcopy()`；`_undo()`/`_redo()` 恢复快照时使用浅拷贝而非 `copy.deepcopy()`
+- **移除 timeline_card.py 中未使用的 `import copy`**
+
+### 优化
+
+- **缓存 track_colors 到实例变量**：
+  - `TimelineCard.__init__` 中预计算 `_track_colors_fg` 和 `_track_colors_bg`，`_update_table()` 不再在每行循环内重建 QColor
+  - `WaveformCard.__init__` 中预计算 `_track_overlay_colors`，`_draw_subtitle_region()` 不再为每个字幕区域重建颜色列表
+- **修复未声明的动态属性**：
+  - `WaveformCard._subtitle_full_data` 现在在 `__init__` 中声明，移除 `_update_subtitle_overlay()` 中的 `hasattr` 防御检查
+
+### 受影响文件
+
+| 文件 | 变更 |
+|------|------|
+| `core/subtitle.py` | 新增 `SubtitleEntry`，更新类型别名，删除 undo 代码 |
+| `core/subtitle_io.py` | 消除重复函数，改用 `SubtitleEntry` 类型 |
+| `core/__init__.py` | 导出 `SubtitleEntry` |
+| `ui/cards/timeline_card.py` | 缓存颜色、优化撤销、使用 `SubtitleEntry` |
+| `ui/cards/waveform_card.py` | 缓存颜色、声明 `_subtitle_full_data`、使用属性访问 |
+| `ui/cards/translate_card.py` | `subtitle[1]` → `subtitle.text` |
+| `tests/test_subtitle.py` | 适配 `SubtitleEntry`，移除 undo 测试，新增属性访问测试 |
+
+---
+
 ## v1.1.0 — 2026-05-10
 
 ### 新增
