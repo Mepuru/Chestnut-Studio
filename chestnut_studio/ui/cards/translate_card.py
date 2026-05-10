@@ -8,7 +8,6 @@
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QDockWidget,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -18,6 +17,8 @@ from PySide6.QtWidgets import (
 )
 
 from chestnut_studio.core.track_config import get_track_color
+from chestnut_studio.ui.cards.base_card import BaseCard
+from chestnut_studio.ui.cards.registry import register_card
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
 # 按钮样式
@@ -81,7 +82,8 @@ TEXT_EDIT_STYLE = """
 """
 
 
-class TranslateCard(QDockWidget):
+@register_card
+class TranslateCard(BaseCard):
     """翻译面板卡片
 
     功能：
@@ -95,21 +97,23 @@ class TranslateCard(QDockWidget):
     - jump_to_prev(col, start_ms): 请求跳转到上一条
     """
 
-    # 信号
+    # ── BaseCard 必需属性 ──
+    card_id = "translate"
+    card_title = "翻译"
+    default_area = Qt.BottomDockWidgetArea
+    default_ratio = 0.44
+
+    # ── 信号 ──
     text_saved = Signal(int, int, str)  # (col, start_ms, text)
     jump_to_next = Signal(int, int)  # (col, start_ms)
     jump_to_prev = Signal(int, int)  # (col, start_ms)
     editing_subtitle = Signal(int, int)  # (col, start_ms) 正在编辑的字幕
 
-    # 默认停靠区域
-    default_area = Qt.BottomDockWidgetArea
-
-    def __init__(self, parent=None):
-        super().__init__("翻译", parent)
+    def on_init(self) -> None:
+        """自定义初始化"""
         self._current_col = -1  # 当前字幕轨道号
         self._current_start_ms = -1  # 当前字幕开始时间
         self._subtitle_data = None  # 字幕数据引用（从外部设置）
-        self._setup_ui()
 
     def _setup_ui(self):
         """初始化 UI"""

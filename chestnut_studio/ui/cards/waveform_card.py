@@ -18,7 +18,6 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QFont, QMouseEvent, QWheelEvent
 from PySide6.QtWidgets import (
     QComboBox,
-    QDockWidget,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -34,6 +33,8 @@ from chestnut_studio.core.track_config import (
     get_effective_track_count,
     get_track_color,
 )
+from chestnut_studio.ui.cards.base_card import BaseCard
+from chestnut_studio.ui.cards.registry import register_card
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
 # 打轴按钮样式
@@ -318,7 +319,8 @@ class WaveformPlotWidget(pg.PlotWidget):
         super().keyReleaseEvent(event)
 
 
-class WaveformCard(QDockWidget):
+@register_card
+class WaveformCard(BaseCard):
     """音频波形卡片
 
     功能：
@@ -339,19 +341,22 @@ class WaveformCard(QDockWidget):
     - subtitle_edited(col, old_start, new_start, new_end): 编辑完成时发射
     """
 
-    # 信号
+    # ── BaseCard 必需属性 ──
+    card_id = "waveform"
+    card_title = "波形图"
+    default_area = Qt.BottomDockWidgetArea
+    default_ratio = 0.44
+
+    # ── 信号 ──
     position_clicked = Signal(int)  # 点击位置 (ms)
     subtitle_created = Signal(int, int, int)  # 打轴完成 (start_ms, end_ms, track)
     subtitle_edited = Signal(int, int, int, int)  # 编辑完成 (col, old_start, new_start, new_end)
 
-    # 默认停靠区域
-    default_area = Qt.BottomDockWidgetArea
-
     # 默认视窗宽度（显示的毫秒数）
     DEFAULT_VIEW_WINDOW_MS = 30000  # 30 秒
 
-    def __init__(self, parent=None):
-        super().__init__("波形图", parent)
+    def on_init(self) -> None:
+        """自定义初始化"""
         self._ffmpeg = FFmpeg()
         self._duration_ms = 0
         self._current_position_ms = 0
@@ -387,8 +392,6 @@ class WaveformCard(QDockWidget):
         self._edit_start_ms: int = -1  # 编辑中的开始点
         self._edit_end_ms: int = -1  # 编辑中的结束点
         self._edit_which: str = ""  # 正在编辑哪个端点: "start" 或 "end"
-
-        self._setup_ui()
 
     def _setup_ui(self):
         """初始化 UI"""

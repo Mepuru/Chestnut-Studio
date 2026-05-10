@@ -7,7 +7,6 @@ from PySide6.QtGui import QColor, QFont, QResizeEvent
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtMultimediaWidgets import QGraphicsVideoItem
 from PySide6.QtWidgets import (
-    QDockWidget,
     QGraphicsScene,
     QGraphicsTextItem,
     QGraphicsView,
@@ -15,6 +14,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from chestnut_studio.ui.cards.base_card import BaseCard
+from chestnut_studio.ui.cards.registry import register_card
 
 
 class VideoView(QGraphicsView):
@@ -43,7 +45,8 @@ class VideoView(QGraphicsView):
         self.fitInView(self._video_item, Qt.KeepAspectRatio)
 
 
-class PlayerCard(QDockWidget):
+@register_card
+class PlayerCard(BaseCard):
     """视频播放卡片
 
     功能：
@@ -53,17 +56,21 @@ class PlayerCard(QDockWidget):
     - 播放控制全部由工具栏负责
     """
 
-    # 信号
+    # ── BaseCard 必需属性 ──
+    card_id = "player"
+    card_title = "视频预览"
+    default_area = Qt.LeftDockWidgetArea
+    default_ratio = 0.39
+
+    # ── 信号 ──
     position_changed = Signal(int)
     duration_changed = Signal(int)
     video_opened = Signal(str)
     playback_state_changed = Signal(bool)
     ab_loop_changed = Signal(int, int)  # AB 循环状态变化 (a_point, b_point)，-1 表示未设置
 
-    default_area = Qt.LeftDockWidgetArea
-
-    def __init__(self, parent=None):
-        super().__init__("视频预览", parent)
+    def on_init(self) -> None:
+        """自定义初始化"""
         self._video_path = ""
         self._duration = 0
         self._is_playing = False
@@ -75,7 +82,6 @@ class PlayerCard(QDockWidget):
         self._ab_loop_b = -1  # B 点位置（ms），-1 表示未设置
         self._ab_loop_enabled = False  # AB 循环是否激活
 
-        self._setup_ui()
         self._setup_player()
         self._connect_signals()
 

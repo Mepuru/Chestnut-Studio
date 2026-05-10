@@ -12,7 +12,6 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox,
-    QDockWidget,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -30,6 +29,8 @@ from chestnut_studio.core.track_config import (
     get_effective_track_count,
     get_track_color,
 )
+from chestnut_studio.ui.cards.base_card import BaseCard
+from chestnut_studio.ui.cards.registry import register_card
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
 # 操作按钮样式
@@ -88,7 +89,8 @@ TOOL_BTN_STYLE = """
 """
 
 
-class TimelineCard(QDockWidget):
+@register_card
+class TimelineCard(BaseCard):
     """打轴编辑卡片
 
     功能：
@@ -106,17 +108,20 @@ class TimelineCard(QDockWidget):
     - edit_subtitle_requested(col, start_ms, end_ms): 请求编辑字幕（发射到波形图）
     """
 
-    # 信号
+    # ── BaseCard 必需属性 ──
+    card_id = "timeline"
+    card_title = "时间轴"
+    default_area = Qt.RightDockWidgetArea
+    default_ratio = 0.56
+
+    # ── 信号 ──
     jump_to_position = Signal(int)  # 跳转到指定位置 (ms)
     subtitle_changed = Signal()  # 字幕数据变化
     subtitle_selected = Signal(int, int)  # 字幕被选中 (col, start_ms)
     edit_subtitle_requested = Signal(int, int, int)  # 请求编辑 (col, start_ms, end_ms)
 
-    # 默认停靠区域
-    default_area = Qt.RightDockWidgetArea
-
-    def __init__(self, parent=None):
-        super().__init__("时间轴", parent)
+    def on_init(self) -> None:
+        """自定义初始化"""
         self._subtitle_mgr = SubtitleManager()
         self._duration_ms = 0
         self._fps = 30.0  # 默认帧率
@@ -139,8 +144,6 @@ class TimelineCard(QDockWidget):
         # 栈保存每个操作完成后状态快照，point 指向当前状态
         self._backend: list[tuple[dict, set]] = []
         self._backend_point: int = -1
-
-        self._setup_ui()
 
         # 初始化撤销栈，保存初始状态
         self._push_undo()
