@@ -85,6 +85,13 @@ class PlayerCard(BaseCard):
         self._setup_player()
         self._connect_signals()
 
+    def listens_to(self) -> dict[str, str]:
+        """声明本卡片关心的外部信号"""
+        return {
+            "waveform.position_clicked": "set_position",
+            "timeline.jump_to_position": "set_position",
+        }
+
     def _setup_ui(self):
         """初始化 UI"""
         content = QWidget()

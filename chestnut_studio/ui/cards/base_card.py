@@ -5,10 +5,12 @@
 - 生命周期钩子
 - 状态持久化接口
 - 声明式属性（card_id, card_title, default_area 等）
+- 声明式信号订阅（listens_to）
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from PySide6.QtCore import Qt
@@ -111,3 +113,27 @@ class BaseCard(QDockWidget):
     def on_theme_changed(self) -> None:
         """主题切换时的回调。默认空实现。"""
         pass
+
+    # ── 声明式信号订阅 ──
+
+    def listens_to(self) -> dict[str, str | Callable]:
+        """声明本卡片关心的外部信号。
+
+        返回格式:
+            {
+                "<source_card_id>.<signal_name>": "<handler_method_name>",
+                # 或
+                "<source_card_id>.<signal_name>": self._handler_method,
+            }
+
+        示例:
+            return {
+                "player.position_changed": "update_position",
+                "player.duration_changed": "set_duration",
+                "toolbar.play_clicked": self._on_play,
+            }
+
+        Returns:
+            信号订阅声明字典
+        """
+        return {}

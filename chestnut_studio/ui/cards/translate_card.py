@@ -115,6 +115,12 @@ class TranslateCard(BaseCard):
         self._current_start_ms = -1  # 当前字幕开始时间
         self._subtitle_data = None  # 字幕数据引用（从外部设置）
 
+    def listens_to(self) -> dict[str, str]:
+        """声明本卡片关心的外部信号"""
+        return {
+            "timeline.subtitle_selected": "show_subtitle",
+        }
+
     def _setup_ui(self):
         """初始化 UI"""
         content = QWidget()

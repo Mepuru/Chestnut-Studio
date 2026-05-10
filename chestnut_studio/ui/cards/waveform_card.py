@@ -393,6 +393,14 @@ class WaveformCard(BaseCard):
         self._edit_end_ms: int = -1  # 编辑中的结束点
         self._edit_which: str = ""  # 正在编辑哪个端点: "start" 或 "end"
 
+    def listens_to(self) -> dict[str, str]:
+        """声明本卡片关心的外部信号"""
+        return {
+            "player.position_changed": "update_position",
+            "player.duration_changed": "set_duration",
+            "player.ab_loop_changed": "set_ab_loop_region",
+        }
+
     def _setup_ui(self):
         """初始化 UI"""
         content = QWidget()

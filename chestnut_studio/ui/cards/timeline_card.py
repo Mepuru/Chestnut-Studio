@@ -148,6 +148,12 @@ class TimelineCard(BaseCard):
         # 初始化撤销栈，保存初始状态
         self._push_undo()
 
+    def listens_to(self) -> dict[str, str]:
+        """声明本卡片关心的外部信号"""
+        return {
+            "player.duration_changed": "set_duration",
+        }
+
     def _setup_ui(self):
         """初始化 UI"""
         content = QWidget()
