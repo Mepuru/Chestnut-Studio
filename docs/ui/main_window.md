@@ -35,37 +35,31 @@
 ## 信号连接图
 
 ```
-ToolBar                          MainWindow                         PlayerCard
-  │ play_clicked ──────────────→ play_pause ───────────────────→ QMediaPlayer
-  │ skip_forward ──────────────→ _on_skip_forward ──────────────→ set_position
-  │ skip_backward ─────────────→ _on_skip_backward ─────────────→ set_position
-  │ rate_changed ──────────────→ set_playback_rate ─────────────→ QMediaPlayer
-  │ ab_loop_a_clicked ─────────→ _on_ab_loop_set_a ────────────→ set_ab_loop_a
-  │ ab_loop_b_clicked ─────────→ _on_ab_loop_set_b ────────────→ set_ab_loop_b
-  │ ab_loop_clear_clicked ─────→ _on_ab_loop_clear ────────────→ clear_ab_loop
-  │ ←───────────────────────── update_position ←──────────────── position_changed
-  │ ←───────────────────────── set_duration ←─────────────────── duration_changed
-  │ ←───────────────────────── set_playing ←──────────────────── playback_state_changed
-  │ ←───────────────────── update_ab_loop_state ←─────────────── ab_loop_changed
-                              │
-                              ├──→ WaveformCard.update_position
-                              ├──→ WaveformCard.set_duration
-                              ├──→ WaveformCard.set_ab_loop_region
-                              ├──→ TimelineCard.set_duration
-                              ├──→ StatusBar.set_time (位置变化)
-                              ├──→ StatusBar.set_status (时长变化)
-                              └──→ StatusBar.set_video_info (FFmpeg 解析)
-
-WaveformCard
-  │ position_clicked ──────────→ PlayerCard.set_position
-  │ subtitle_created ──────────→ MainWindow._on_subtitle_created → TimelineCard.add_subtitle
-  │ subtitle_edited ───────────→ TimelineCard.apply_subtitle_edit
-
-TimelineCard
-  │ subtitle_selected ─────────→ TranslateCard.show_subtitle
-  │ subtitle_changed ───────────→ MainWindow._sync_subtitle_overlay → WaveformCard.update_subtitle_overlay_from_data
-  │ jump_to_position ──────────→ PlayerCard.set_position
-  │ edit_subtitle_requested ───→ WaveformCard.enter_edit_mode
+┌─────────────────────────────────────────────────────────────────┐
+│                        SignalManager                            │
+│                                                                 │
+│  卡片声明 @subscribe / listens_to():                            │
+│    WaveformCard ← player.position_changed/duration_changed     │
+│    TimelineCard ← player.duration_changed                      │
+│    TranslateCard ← timeline.subtitle_selected                  │
+│    PlayerCard ← waveform.position_clicked                      │
+│                ← timeline.jump_to_position                     │
+│                ← toolbar.play_clicked/rate_changed/ab_loop_*   │
+│                                                                 │
+│    ToolBar ← player.position_changed/duration_changed          │
+│            ← player.playback_state_changed/ab_loop_changed     │
+│                                                                 │
+│  中转处理 (@relay 装饰器):                                       │
+│    player.video_opened → MainWindow._on_video_opened           │
+│    player.ab_loop_changed → MainWindow._on_ab_loop_changed     │
+│    waveform.subtitle_created → MainWindow._on_subtitle_created │
+│    timeline.subtitle_selected → MainWindow._on_subtitle_selected│
+│    translate.jump_to_next/prev → MainWindow._on_jump_to_*      │
+│                                                                 │
+│  动态订阅 (状态栏等):                                            │
+│    player.position_changed → StatusBar.set_time                │
+│    player.duration_changed → StatusBar.set_status              │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -121,19 +115,16 @@ TimelineCard
 
 ### 信号连接
 
-- `_connect_signals()` - 连接所有卡片的信号
-- `_connect_toolbar_signals()` - 连接工具栏信号
-- `_connect_player_signals()` - 连接播放器信号
-- `_connect_waveform_signals()` - 连接波形图信号
-- `_connect_timeline_signals()` - 连接时间轴信号
+- `_connect_signals()` - 使用 SignalManager 自动连接所有信号
+- `@relay` 装饰器 - 声明中转处理函数
 
 ### 事件处理
 
-- `_on_open_video()` - 打开视频文件对话框
-- `_on_subtitle_created(start_ms, end_ms)` - 处理打轴完成事件
-- `_on_subtitle_selected(col, start_ms)` - 处理字幕选中事件
-- `_on_jump_to_next(col, start_ms)` - 跳转到下一条字幕
-- `_on_jump_to_prev(col, start_ms)` - 跳转到上一条字幕
+- `@relay("player.video_opened")` - 视频打开后处理
+- `@relay("waveform.subtitle_created")` - 打轴完成处理
+- `@relay("timeline.subtitle_selected")` - 字幕选中处理
+- `@relay("translate.jump_to_next")` - 跳转下一条字幕
+- `@relay("translate.jump_to_prev")` - 跳转上一条字幕
 
 ---
 

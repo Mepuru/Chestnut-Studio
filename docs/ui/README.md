@@ -54,21 +54,24 @@ UI 层 (ui/)  ← 本模块
 
 ### 1. 卡片化设计
 
-所有主要功能组件采用 `QDockWidget` 实现：
+所有主要功能组件采用 `BaseCard`（继承 `QDockWidget`）实现：
 - 支持拖拽、停靠、浮动
 - 支持调整大小
 - 支持布局保存和恢复
+- 统一的生命周期钩子
 
-### 2. 信号通信
+### 2. 声明式信号
 
-卡片间通过信号通信，不直接引用：
-- `MainWindow` 负责连接各卡片的信号
-- 卡片只发射信号，不直接调用其他卡片方法
-- 信号命名：小写 + 下划线，描述事件
+卡片间通过声明式信号通信：
+- **SignalManager** 集中管理所有信号连接
+- 卡片通过 `@subscribe` 装饰器或 `listens_to()` 声明订阅的信号
+- MainWindow 通过 `@relay` 装饰器声明中转处理
+- 新增组件无需修改 MainWindow
 
 ### 3. 职责分离
 
-- **MainWindow**：布局管理、信号连接、全局快捷键
+- **MainWindow**：初始化和协调（不包含具体业务逻辑）
+- **SignalManager**：信号连接管理
 - **ToolBar**：播放控制（统一控制所有播放相关操作）
 - **PlayerCard**：视频渲染（不包含播放按钮）
 - **WaveformCard**：波形显示和打轴操作
@@ -80,37 +83,31 @@ UI 层 (ui/)  ← 本模块
 ## 信号通信图
 
 ```
-ToolBar                          MainWindow                         PlayerCard
-  │ play_clicked ──────────────→ play_pause ───────────────────→ QMediaPlayer
-  │ skip_forward ──────────────→ _on_skip_forward ──────────────→ set_position
-  │ skip_backward ─────────────→ _on_skip_backward ─────────────→ set_position
-  │ rate_changed ──────────────→ set_playback_rate ─────────────→ QMediaPlayer
-  │ ab_loop_a_clicked ─────────→ _on_ab_loop_set_a ────────────→ set_ab_loop_a
-  │ ab_loop_b_clicked ─────────→ _on_ab_loop_set_b ────────────→ set_ab_loop_b
-  │ ab_loop_clear_clicked ─────→ _on_ab_loop_clear ────────────→ clear_ab_loop
-  │ ←───────────────────────── update_position ←──────────────── position_changed
-  │ ←───────────────────────── set_duration ←─────────────────── duration_changed
-  │ ←───────────────────────── set_playing ←──────────────────── playback_state_changed
-  │ ←───────────────────── update_ab_loop_state ←─────────────── ab_loop_changed
-                              │
-                              ├──→ WaveformCard.update_position
-                              ├──→ WaveformCard.set_duration
-                              ├──→ WaveformCard.set_ab_loop_region
-                              ├──→ TimelineCard.set_duration
-                              ├──→ StatusBar.set_time (位置变化)
-                              ├──→ StatusBar.set_status (时长变化)
-                              └──→ StatusBar.set_video_info (FFmpeg 解析)
-
-WaveformCard
-  │ position_clicked ──────────→ PlayerCard.set_position
-  │ subtitle_created ──────────→ MainWindow._on_subtitle_created → TimelineCard.add_subtitle
-  │ subtitle_edited ───────────→ TimelineCard.apply_subtitle_edit
-
-TimelineCard
-  │ subtitle_selected ─────────→ TranslateCard.show_subtitle
-  │ subtitle_changed ───────────→ MainWindow._sync_subtitle_overlay → WaveformCard.update_subtitle_overlay_from_data
-  │ jump_to_position ──────────→ PlayerCard.set_position
-  │ edit_subtitle_requested ───→ WaveformCard.enter_edit_mode
+┌─────────────────────────────────────────────────────────────────┐
+│                        SignalManager                            │
+│                                                                 │
+│  卡片声明 @subscribe / listens_to():                            │
+│    WaveformCard ← player.position_changed/duration_changed     │
+│    TimelineCard ← player.duration_changed                      │
+│    TranslateCard ← timeline.subtitle_selected                  │
+│    PlayerCard ← waveform.position_clicked                      │
+│                ← timeline.jump_to_position                     │
+│                ← toolbar.play_clicked/rate_changed/ab_loop_*   │
+│                                                                 │
+│    ToolBar ← player.position_changed/duration_changed          │
+│            ← player.playback_state_changed/ab_loop_changed     │
+│                                                                 │
+│  中转处理 (@relay 装饰器):                                       │
+│    player.video_opened → MainWindow._on_video_opened           │
+│    player.ab_loop_changed → MainWindow._on_ab_loop_changed     │
+│    waveform.subtitle_created → MainWindow._on_subtitle_created │
+│    timeline.subtitle_selected → MainWindow._on_subtitle_selected│
+│    translate.jump_to_next/prev → MainWindow._on_jump_to_*      │
+│                                                                 │
+│  动态订阅 (状态栏等):                                            │
+│    player.position_changed → StatusBar.set_time                │
+│    player.duration_changed → StatusBar.set_status              │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---

@@ -18,24 +18,38 @@
 
 ## 设计原则
 
-### 1. 继承 QDockWidget
+### 1. 继承 BaseCard
 
-所有卡片继承 `QDockWidget`：
+所有卡片继承 `BaseCard`（而不是直接继承 `QDockWidget`）：
 
 ```python
-class PlayerCard(QDockWidget):
+from chestnut_studio.ui.cards.base_card import BaseCard
+from chestnut_studio.ui.cards.registry import register_card
+
+@register_card
+class PlayerCard(BaseCard):
     """视频播放卡片"""
     
-    # 信号定义
-    position_changed = Signal(int)  # 播放位置变化
-    video_opened = Signal(str)      # 视频已打开
-    
-    # 默认停靠区域
+    # BaseCard 必需属性
+    card_id = "player"
+    card_title = "视频预览"
     default_area = Qt.LeftDockWidgetArea
+    default_ratio = 0.39
     
-    def __init__(self, parent=None):
-        super().__init__("视频预览", parent)
-        self._setup_ui()
+    # 信号定义
+    position_changed = Signal(int)
+    video_opened = Signal(str)
+    
+    def _setup_ui(self):
+        """初始化 UI"""
+        pass
+    
+    def listens_to(self):
+        """声明订阅的信号"""
+        return {
+            "waveform.position_clicked": "set_position",
+            "toolbar.play_clicked": "play_pause",
+        }
 ```
 
 ### 2. 信号通信
@@ -43,8 +57,13 @@ class PlayerCard(QDockWidget):
 卡片间通过信号通信，不直接引用：
 
 ```python
-# ✅ 正确：通过信号通信
-self.player_card.position_changed.connect(self.waveform_card.update_position)
+# ✅ 正确：通过 @subscribe 装饰器声明
+@subscribe("player.position_changed")
+def update_position(self, ms): ...
+
+# ✅ 正确：通过 listens_to() 声明
+def listens_to(self):
+    return {"player.position_changed": "update_position"}
 
 # ❌ 错误：直接调用其他卡片的方法
 self.player_card._player.setPosition(1000)
@@ -62,43 +81,41 @@ self.player_card._player.setPosition(1000)
 
 ## 基类规范
 
-### 信号定义
+### BaseCard 类属性
 
 ```python
-class PlayerCard(QDockWidget):
-    """视频播放卡片"""
+class BaseCard(QDockWidget):
+    """所有卡片的基类"""
     
-    # 信号定义
-    position_changed = Signal(int)  # 播放位置变化
-    video_opened = Signal(str)      # 视频已打开
+    # 子类必须声明
+    card_id: str = ""           # 唯一标识符
+    card_title: str = ""        # 卡片标题
     
-    # 默认停靠区域
-    default_area = Qt.LeftDockWidgetArea
+    # 子类可选声明
+    default_area = Qt.LeftDockWidgetArea  # 默认停靠区域
+    default_ratio: float = 0.5            # 默认占比
+    min_size: tuple = (200, 150)          # 最小尺寸
 ```
 
-### 初始化
+### 生命周期钩子
+
+| 钩子 | 调用时机 | 用途 |
+|------|----------|------|
+| `on_init()` | `__init__` 末尾 | 自定义初始化 |
+| `on_ready()` | 所有卡片创建完毕后 | 延迟初始化 |
+| `on_save_state()` | 布局保存时 | 返回状态字典 |
+| `on_load_state()` | 布局恢复时 | 恢复状态 |
+
+### 信号声明
 
 ```python
-def __init__(self, parent=None):
-    super().__init__("视频预览", parent)
-    self._setup_ui()
-    self._connect_signals()
-```
+# 方式 1：@subscribe 装饰器
+@subscribe("player.position_changed")
+def update_position(self, ms): ...
 
-### UI 初始化
-
-```python
-def _setup_ui(self):
-    """初始化 UI"""
-    # 创建主容器
-    main_widget = QWidget()
-    self.setWidget(main_widget)
-    
-    # 创建布局
-    layout = QVBoxLayout(main_widget)
-    
-    # 添加组件
-    # ...
+# 方式 2：listens_to() 方法
+def listens_to(self):
+    return {"player.position_changed": "update_position"}
 ```
 
 ---
