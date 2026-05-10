@@ -3,6 +3,8 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QStatusBar
 
+from chestnut_studio.utils.version import get_version
+
 
 class StatusBar(QStatusBar):
     """状态栏
@@ -29,10 +31,16 @@ class StatusBar(QStatusBar):
         self.time_label = QLabel("00:00 / 00:00")
         self.time_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
+        # 版本号标签（右侧永久显示）
+        self.version_label = QLabel(f"v{get_version()}")
+        self.version_label.setStyleSheet("color: #52525b; font-size: 8pt; padding-right: 4px;")
+        self.version_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
         # 添加到状态栏
         self.addWidget(self.status_label, 1)  # 拉伸因子 1
         self.addWidget(self.video_info_label, 2)  # 拉伸因子 2
         self.addWidget(self.time_label, 1)  # 拉伸因子 1
+        self.addPermanentWidget(self.version_label)  # 右侧永久部件
 
     def _set_default_state(self):
         """设置默认状态"""

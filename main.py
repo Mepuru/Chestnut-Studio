@@ -8,6 +8,7 @@ from PySide6.QtGui import QFont, QFontDatabase, QIcon
 
 from chestnut_studio.ui.main_window import MainWindow
 from chestnut_studio.resources import get_icon_path, get_stylesheet_path, get_fonts_dir
+from chestnut_studio.utils.version import get_version
 
 
 def load_stylesheet() -> str:
@@ -48,7 +49,7 @@ def main():
     """应用入口"""
     app = QApplication(sys.argv)
     app.setApplicationName("Chestnut Studio")
-    app.setApplicationVersion("1.1.1")
+    app.setApplicationVersion(get_version())
     app.setOrganizationName("ChestnutStudio")
     
     # 设置应用图标
