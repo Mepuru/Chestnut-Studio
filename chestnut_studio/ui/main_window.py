@@ -314,35 +314,43 @@ class MainWindow(QMainWindow):
         # 获取中转处理声明
         relay_handlers = self._get_relay_handlers()
 
+        # 1. 主动连接所有中转处理信号
+        for source_key, handler in relay_handlers.items():
+            parts = source_key.split(".", 1)
+            if len(parts) != 2:
+                continue
+            src_id, signal_name = parts
+
+            # 获取源卡片
+            source = self._cards.get(src_id)
+            if source is None:
+                source = self._get_special_component(src_id)
+            if source is None:
+                print(f"[Signal] 未知源: {src_id}")
+                continue
+
+            # 获取信号
+            signal = getattr(source, signal_name, None)
+            if signal is None:
+                print(f"[Signal] {src_id} 没有信号 {signal_name}")
+                continue
+
+            # 连接到中转处理函数
+            signal.connect(handler)
+
+        # 2. 连接卡片间声明式信号
         for card_id, card in self._cards.items():
             subscriptions = card.listens_to()
             for source_key, handler in subscriptions.items():
+                # 跳过已由中转处理连接的信号
+                if source_key in relay_handlers:
+                    continue
+
                 # 解析 "player.position_changed"
                 parts = source_key.split(".", 1)
                 if len(parts) != 2:
                     continue
                 src_id, signal_name = parts
-
-                # 检查是否是中转处理
-                if source_key in relay_handlers:
-                    # 获取源卡片
-                    source = self._cards.get(src_id)
-                    if source is None:
-                        source = self._get_special_component(src_id)
-                    if source is None:
-                        print(f"[Signal] 未知源: {src_id}")
-                        continue
-
-                    # 获取信号
-                    signal = getattr(source, signal_name, None)
-                    if signal is None:
-                        print(f"[Signal] {src_id} 没有信号 {signal_name}")
-                        continue
-
-                    # 连接到中转处理函数
-                    slot = relay_handlers[source_key]
-                    signal.connect(slot)
-                    continue
 
                 # 获取源卡片
                 source = self._cards.get(src_id)
