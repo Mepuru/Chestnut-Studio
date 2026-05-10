@@ -11,8 +11,8 @@ docs/
 ├── README.md                    # 文档导航首页（本文件）
 ├── architecture.md              # 架构文档
 ├── development.md               # 开发指南
-├── performance-optimization.md  # 性能优化方案
 ├── changelog.md                 # 变更日志
+├── ffmpeg-setup.md              # FFmpeg 安装指南
 ├── core/                        # 核心层模块文档
 │   ├── README.md                # 核心层概述
 │   ├── ffmpeg.md                # FFmpeg 封装
@@ -23,12 +23,19 @@ docs/
 ├── ui/                          # UI 层模块文档
 │   ├── README.md                # UI 层概述
 │   ├── main_window.md           # 主窗口
+│   ├── signal_manager.md        # 信号管理器
+│   ├── signal_decorator.md      # 信号装饰器
+│   ├── layout_config.md         # 布局配置
+│   ├── layout_engine.md         # 布局引擎
+│   ├── auto_menu.md             # 菜单自动生成
 │   ├── toolbar.md               # 工具栏
 │   ├── menubar.md               # 菜单栏
 │   ├── statusbar.md             # 状态栏
 │   ├── drag_overlay.md          # 拖放覆盖层
 │   ├── cards/                   # 卡片组件文档
 │   │   ├── README.md            # 卡片组件概述
+│   │   ├── base_card.md         # BaseCard 基类
+│   │   ├── registry.md          # 卡片注册表
 │   │   ├── player_card.md       # 视频播放卡片
 │   │   ├── waveform_card.md     # 音频波形卡片
 │   │   ├── timeline_card.md     # 时间轴列表卡片
@@ -51,8 +58,8 @@ docs/
 |------|------|
 | [架构文档](architecture.md) | 项目整体架构、模块职责、数据流设计 |
 | [开发指南](development.md) | 代码风格、项目结构、提交规范、协作约定 |
-| [性能优化与架构改进](performance-optimization.md) | 字幕列表操作卡顿的瓶颈分析、短期修复与长期架构改进方案 |
 | [变更日志](changelog.md) | 项目重要变更和里程碑记录 |
+| [FFmpeg 安装指南](ffmpeg-setup.md) | FFmpeg 下载、安装、配置 |
 
 ### 核心层 (core/)
 
@@ -72,6 +79,10 @@ docs/
 | [UI 层概述](ui/README.md) | UI 层整体介绍、依赖关系、设计原则 |
 | [主窗口](ui/main_window.md) | MainWindow 布局管理、信号连接、全局快捷键 |
 | [信号管理器](ui/signal_manager.md) | SignalManager 声明式信号系统 |
+| [信号装饰器](ui/signal_decorator.md) | @subscribe/@relay 装饰器 |
+| [布局配置](ui/layout_config.md) | LayoutConfig 数据类、JSON 配置加载 |
+| [布局引擎](ui/layout_engine.py) | apply_layout() 布局应用引擎 |
+| [菜单自动生成](ui/auto_menu.md) | build_card_submenu/build_layout_submenu |
 | [工具栏](ui/toolbar.md) | 播放控制、AB 循环、倍速选择 |
 | [菜单栏](ui/menubar.md) | 文件/视图/帮助菜单 |
 | [状态栏](ui/statusbar.md) | 三段式状态显示 |
@@ -82,6 +93,8 @@ docs/
 | 文档 | 说明 |
 |------|------|
 | [卡片组件概述](ui/cards/README.md) | 卡片组件整体介绍、基类规范 |
+| [BaseCard 基类](ui/cards/base_card.md) | 所有卡片的基类、生命周期钩子 |
+| [卡片注册表](ui/cards/registry.md) | @register_card 装饰器、自动发现 |
 | [视频播放卡片](ui/cards/player_card.md) | 视频渲染、播放控制、AB 循环 |
 | [音频波形卡片](ui/cards/waveform_card.md) | 波形显示、打轴操作、缩放平移 |
 | [时间轴列表卡片](ui/cards/timeline_card.md) | 字幕列表显示、编辑、锁定 |

@@ -1,7 +1,7 @@
 # 视频播放卡片
 
 > `chestnut_studio/ui/cards/player_card.py`
-> `PlayerCard(QDockWidget)` — 视频渲染和播放控制，支持 AB 循环。
+> `PlayerCard(BaseCard)` — 视频渲染和播放控制，支持 AB 循环。
 
 ---
 

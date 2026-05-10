@@ -1,7 +1,7 @@
 # 时间轴列表卡片
 
 > `chestnut_studio/ui/cards/timeline_card.py`
-> `TimelineCard(QDockWidget)` — 显示已打轴的字幕列表。
+> `TimelineCard(BaseCard)` — 显示已打轴的字幕列表。
 
 ---
 

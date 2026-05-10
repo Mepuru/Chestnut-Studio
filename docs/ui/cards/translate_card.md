@@ -1,7 +1,7 @@
 # 翻译面板卡片
 
 > `chestnut_studio/ui/cards/translate_card.py`
-> `TranslateCard(QDockWidget)` — 翻译面板，编辑当前轨道的字幕文本。
+> `TranslateCard(BaseCard)` — 翻译面板，编辑当前轨道的字幕文本。
 
 ---
 

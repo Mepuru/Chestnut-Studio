@@ -1,7 +1,7 @@
 # 音频波形卡片
 
 > `chestnut_studio/ui/cards/waveform_card.py`
-> `WaveformCard(QDockWidget)` — 音频波形显示，支持打轴操作。
+> `WaveformCard(BaseCard)` — 音频波形显示，支持打轴操作。
 
 ---
 
