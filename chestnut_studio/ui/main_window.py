@@ -147,35 +147,54 @@ class MainWindow(QMainWindow):
     def _setup_default_layout(self):
         """设置默认布局
 
-        布局示意（左39% 右61%，上56% 下44%）：
-        ┌──────────────────┬───────────────────────────────┐
-        │                  │                               │
-        │  Player          │  Timeline (打轴)              │
-        │                  │                               │
-        ├──────────────────┼───────────────────────────────┤
-        │  Waveform        │  Translation (翻译)           │
-        │                  │                               │
-        └──────────────────┴───────────────────────────────┘
+        从配置文件加载默认布局并应用。
         """
+        from chestnut_studio.ui.layout_config import LayoutConfig
+        from chestnut_studio.ui.layout_engine import apply_layout
+
         # 清除固定尺寸约束
-        for card in [self.player_card, self.timeline_card, self.waveform_card, self.translate_card]:
+        for card in self._cards.values():
+            card.setMinimumSize(200, 150)
+            card.setMaximumSize(16777215, 16777215)
+
+        # 加载默认布局配置
+        try:
+            import importlib.resources
+            config_path = importlib.resources.files("chestnut_studio") / "resources" / "layouts" / "default.json"
+            self._current_layout = LayoutConfig.from_json(config_path)
+        except Exception:
+            # 如果加载失败，使用硬编码的默认布局
+            self._current_layout = None
+            self._setup_fallback_layout()
+            return
+
+        # 应用布局
+        apply_layout(self, self._current_layout, self._cards)
+        self._layout_initialized = True
+
+        # 延迟确保卡片可见
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, self._show_all_cards)
+
+    def _setup_fallback_layout(self):
+        """备用的硬编码布局（当配置文件加载失败时使用）"""
+        # 清除固定尺寸约束
+        for card in self._cards.values():
             card.setMinimumSize(200, 150)
             card.setMaximumSize(16777215, 16777215)
 
         # 重置布局时先移除所有卡片
         if self._layout_initialized:
-            self.removeDockWidget(self.player_card)
-            self.removeDockWidget(self.timeline_card)
-            self.removeDockWidget(self.waveform_card)
-            self.removeDockWidget(self.translate_card)
+            for card in self._cards.values():
+                self.removeDockWidget(card)
         self._layout_initialized = True
 
-        # 左列：player + waveform（显式添加到 Left 区域，再垂直分割）
+        # 左列：player + waveform
         self.addDockWidget(Qt.LeftDockWidgetArea, self.player_card)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.waveform_card)
         self.splitDockWidget(self.player_card, self.waveform_card, Qt.Vertical)
 
-        # 右列：timeline + translation（显式添加到 Right 区域，再垂直分割）
+        # 右列：timeline + translation
         self.addDockWidget(Qt.RightDockWidgetArea, self.timeline_card)
         self.addDockWidget(Qt.RightDockWidgetArea, self.translate_card)
         self.splitDockWidget(self.timeline_card, self.translate_card, Qt.Vertical)
@@ -185,7 +204,6 @@ class MainWindow(QMainWindow):
 
         # 延迟确保卡片可见
         from PySide6.QtCore import QTimer
-
         QTimer.singleShot(0, self._show_all_cards)
 
     def _show_all_cards(self):
