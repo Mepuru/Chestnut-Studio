@@ -17,6 +17,7 @@ from chestnut_studio.ui.cards.translate_card import TranslateCard
 from chestnut_studio.ui.cards.waveform_card import WaveformCard
 from chestnut_studio.ui.drag_overlay import SUBTITLE_EXTENSIONS, VIDEO_EXTENSIONS, DragOverlay
 from chestnut_studio.ui.menubar import MenuBar
+from chestnut_studio.ui.signal_decorator import relay
 from chestnut_studio.ui.signal_manager import SignalManager
 from chestnut_studio.ui.statusbar import StatusBar
 from chestnut_studio.ui.toolbar import ToolBar
@@ -334,18 +335,6 @@ class MainWindow(QMainWindow):
         self._signal_manager.register_special("toolbar", self.toolbar)
         self._signal_manager.register_special("statusbar", self.status_bar)
 
-        # 注册中转处理函数
-        self._signal_manager.register_relays({
-            "player.video_opened": self._on_video_opened,
-            "player.ab_loop_changed": self._on_ab_loop_changed,
-            "waveform.subtitle_created": self._on_subtitle_created,
-            "timeline.subtitle_changed": self._sync_subtitle_overlay,
-            "timeline.subtitle_selected": self._on_subtitle_selected,
-            "translate.text_saved": self._on_text_saved,
-            "translate.jump_to_next": self._on_jump_to_next,
-            "translate.jump_to_prev": self._on_jump_to_prev,
-        })
-
         # 注册状态栏动态订阅
         self._signal_manager.register_dynamic_relay(
             "player.position_changed", self._on_position_changed
@@ -377,14 +366,63 @@ class MainWindow(QMainWindow):
         self.waveform_card.subtitle_edited.connect(self.timeline_card.apply_subtitle_edit)
         self.translate_card.editing_subtitle.connect(self.timeline_card.highlight_subtitle)
 
+    @relay("player.video_opened")
+    def _on_video_opened(self, path: str):
+        """视频打开后的处理（菜单打开和拖放均触发）"""
+        # 更新状态栏
+        self.status_bar.set_status(f"已打开: {Path(path).name}")
+
+        # 使用 FFmpeg 解析视频信息
+        try:
+            info = self._ffmpeg.get_video_info(path)
+            self.status_bar.set_video_info(
+                resolution=f"{info.width}×{info.height}" if info.width else "",
+                fps=f"{info.fps:.0f}fps" if info.fps else "",
+                bitrate=f"{info.bitrate}kbps" if info.bitrate else "",
+            )
+            self.toolbar.set_fps(info.fps)
+            self.timeline_card.set_fps(info.fps)
+            self.waveform_card.set_fps(info.fps)
+
+            if self._debug_console and self._debug_console.isVisible():
+                print(f"[FFmpeg] 视频信息: {info.width}x{info.height}, {info.fps}fps, {info.bitrate}kbps, {info.duration}ms")
+        except Exception as e:
+            self.status_bar.clear_video_info()
+            if self._debug_console and self._debug_console.isVisible():
+                print(f"[FFmpeg] 错误: {str(e)}")
+
+        # 加载波形（异步处理，避免阻塞 UI）
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(100, lambda: self._load_waveform(path))
+
+    @relay("player.ab_loop_changed")
+    def _on_ab_loop_changed(self, a_point: int, b_point: int):
+        """AB 循环状态变化 → 更新工具栏和波形卡片"""
+        self.toolbar.update_ab_loop_state(a_point, b_point)
+        self.waveform_card.set_ab_loop_region(a_point, b_point)
+
+    @relay("waveform.subtitle_created")
+    def _on_subtitle_created(self, start_ms: int, end_ms: int, track: int):
+        """打轴完成 → 添加字幕到时间轴 + 同步波形覆盖"""
+        self.timeline_card.add_subtitle(start_ms, end_ms, col=track)
+
+    @relay("timeline.subtitle_changed")
+    def _sync_subtitle_overlay(self):
+        """同步字幕数据到波形卡片的覆盖显示"""
+        subtitle_data = self.timeline_card.get_subtitle_data()
+        self.waveform_card.update_subtitle_overlay_from_data(subtitle_data)
+
+    @relay("timeline.subtitle_selected")
     def _on_subtitle_selected(self, col: int, start_ms: int):
         """字幕被选中 → 更新翻译面板"""
         self.translate_card.show_subtitle(col, start_ms)
 
+    @relay("translate.text_saved")
     def _on_text_saved(self, col: int, start_ms: int, text: str):
         """翻译文本保存 → 更新时间轴卡片"""
         self.timeline_card.set_subtitle_text(col, start_ms, text)
 
+    @relay("translate.jump_to_next")
     def _on_jump_to_next(self, col: int, start_ms: int):
         """跳转到下一条字幕"""
         next_sub = self.timeline_card.get_next_subtitle(col, start_ms)
@@ -395,6 +433,7 @@ class MainWindow(QMainWindow):
         else:
             self.status_bar.set_status("已是最后一条字幕")
 
+    @relay("translate.jump_to_prev")
     def _on_jump_to_prev(self, col: int, start_ms: int):
         """跳转到上一条字幕"""
         prev_sub = self.timeline_card.get_prev_subtitle(col, start_ms)
@@ -404,11 +443,6 @@ class MainWindow(QMainWindow):
             self.translate_card.show_subtitle(new_col, new_start)
         else:
             self.status_bar.set_status("已是第一条字幕")
-
-    def _on_ab_loop_changed(self, a_point: int, b_point: int):
-        """AB 循环状态变化 → 更新工具栏和波形卡片"""
-        self.toolbar.update_ab_loop_state(a_point, b_point)
-        self.waveform_card.set_ab_loop_region(a_point, b_point)
 
     def _notify_cards_ready(self):
         """通知所有卡片就绪"""
@@ -563,44 +597,6 @@ class MainWindow(QMainWindow):
             path: 视频文件路径
         """
         self.player_card.open_video(path)
-
-    def _on_video_opened(self, path: str):
-        """视频打开后的处理（菜单打开和拖放均触发）
-
-        Args:
-            path: 视频文件路径
-        """
-        # 更新状态栏
-        self.status_bar.set_status(f"已打开: {Path(path).name}")
-
-        # 使用 FFmpeg 解析视频信息
-        try:
-            info = self._ffmpeg.get_video_info(path)
-            self.status_bar.set_video_info(
-                resolution=f"{info.width}×{info.height}" if info.width else "",
-                fps=f"{info.fps:.0f}fps" if info.fps else "",
-                bitrate=f"{info.bitrate}kbps" if info.bitrate else "",
-            )
-            # 传递帧率给工具栏（用于逐帧和帧号显示）
-            self.toolbar.set_fps(info.fps)
-            # 传递帧率给时间轴（用于帧号显示）
-            self.timeline_card.set_fps(info.fps)
-            # 传递帧率给波形图（用于帧号显示）
-            self.waveform_card.set_fps(info.fps)
-
-            # 调试输出
-            if self._debug_console and self._debug_console.isVisible():
-                print(f"[FFmpeg] 视频信息: {info.width}x{info.height}, {info.fps}fps, {info.bitrate}kbps, {info.duration}ms")
-        except Exception as e:
-            # FFmpeg 不可用时不报错，只是不显示视频信息
-            self.status_bar.clear_video_info()
-            if self._debug_console and self._debug_console.isVisible():
-                print(f"[FFmpeg] 错误: {str(e)}")
-
-        # 加载波形（异步处理，避免阻塞 UI）
-        from PySide6.QtCore import QTimer
-
-        QTimer.singleShot(100, lambda: self._load_waveform(path))
 
     def _on_open_subtitle(self):
         """导入字幕文件"""
@@ -810,17 +806,6 @@ class MainWindow(QMainWindow):
             self.status_bar.set_status("波形加载失败")
             if self._debug_console and self._debug_console.isVisible():
                 print("[波形] 加载失败")
-
-    # ========== 打轴功能 ==========
-
-    def _on_subtitle_created(self, start_ms: int, end_ms: int, track: int):
-        """打轴完成 → 添加字幕到时间轴 + 同步波形覆盖"""
-        self.timeline_card.add_subtitle(start_ms, end_ms, col=track)
-
-    def _sync_subtitle_overlay(self):
-        """同步字幕数据到波形卡片的覆盖显示"""
-        subtitle_data = self.timeline_card.get_subtitle_data()
-        self.waveform_card.update_subtitle_overlay_from_data(subtitle_data)
 
     # ========== 状态栏更新 ==========
 

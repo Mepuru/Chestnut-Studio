@@ -5,7 +5,7 @@
 - 生命周期钩子
 - 状态持久化接口
 - 声明式属性（card_id, card_title, default_area 等）
-- 声明式信号订阅（listens_to）
+- 声明式信号订阅（listens_to + @subscribe 装饰器）
 """
 
 from __future__ import annotations
@@ -119,6 +119,12 @@ class BaseCard(QDockWidget):
     def listens_to(self) -> dict[str, str | Callable]:
         """声明本卡片关心的外部信号。
 
+        支持两种方式：
+        1. 手动声明（重写此方法）
+        2. 使用 @subscribe 装饰器（自动收集）
+
+        两种方式可以混合使用，装饰器声明会自动合并。
+
         返回格式:
             {
                 "<source_card_id>.<signal_name>": "<handler_method_name>",
@@ -127,13 +133,23 @@ class BaseCard(QDockWidget):
             }
 
         示例:
-            return {
-                "player.position_changed": "update_position",
-                "player.duration_changed": "set_duration",
-                "toolbar.play_clicked": self._on_play,
-            }
+            # 方式 1：手动声明
+            def listens_to(self):
+                return {
+                    "player.position_changed": "update_position",
+                }
+
+            # 方式 2：装饰器声明
+            @subscribe("player.position_changed")
+            def update_position(self, ms): ...
 
         Returns:
             信号订阅声明字典
         """
-        return {}
+        # 收集 @subscribe 装饰器声明
+        from chestnut_studio.ui.signal_decorator import collect_subscriptions
+        subscriptions = collect_subscriptions(self)
+
+        # 允许子类通过重写 listens_to 添加更多订阅
+        # 这里返回装饰器收集的结果
+        return subscriptions

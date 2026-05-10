@@ -23,8 +23,8 @@ class SignalManager:
     """信号管理器
 
     职责：
-    - 收集所有卡片的信号声明
-    - 管理中转处理函数
+    - 收集所有卡片的信号声明（包括 @subscribe 装饰器）
+    - 管理中转处理函数（包括 @relay 装饰器）
     - 自动连接所有信号
     """
 
@@ -42,6 +42,15 @@ class SignalManager:
     def register_cards(self, cards: dict[str, BaseCard]) -> None:
         """注册所有卡片"""
         self._cards = cards
+
+        # 自动收集 @relay 装饰器声明
+        from chestnut_studio.ui.signal_decorator import collect_relays
+        for card_id, card in cards.items():
+            relays = collect_relays(card)
+            for source_key, handler_name in relays.items():
+                handler = getattr(card, handler_name, None)
+                if handler:
+                    self._relay_handlers[source_key] = handler
 
     def register_special(self, component_id: str, component: Any) -> None:
         """注册特殊组件（toolbar、statusbar 等）"""
@@ -100,6 +109,22 @@ class SignalManager:
                     slot = getattr(card, handler, None)
                 if slot is not None:
                     signal_connections[source_key].append(slot)
+
+        # 4. 添加特殊组件的声明式信号
+        for comp_id, comp in self._special_components.items():
+            if hasattr(comp, 'listens_to'):
+                subscriptions = comp.listens_to()
+                for source_key, handler in subscriptions.items():
+                    if source_key not in signal_connections:
+                        signal_connections[source_key] = []
+
+                    # 获取处理函数
+                    if callable(handler):
+                        slot = handler
+                    else:
+                        slot = getattr(comp, handler, None)
+                    if slot is not None:
+                        signal_connections[source_key].append(slot)
 
         # 4. 统一连接所有信号
         for source_key, handlers in signal_connections.items():
