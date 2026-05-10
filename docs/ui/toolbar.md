@@ -1,7 +1,7 @@
 # 工具栏
 
 > `chestnut_studio/ui/toolbar.py`
-> `ToolBar(QToolBar)` — 播放控制工具栏。
+> `ToolBar(QToolBar)` — 播放控制工具栏，实现 `listens_to()` 声明式信号订阅。
 
 ---
 
@@ -11,6 +11,24 @@
 - AB 循环控制（设置 A 点、B 点、清除循环）
 - 倍速选择（0.5x - 2.0x）
 - 帧号显示
+
+---
+
+## 声明式信号订阅
+
+ToolBar 实现 `listens_to()` 方法，自动订阅 PlayerCard 的信号：
+
+```python
+class ToolBar(QToolBar):
+    def listens_to(self) -> dict[str, str]:
+        """声明本组件关心的外部信号"""
+        return {
+            "player.position_changed": "update_position",
+            "player.duration_changed": "set_duration",
+            "player.playback_state_changed": "set_playing",
+            "player.ab_loop_changed": "update_ab_loop_state",
+        }
+```
 
 ---
 

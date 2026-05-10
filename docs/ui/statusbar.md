@@ -1,7 +1,7 @@
 # 状态栏
 
 > `chestnut_studio/ui/statusbar.py`
-> `StatusBar(QStatusBar)` — 三段式状态栏。
+> `StatusBar(QStatusBar)` — 三段式状态栏，通过 SignalManager 动态订阅信号。
 
 ---
 
@@ -10,6 +10,22 @@
 - 显示应用状态信息
 - 显示视频参数（分辨率、帧率、码率）
 - 显示当前播放时间和总时长
+
+---
+
+## 信号订阅
+
+StatusBar 通过 SignalManager 动态订阅信号：
+
+```python
+# MainWindow 中注册
+self._signal_manager.register_dynamic_relay(
+    "player.position_changed", self._on_position_changed
+)
+self._signal_manager.register_dynamic_relay(
+    "player.duration_changed", self._on_duration_changed
+)
+```
 
 ---
 

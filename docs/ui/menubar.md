@@ -1,15 +1,34 @@
 # 菜单栏
 
 > `chestnut_studio/ui/menubar.py`
-> `MenuBar(QMenuBar)` — 应用菜单栏。
+> `MenuBar(QMenuBar)` — 应用菜单栏，支持自动生成的卡片和布局子菜单。
 
 ---
 
 ## 职责
 
 - 文件菜单（打开视频、导入/导出字幕、退出）
-- 视图菜单（卡片显示/隐藏、布局管理、全屏）
+- 视图菜单（卡片显示/隐藏、布局管理、全屏）— 支持自动生成
 - 帮助菜单（快捷键说明）
+
+---
+
+## 自动生成支持
+
+MenuBar 支持自动生成的子菜单：
+
+```python
+class MenuBar(QMenuBar):
+    def set_card_submenu(self, submenu: QMenu):
+        """设置自动生成的卡片子菜单"""
+        self._card_submenu = submenu
+        self._rebuild_view_menu()
+
+    def set_layout_submenu(self, submenu: QMenu):
+        """设置自动生成的布局子菜单"""
+        self._layout_submenu = submenu
+        self._rebuild_view_menu()
+```
 
 ---
 
