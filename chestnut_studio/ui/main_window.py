@@ -21,6 +21,7 @@ from chestnut_studio.ui.signal_decorator import relay
 from chestnut_studio.ui.signal_manager import SignalManager
 from chestnut_studio.ui.statusbar import StatusBar
 from chestnut_studio.ui.toolbar import ToolBar
+from chestnut_studio.utils.log_manager import LogManager
 from chestnut_studio.utils.time_utils import split_time
 from chestnut_studio.utils.version import get_version
 
@@ -367,12 +368,12 @@ class MainWindow(QMainWindow):
             self.timeline_card.set_fps(info.fps)
             self.waveform_card.set_fps(info.fps)
 
-            if self._debug_console and self._debug_console.isVisible():
-                print(f"[FFmpeg] 视频信息: {info.width}x{info.height}, {info.fps}fps, {info.bitrate}kbps, {info.duration}ms")
+            LogManager.instance().get_logger("FFmpeg").info(
+                f"视频信息: {info.width}x{info.height}, {info.fps}fps, {info.bitrate}kbps, {info.duration}ms"
+            )
         except Exception as e:
             self.status_bar.clear_video_info()
-            if self._debug_console and self._debug_console.isVisible():
-                print(f"[FFmpeg] 错误: {str(e)}")
+            LogManager.instance().get_logger("FFmpeg").error(f"错误: {str(e)}")
 
         # 加载波形（异步处理，避免阻塞 UI）
         from PySide6.QtCore import QTimer
@@ -660,9 +661,7 @@ class MainWindow(QMainWindow):
                     track_info = ", ".join([f"{style}→轨道{track}" for style, track in style_to_track.items()])
                     self.status_bar.set_status(f"已导入 {total_count} 条字幕 ({track_info})")
 
-                    # 调试输出
-                    if self._debug_console and self._debug_console.isVisible():
-                        print(f"[导入] 样式映射: {track_info}")
+                    LogManager.instance().get_logger("导入").info(f"样式映射: {track_info}")
                 else:
                     self.status_bar.set_status("字幕文件为空或格式错误")
             else:
@@ -670,8 +669,7 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             self.status_bar.set_status(f"导入失败: {str(e)}")
-            if self._debug_console and self._debug_console.isVisible():
-                print(f"[导入] 错误: {str(e)}")
+            LogManager.instance().get_logger("导入").error(f"错误: {str(e)}")
 
     def _on_save_subtitle(self):
         """导出字幕文件"""
@@ -722,16 +720,11 @@ class MainWindow(QMainWindow):
 
         if self._debug_console is None:
             self._debug_console = DebugConsole(self)
-            self._debug_console.enable_redirect()
             self._debug_console.show()
-            print("[调试模式] 已开启，所有输出将显示在此控制台")
         elif self._debug_console.isVisible():
-            self._debug_console.disable_redirect()
             self._debug_console.hide()
         else:
-            self._debug_console.enable_redirect()
             self._debug_console.show()
-            print("[调试模式] 已重新开启")
 
     # ========== 跳转/逐帧 ==========
 
@@ -777,18 +770,15 @@ class MainWindow(QMainWindow):
         Args:
             video_path: 视频文件路径
         """
-        if self._debug_console and self._debug_console.isVisible():
-            print(f"[波形] 开始加载: {video_path}")
+        LogManager.instance().get_logger("波形").info(f"开始加载: {video_path}")
 
         success = self.waveform_card.load_waveform(video_path)
         if success:
             self.status_bar.set_status("波形加载完成")
-            if self._debug_console and self._debug_console.isVisible():
-                print("[波形] 加载完成")
+            LogManager.instance().get_logger("波形").info("加载完成")
         else:
             self.status_bar.set_status("波形加载失败")
-            if self._debug_console and self._debug_console.isVisible():
-                print("[波形] 加载失败")
+            LogManager.instance().get_logger("波形").error("加载失败")
 
     # ========== 状态栏更新 ==========
 
