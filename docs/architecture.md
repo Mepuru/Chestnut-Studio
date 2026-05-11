@@ -17,7 +17,7 @@
 │  FFmpeg · Audio · Subtitle · SubtitleIO                     │
 ├─────────────────────────────────────────────────────────────┤
 │                    工具层 (utils/)                           │
-│  time_utils                                                 │
+│  log_manager · time_utils · version                         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -96,11 +96,15 @@
 
 | 模块 | 职责 |
 |------|------|
+| `log_manager.py` | 统一日志管理器，声明式、可扩展的日志系统 |
+| `log_decorator.py` | 日志装饰器，声明式方式定义日志源和记录方法调用 |
 | `time_utils.py` | 时间格式转换，毫秒与各格式互转 |
 | `version.py` | 版本号工具，从 pyproject.toml 单源读取 |
 
 **详细文档：**
 - [工具层概述](utils/README.md)
+- [统一日志管理器](utils/log_manager.md)
+- [日志装饰器](utils/log_decorator.md)
 - [时间格式转换](utils/time_utils.md)
 
 ---

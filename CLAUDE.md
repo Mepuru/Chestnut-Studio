@@ -62,6 +62,8 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 | `core/audio.py` | 音频处理函数 |
 | `core/ffmpeg.py` | FFmpeg 封装 |
 | `core/track_config.py` | 轨道颜色、数量等集中配置（默认 8 轨道） |
+| `utils/log_manager.py` | 统一日志管理器，声明式、可扩展的日志系统 |
+| `utils/log_decorator.py` | 日志装饰器，声明式方式定义日志源和记录方法调用 |
 | `utils/version.py` | 版本号工具，从 pyproject.toml 单源读取 |
 
 ---

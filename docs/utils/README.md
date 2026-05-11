@@ -9,6 +9,8 @@
 
 | 模块 | 文件 | 职责 |
 |------|------|------|
+| [统一日志管理器](log_manager.md) | `log_manager.py` | 声明式、可扩展的日志系统 |
+| [日志装饰器](log_decorator.md) | `log_decorator.py` | 声明式方式定义日志源和记录方法调用 |
 | [时间格式转换](time_utils.md) | `time_utils.py` | 毫秒与各格式互转 |
 | 版本号工具 | `version.py` | 从 pyproject.toml 单源读取版本号 |
 
@@ -57,6 +59,37 @@ UI 层 (ui/)
 
 ## 使用示例
 
+### 日志装饰器
+
+```python
+from chestnut_studio.utils.log_decorator import log_source, log_call
+from chestnut_studio.utils.log_manager import LogLevel
+
+@log_source("FFmpeg")
+class FFmpeg:
+    @log_call(LogLevel.INFO)
+    def get_video_info(self, path: str):
+        pass
+```
+
+### 日志管理器
+
+```python
+from chestnut_studio.utils.log_manager import LogManager
+
+# 获取日志器并输出
+logger = LogManager.instance().get_logger("FFmpeg")
+logger.info("视频信息: 1920x1080")
+
+# 添加处理器（输出到标准输出）
+def stdout_handler(record):
+    print(f"[{record.source}] {record.message}")
+
+LogManager.instance().add_handler(stdout_handler)
+```
+
+### 时间格式转换
+
 ```python
 from chestnut_studio.utils.time_utils import ms_to_srt_time, split_time
 
@@ -73,11 +106,15 @@ print(ms_to_srt_time(330012))   # "0:05:30,012"
 
 | 模块 | 测试要求 |
 |------|---------|
+| `log_manager.py` | 必须有完整测试 |
+| `log_decorator.py` | 必须有完整测试 |
 | `time_utils.py` | 必须有完整测试 |
 
 运行测试：
 
 ```bash
+uv run pytest tests/test_log_manager.py
+uv run pytest tests/test_log_decorator.py
 uv run pytest tests/test_time_utils.py
 ```
 
@@ -92,6 +129,20 @@ uv run pytest tests/test_time_utils.py
 3. 添加类型注解和文档字符串
 4. 编写单元测试
 5. 更新本文档
+
+### 添加日志处理器
+
+日志系统支持可插拔处理器，扩展时无需修改现有代码：
+
+```python
+from chestnut_studio.utils.log_manager import LogManager, LogRecord
+
+def my_handler(record: LogRecord):
+    # 自定义处理逻辑
+    pass
+
+LogManager.instance().add_handler(my_handler)
+```
 
 ### 命名规范
 

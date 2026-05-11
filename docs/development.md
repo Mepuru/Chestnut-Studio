@@ -45,6 +45,8 @@ D:\ChestnutStudio\
 │   │       └── debug_console.py   # 调试控制台
 │   ├── utils/                     # 工具函数
 │   │   ├── __init__.py
+│   │   ├── log_manager.py         # 统一日志管理器
+│   │   ├── log_decorator.py       # 日志装饰器
 │   │   ├── time_utils.py          # 时间格式转换
 │   │   └── version.py             # 版本号工具
 │   └── resources/                 # 资源文件
@@ -91,6 +93,8 @@ D:\ChestnutStudio\
 │   │       └── edit_subtitle_dialog.md  # 字幕编辑对话框
 │   └── utils/                     # 工具层模块文档
 │       ├── README.md              # 工具层概述
+│       ├── log_manager.md         # 统一日志管理器
+│       ├── log_decorator.md       # 日志装饰器
 │       └── time_utils.md          # 时间格式转换
 ├── issues/                        # Issue 跟踪
 ├── prototypes/                    # 设计文档
@@ -102,7 +106,9 @@ D:\ChestnutStudio\
 │   ├── test_phase0.py             # Phase 0 测试
 │   ├── test_phase1.py             # Phase 1 测试
 │   ├── test_phase2.py             # Phase 2 测试
-│   └── test_subtitle.py           # 字幕测试
+│   ├── test_subtitle.py           # 字幕测试
+│   ├── test_log_manager.py        # 日志管理器测试
+│   └── test_log_decorator.py      # 日志装饰器测试
 ├── main.py                        # 入口文件
 ├── pyproject.toml                 # 项目配置
 ├── uv.lock                        # 依赖锁定
