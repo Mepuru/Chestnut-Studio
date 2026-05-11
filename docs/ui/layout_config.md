@@ -199,3 +199,4 @@ chestnut_studio/
 ## 依赖
 
 - Python: `json`, `dataclasses`, `importlib.resources`
+- chestnut_studio.utils.log_manager: `LogManager`（用于日志输出）

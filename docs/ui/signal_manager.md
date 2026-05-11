@@ -167,3 +167,4 @@ toolbar = signal_mgr.get_component("toolbar")
 - `chestnut_studio.ui.cards.base_card`: BaseCard 基类
 - `chestnut_studio.ui.cards.registry`: 卡片注册表
 - `chestnut_studio.ui.signal_decorator`: 信号装饰器
+- `chestnut_studio.utils.log_manager`: LogManager（用于日志输出）

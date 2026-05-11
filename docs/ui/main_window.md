@@ -101,7 +101,7 @@
 - `_layout_initialized` 标志位：首次调用跳过 `removeDockWidget`
 - `_apply_layout_size()`：按比例动态计算卡片尺寸
 - `resizeEvent()`：窗口缩放时自动维护比例
-- `_dump_layout_info()`：打印布局调试信息到控制台
+- `_dump_layout_info()`：打印布局调试信息到控制台（使用 LogManager）
 
 ### 布局持久化
 
@@ -166,3 +166,4 @@ window.waveform_card.load_waveform("video.mp4")
 - chestnut_studio.ui.toolbar: `ToolBar`
 - chestnut_studio.ui.menubar: `MenuBar`
 - chestnut_studio.ui.statusbar: `StatusBar`
+- chestnut_studio.utils.log_manager: `LogManager`（用于日志输出）

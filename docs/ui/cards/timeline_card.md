@@ -219,3 +219,4 @@ timeline_card.redo()
 - PySide6: `QDockWidget`, `QWidget`, `QTableWidget`, `QPushButton`
 - chestnut_studio.core.subtitle: `SubtitleManager`
 - chestnut_studio.utils.time_utils: `ms_to_time_str`
+- chestnut_studio.utils.log_manager: `LogManager`（用于日志输出）

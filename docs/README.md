@@ -45,6 +45,8 @@ docs/
 │       └── edit_subtitle_dialog.md  # 字幕编辑对话框
 └── utils/                       # 工具层模块文档
     ├── README.md                # 工具层概述
+    ├── log_manager.md           # 统一日志管理器
+    ├── log_decorator.md         # 日志装饰器
     └── time_utils.md            # 时间格式转换
 ```
 
@@ -105,6 +107,7 @@ docs/
 | 文档 | 说明 |
 |------|------|
 | [弹窗概述](ui/dialogs/README.md) | 弹窗组件整体介绍 |
+| [调试控制台](ui/dialogs/debug_console.md) | 日志输出、级别过滤、颜色区分 |
 | [字幕编辑对话框](ui/dialogs/edit_subtitle_dialog.md) | 字幕区间编辑 |
 
 ### 工具层 (utils/)
@@ -112,6 +115,8 @@ docs/
 | 文档 | 说明 |
 |------|------|
 | [工具层概述](utils/README.md) | 工具层整体介绍 |
+| [统一日志管理器](utils/log_manager.md) | 声明式、可扩展的日志系统 |
+| [日志装饰器](utils/log_decorator.md) | @log_source、@log_call 装饰器 |
 | [时间格式转换](utils/time_utils.md) | 毫秒与各格式互转 |
 
 ---

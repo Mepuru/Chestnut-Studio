@@ -30,6 +30,7 @@
 
 | 模块 | 文件 | 职责 |
 |------|------|------|
+| [调试控制台](dialogs/debug_console.md) | `dialogs/debug_console.py` | 日志输出、级别过滤、颜色区分 |
 | [字幕编辑对话框](dialogs/edit_subtitle_dialog.md) | `dialogs/edit_subtitle_dialog.py` | 字幕区间编辑 |
 
 ---
