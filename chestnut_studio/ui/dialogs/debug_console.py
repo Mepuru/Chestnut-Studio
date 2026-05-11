@@ -65,7 +65,7 @@ class DebugConsole(QDialog):
 
         # 按钮
         btn_clear = QPushButton("清空")
-        btn_clear.clicked.connect(self.text_edit.clear)
+        btn_clear.clicked.connect(lambda: self.text_edit.clear())
         toolbar_layout.addWidget(btn_clear)
 
         btn_copy = QPushButton("复制全部")
