@@ -32,6 +32,8 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from chestnut_studio.utils.log_manager import LogManager
+
 
 @dataclass
 class RowConfig:
@@ -73,7 +75,7 @@ class LayoutConfig:
         Returns:
             LayoutConfig 实例
         """
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return cls._from_dict(data)
 
@@ -126,7 +128,7 @@ def get_builtin_layouts() -> dict[str, LayoutConfig]:
                     config = LayoutConfig.from_json(path)
                     layouts[path.stem] = config
                 except Exception as e:
-                    print(f"[Layout] 加载 {path.name} 失败: {e}")
+                    LogManager.instance().get_logger("Layout").error(f"加载 {path.name} 失败: {e}")
     except Exception:
         pass
 

@@ -15,6 +15,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
+from chestnut_studio.utils.log_manager import LogManager
+
 if TYPE_CHECKING:
     from chestnut_studio.ui.cards.base_card import BaseCard
 
@@ -150,13 +152,13 @@ class SignalManager:
             if source is None:
                 source = self._special_components.get(src_id)
             if source is None:
-                print(f"[Signal] 未知源: {src_id}")
+                LogManager.instance().get_logger("Signal").warning(f"未知源: {src_id}")
                 continue
 
             # 获取信号
             signal = getattr(source, signal_name, None)
             if signal is None:
-                print(f"[Signal] {src_id} 没有信号 {signal_name}")
+                LogManager.instance().get_logger("Signal").warning(f"{src_id} 没有信号 {signal_name}")
                 continue
 
             # 连接所有处理函数
@@ -164,7 +166,7 @@ class SignalManager:
                 try:
                     signal.connect(handler)
                 except Exception as e:
-                    print(f"[Signal] 连接失败: {source_key} -> {handler}: {e}")
+                    LogManager.instance().get_logger("Signal").error(f"连接失败: {source_key} -> {handler}: {e}")
 
     def get_component(self, component_id: str) -> Any | None:
         """获取组件（卡片或特殊组件）"""

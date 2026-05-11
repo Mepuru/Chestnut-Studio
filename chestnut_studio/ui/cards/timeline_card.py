@@ -31,6 +31,7 @@ from chestnut_studio.core.track_config import (
 )
 from chestnut_studio.ui.cards.base_card import BaseCard
 from chestnut_studio.ui.cards.registry import register_card
+from chestnut_studio.utils.log_manager import LogManager
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
 # 操作按钮样式
@@ -645,16 +646,16 @@ class TimelineCard(BaseCard):
     def _preview_tracks(self):
         """预览所有轨道叠加效果"""
         # 发射预览信号或打开预览对话框
-        # 暂时打印到控制台
-        print("\n===== 轨道预览 =====")
+        logger = LogManager.instance().get_logger("Timeline")
+        logger.info("===== 轨道预览 =====")
         max_track = self._subtitle_mgr.get_max_track()
         for col in range(1, max_track + 1):
             sub_data = self._subtitle_mgr.data.get(col, {})
             if sub_data:
-                print(f"轨道 {col}: {len(sub_data)} 条")
+                logger.info(f"轨道 {col}: {len(sub_data)} 条")
                 for start, (duration, text) in sorted(sub_data.items()):
-                    print(f"  {ms_to_time_str(start)} - {ms_to_time_str(start + duration)}: {text or '(无文本)'}")
-        print("===================\n")
+                    logger.info(f"  {ms_to_time_str(start)} - {ms_to_time_str(start + duration)}: {text or '(无文本)'}")
+        logger.info("===================")
 
     def _copy_track(self):
         """复制轨道字幕到另一个轨道"""
