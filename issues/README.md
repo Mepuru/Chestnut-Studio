@@ -37,7 +37,9 @@ Issue 生命周期:
 
 ### 进行中
 
-（暂无）
+| Issue | 状态 | 说明 | 文档数 |
+|-------|------|------|--------|
+| [logging-system](logging-system/) | `proposed` | 统一日志系统方案：LogManager、日志装饰器、调试控制台改造 | 4 |
 
 ### 已完成
 
@@ -63,6 +65,12 @@ issues/
 │   ├── declarative_signals.md     # 声明式信号系统设计
 │   ├── layout_system.md           # 配置驱动布局系统设计
 │   └── auto_menu.md               # 菜单自动生成设计
+├── logging-system/                # Issue #2: 统一日志系统
+│   ├── STATUS                     # 状态标记
+│   ├── architecture_logging.md    # 总览文档
+│   ├── log_manager.md             # 日志管理器设计
+│   ├── log_decorator.md           # 日志装饰器设计
+│   └── debug_console.md           # 调试控制台改造设计
 └── ...                            # 未来 Issue
 ```
 
