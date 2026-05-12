@@ -1,6 +1,6 @@
 [project]
 name = "chestnut-studio"
-version = "1.2.0"
+version = "1.3.1"
 description = "现代化卡片化打轴工具 - 基于 PySide6 的字幕时间轴编辑器"
 readme = "README.md"
 license = "MIT"

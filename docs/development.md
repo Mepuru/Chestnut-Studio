@@ -371,7 +371,7 @@ Closes #1
 # pyproject.toml
 [project]
 name = "chestnut-studio"
-version = "1.2.1"
+version = "1.3.1"
 requires-python = ">=3.12"
 dependencies = [
     "PySide6>=6.11.0",
