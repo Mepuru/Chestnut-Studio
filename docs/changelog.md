@@ -4,25 +4,50 @@
 
 ---
 
-## v1.3.1 — 2026-05-12 — 播放位置同步精度提升
+## v1.3.1 — 2026-05-12 — 统一日志系统 + 播放同步精度提升
 
-### 修复
+### 新增：统一日志系统
 
-- **播放位置同步精度**：用 `QTimer(16ms)` 轮询替代 `QMediaPlayer.positionChanged` 信号，位置更新从 ~250ms 提升至 ~60fps
+- **LogManager**：声明式、可扩展的日志管理器（单例），替代散落的 `print()` 调用
+  - 纯 Python 实现，不依赖 PySide6，符合 utils/ 层约定
+  - 支持可插拔 handler、日志级别过滤（DEBUG/INFO/WARNING/ERROR）、线程安全
+- **日志装饰器**：`@log_source` + `@log_call`，声明式记录方法调用，自动记录开始/成功/失败
+- **调试控制台**：通过菜单 帮助 > 调试控制台 打开，支持日志级别颜色区分和过滤
+  - DEBUG 绿色 / INFO 白色 / WARNING 黄色 / ERROR 红色
+  - 打开时注册 handler，关闭时自动注销，避免内存泄漏
+- **代码迁移**：`main_window.py`、`signal_manager.py`、`layout_config.py`、`timeline_card.py` 中共 15 处 `print()` 替换为 LogManager 调用
+- 新增 38 个单元测试（LogManager 22 个 + LogDecorator 16 个），全部通过
+
+### 修复：播放位置同步精度
+
+- **播放位置同步**：用 `QTimer(16ms)` 轮询替代 `QMediaPlayer.positionChanged` 信号，位置更新从 ~250ms 提升至 ~60fps
   - 波形红线平滑连续移动，不再跳跃
   - I/O 打轴误差从 ±250ms 降至 ±16ms
   - 帧号显示刷新率从 ~4fps 提升至 ~60fps
   - AB 循环跳回精度同步提升
 
-### 原因
+### 新增模块
 
-Qt6 的 `QMediaPlayer.positionChanged` 信号触发频率由后端决定（默认 ~250ms），且 `setPositionUpdateInterval()` 在 PySide6 中不可用。改用 QTimer 主动轮询 `player.position()` 完全绕过此限制。
+| 模块 | 文件 | 职责 |
+|------|------|------|
+| LogManager | `utils/log_manager.py` | 统一日志管理器，声明式、可扩展 |
+| LogDecorator | `utils/log_decorator.py` | @log_source / @log_call 装饰器 |
+| DebugConsole | `ui/dialogs/debug_console.py` | 调试控制台窗口 |
 
 ### 受影响文件
 
 | 文件 | 变更 |
 |------|------|
-| `ui/cards/player_card.py` | 新增 `_position_timer`（QTimer），移除 `positionChanged` 信号连接，暂停态手动触发位置更新 |
+| `ui/cards/player_card.py` | 新增 `_position_timer`（QTimer 轮询），移除 `positionChanged` 信号连接 |
+| `ui/main_window.py` | 7 处 print() → LogManager，新增调试控制台入口 |
+| `ui/signal_manager.py` | 3 处 print() → LogManager |
+| `ui/layout_config.py` | 1 处 print() → LogManager |
+| `ui/cards/timeline_card.py` | 4 处 print() → LogManager |
+
+### 测试
+
+- 38 个新增测试全部通过
+- 无回归问题
 
 ---
 
