@@ -131,6 +131,18 @@ a, b = player_card.get_ab_loop_points()  # 获取 AB 点
 | `_hint_label` | `QLabel` | 空状态提示 |
 | `_player` | `QMediaPlayer` | 播放器实例 |
 | `_audio_output` | `QAudioOutput` | 音频输出 |
+| `_position_timer` | `QTimer` | 16ms 轮询播放位置（~60fps） |
+
+---
+
+## 位置同步机制
+
+Qt6 的 `QMediaPlayer.positionChanged` 信号触发频率由后端决定（默认 ~250ms），无法通过 API 配置。
+
+采用 `QTimer(16ms)` 主动轮询 `player.position()` 实现 ~60fps 位置更新：
+- 播放时 timer 启动，暂停/停止时 timer 停止
+- 暂停态下 `set_position()` / `stop()` 手动触发一次位置信号更新 UI
+- 下游（波形红线、工具栏帧号、状态栏时间）无需感知差异
 
 ---
 

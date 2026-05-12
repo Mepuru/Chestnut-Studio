@@ -4,6 +4,28 @@
 
 ---
 
+## v1.2.1 — 2026-05-12 — 播放位置同步精度提升
+
+### 修复
+
+- **播放位置同步精度**：用 `QTimer(16ms)` 轮询替代 `QMediaPlayer.positionChanged` 信号，位置更新从 ~250ms 提升至 ~60fps
+  - 波形红线平滑连续移动，不再跳跃
+  - I/O 打轴误差从 ±250ms 降至 ±16ms
+  - 帧号显示刷新率从 ~4fps 提升至 ~60fps
+  - AB 循环跳回精度同步提升
+
+### 原因
+
+Qt6 的 `QMediaPlayer.positionChanged` 信号触发频率由后端决定（默认 ~250ms），且 `setPositionUpdateInterval()` 在 PySide6 中不可用。改用 QTimer 主动轮询 `player.position()` 完全绕过此限制。
+
+### 受影响文件
+
+| 文件 | 变更 |
+|------|------|
+| `ui/cards/player_card.py` | 新增 `_position_timer`（QTimer），移除 `positionChanged` 信号连接，暂停态手动触发位置更新 |
+
+---
+
 ## v1.2.0 — 2026-05-11 — 可扩展架构重构
 
 ### 重大变更
