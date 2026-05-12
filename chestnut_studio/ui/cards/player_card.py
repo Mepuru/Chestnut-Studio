@@ -2,7 +2,7 @@
 
 import os
 
-from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtCore import Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QColor, QFont, QResizeEvent
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtMultimediaWidgets import QGraphicsVideoItem
@@ -204,8 +204,12 @@ class PlayerCard(BaseCard):
         self._player.setAudioOutput(self._audio_output)
         self._player.setVideoOutput(self._video_item)
 
+        # QTimer 轮询位置，绕过 Qt6 QMediaPlayer 无法配置 positionChanged 频率的限制
+        self._position_timer = QTimer(self)
+        self._position_timer.setInterval(16)  # ~60fps
+        self._position_timer.timeout.connect(self._poll_position)
+
     def _connect_signals(self):
-        self._player.positionChanged.connect(self._on_position_changed)
         self._player.durationChanged.connect(self._on_duration_changed)
         self._player.playbackStateChanged.connect(self._on_playback_state_changed)
         # 监听视频尺寸变化，自动适配画面
@@ -245,9 +249,13 @@ class PlayerCard(BaseCard):
     def stop(self):
         self._player.stop()
         self._player.setPosition(0)
+        self._on_position_changed(0)
 
     def set_position(self, ms: int):
         self._player.setPosition(ms)
+        # 暂停状态下 timer 未运行，手动发射一次位置信号更新 UI
+        if not self._is_playing:
+            self._on_position_changed(ms)
 
     def set_volume(self, value: int):
         self._volume = max(0, min(100, value))
@@ -304,6 +312,11 @@ class PlayerCard(BaseCard):
 
     # ========== 内部事件 ==========
 
+    def _poll_position(self):
+        """定时轮询播放位置，替代 positionChanged 信号以获得更高刷新率"""
+        position = self._player.position()
+        self._on_position_changed(position)
+
     def _on_position_changed(self, position: int):
         # AB 循环：如果播放位置超过 B 点，跳回 A 点
         if self._ab_loop_enabled and position >= self._ab_loop_b:
@@ -318,6 +331,10 @@ class PlayerCard(BaseCard):
 
     def _on_playback_state_changed(self, state):
         self._is_playing = state == QMediaPlayer.PlayingState
+        if self._is_playing:
+            self._position_timer.start()
+        else:
+            self._position_timer.stop()
         self.playback_state_changed.emit(self._is_playing)
 
     def _on_video_size_changed(self, size):
