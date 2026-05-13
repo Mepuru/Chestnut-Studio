@@ -97,26 +97,40 @@ QPushButton:disabled {
     border-color: #27272a;
 }
 
-/* DockWidget 卡片 - 整体是一个完整的边框 */
+/* DockWidget 卡片 */
 QDockWidget {
     background: transparent;
-    border: none;
+    border: 1px solid #1e1e24;
+    border-radius: 6px;
 }
 
 QDockWidget::title {
-    background: #18181b;
-    padding: 12px 16px;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #1e1e24,
+        stop:1 #18181b);
+    padding: 10px 14px 10px 18px;
     font-size: 10pt;
     font-weight: 600;
     color: #fafafa;
-    border: 1px solid #27272a;
-    border-bottom: 1px solid #3f3f46;
+    border: none;
+    border-bottom: 1px solid #25252b;
+    border-left: 3px solid #2563eb;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    letter-spacing: 0.5px;
 }
 
-/* 标题栏按钮 */
+QDockWidget::title:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #222229,
+        stop:1 #1c1c22);
+}
+
+/* 关闭按钮 */
 QDockWidget::close-button {
     background: transparent;
     border: none;
+    border-radius: 4px;
     padding: 4px;
     subcontrol-position: top right;
     subcontrol-origin: margin;
@@ -127,9 +141,20 @@ QDockWidget::close-button {
     height: 24px;
 }
 
+QDockWidget::close-button:hover {
+    background: #ef4444;
+    border-radius: 4px;
+}
+
+QDockWidget::close-button:pressed {
+    background: #dc2626;
+}
+
+/* 浮动按钮 */
 QDockWidget::float-button {
     background: transparent;
     border: none;
+    border-radius: 4px;
     padding: 4px;
     subcontrol-position: top right;
     subcontrol-origin: margin;
@@ -140,17 +165,41 @@ QDockWidget::float-button {
     height: 24px;
 }
 
-QDockWidget::close-button:hover {
-    background: #ef4444;
+QDockWidget::float-button:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
 }
 
-QDockWidget::float-button:hover {
-    background: rgba(255, 255, 255, 0.1);
+QDockWidget::float-button:pressed {
+    background: rgba(255, 255, 255, 0.04);
 }
 
 /* 浮动状态 */
+QDockWidget[floating="true"] {
+    border: 1px solid #27272a;
+    border-radius: 8px;
+}
+
 QDockWidget[floating="true"]::title {
-    border-bottom: 2px solid #2563eb;
+    border-left: 3px solid #3b82f6;
+    border-bottom: 1px solid #25252b;
+}
+
+/* 各卡片左侧色条（可选：按卡片区分颜色） */
+QDockWidget#player_card::title {
+    border-left-color: #2563eb;
+}
+
+QDockWidget#waveform_card::title {
+    border-left-color: #8b5cf6;
+}
+
+QDockWidget#timeline_card::title {
+    border-left-color: #06b6d4;
+}
+
+QDockWidget#translate_card::title {
+    border-left-color: #f59e0b;
 }
 
 /* 状态栏 */
