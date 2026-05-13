@@ -21,6 +21,16 @@
 |------|------|------|
 | `position_clicked(ms)` | `int` | 点击波形位置 (ms) |
 | `subtitle_created(start_ms, end_ms)` | `int, int` | 打轴完成，创建新字幕 |
+| `subtitle_edited(col, old_start, new_start, new_end)` | `int, int, int, int` | 编辑模式确认，字幕区间已修改 |
+
+## 订阅的信号
+
+| 信号源 | 信号 | 处理方法 |
+|--------|------|----------|
+| `player` | `position_changed` | `update_position` |
+| `player` | `duration_changed` | `set_duration` |
+| `player` | `ab_loop_changed` | `set_ab_loop_region` |
+| `timeline` | `edit_subtitle_requested` | `enter_edit_mode` |
 
 ---
 

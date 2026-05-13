@@ -390,6 +390,11 @@ class MainWindow(QMainWindow):
         """打轴完成 → 添加字幕到时间轴 + 同步波形覆盖"""
         self.timeline_card.add_subtitle(start_ms, end_ms, col=track)
 
+    @relay("waveform.subtitle_edited")
+    def _on_subtitle_edited(self, col: int, old_start: int, new_start: int, new_end: int):
+        """波形编辑完成 → 更新时间轴字幕 + 同步波形覆盖"""
+        self.timeline_card.apply_subtitle_edit(col, old_start, new_start, new_end)
+
     @relay("timeline.subtitle_changed")
     def _sync_subtitle_overlay(self):
         """同步字幕数据到波形卡片的覆盖显示"""

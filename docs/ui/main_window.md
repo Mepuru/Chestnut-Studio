@@ -53,6 +53,7 @@
 │    player.video_opened → MainWindow._on_video_opened           │
 │    player.ab_loop_changed → MainWindow._on_ab_loop_changed     │
 │    waveform.subtitle_created → MainWindow._on_subtitle_created │
+│    waveform.subtitle_edited → MainWindow._on_subtitle_edited   │
 │    timeline.subtitle_selected → MainWindow._on_subtitle_selected│
 │    translate.jump_to_next/prev → MainWindow._on_jump_to_*      │
 │                                                                 │
@@ -122,6 +123,7 @@
 
 - `@relay("player.video_opened")` - 视频打开后处理
 - `@relay("waveform.subtitle_created")` - 打轴完成处理
+- `@relay("waveform.subtitle_edited")` - 波形编辑完成，更新时间轴字幕
 - `@relay("timeline.subtitle_selected")` - 字幕选中处理
 - `@relay("translate.jump_to_next")` - 跳转下一条字幕
 - `@relay("translate.jump_to_prev")` - 跳转上一条字幕

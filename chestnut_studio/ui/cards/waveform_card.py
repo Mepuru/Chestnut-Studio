@@ -399,6 +399,7 @@ class WaveformCard(BaseCard):
             "player.position_changed": "update_position",
             "player.duration_changed": "set_duration",
             "player.ab_loop_changed": "set_ab_loop_region",
+            "timeline.edit_subtitle_requested": "enter_edit_mode",
         }
 
     def _setup_ui(self):

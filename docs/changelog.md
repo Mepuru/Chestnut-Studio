@@ -134,7 +134,6 @@ def _on_video_opened(self, path): ...
 
 ### 新增
 
-- **性能优化方案文档**：`docs/performance-optimization.md`，包含瓶颈分析、短期修复方案和长期架构改进规划（SubtitleModel）
 - **SubtitleEntry NamedTuple**：替代 bare list，提供类型安全，支持属性访问（`.duration_ms`、`.text`）和索引访问（`[0]`、`[1]`）
 - 新增 `test_subtitle_entry_access` 测试用例
 

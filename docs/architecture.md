@@ -165,6 +165,8 @@ class VideoInfo:
 │                                                                 │
 │  卡片声明 @subscribe / listens_to():                            │
 │    WaveformCard ← player.position_changed/duration_changed     │
+│                    player.ab_loop_changed                       │
+│                    timeline.edit_subtitle_requested             │
 │    TimelineCard ← player.duration_changed                      │
 │    TranslateCard ← timeline.subtitle_selected                  │
 │    PlayerCard ← waveform.position_clicked                      │
@@ -178,6 +180,7 @@ class VideoInfo:
 │    player.video_opened → MainWindow._on_video_opened           │
 │    player.ab_loop_changed → MainWindow._on_ab_loop_changed     │
 │    waveform.subtitle_created → MainWindow._on_subtitle_created │
+│    waveform.subtitle_edited → MainWindow._on_subtitle_edited   │
 │    timeline.subtitle_selected → MainWindow._on_subtitle_selected│
 │    translate.jump_to_next/prev → MainWindow._on_jump_to_*      │
 │                                                                 │
