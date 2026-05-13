@@ -14,7 +14,23 @@ from collections.abc import Callable
 from typing import Any
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import QDockWidget, QWidget
+
+
+def _make_close_icon(color: str, size: int = 16) -> QIcon:
+    """生成一个简洁的 X 形关闭图标"""
+    pixmap = QPixmap(size, size)
+    pixmap.fill(Qt.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.Antialiasing)
+    pen = QPen(QColor(color), 1.8, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+    painter.setPen(pen)
+    m = 3.5
+    painter.drawLine(int(m), int(m), int(size - m), int(size - m))
+    painter.drawLine(int(size - m), int(m), int(m), int(size - m))
+    painter.end()
+    return QIcon(pixmap)
 
 
 class BaseCard(QDockWidget):
@@ -69,6 +85,10 @@ class BaseCard(QDockWidget):
         self.setFeatures(self.features)
         self.setMinimumSize(*self.min_size)
 
+        # 设置标题栏按钮图标（延迟到按钮创建后）
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, self._setup_title_bar_icons)
+
         # 子类初始化
         self._setup_ui()
         self._connect_internal_signals()
@@ -83,6 +103,15 @@ class BaseCard(QDockWidget):
     def _connect_internal_signals(self) -> None:
         """连接卡片内部信号。子类可重写此方法。"""
         pass
+
+    def _setup_title_bar_icons(self) -> None:
+        """设置标题栏按钮的自定义图标，替换系统默认图标。"""
+        close_btn = self.findChild(QWidget, "qt_dockwidget_closebutton")
+        if close_btn:
+            close_btn.setIcon(_make_close_icon("#a1a1aa"))
+        float_btn = self.findChild(QWidget, "qt_dockwidget_floatbutton")
+        if float_btn:
+            float_btn.setIcon(_make_close_icon("#a1a1aa"))
 
     # ── 生命周期钩子 ──
 
