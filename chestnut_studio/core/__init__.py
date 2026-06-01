@@ -1,9 +1,7 @@
 """核心逻辑模块 - 无 UI 依赖"""
 
-from chestnut_studio.core.audio import load_waveform, smooth_waveform
 from chestnut_studio.core.ffmpeg import FFmpeg, FFmpegError, VideoInfo
-from chestnut_studio.core.subtitle import SubtitleDict, SubtitleEntry, SubtitleManager
-from chestnut_studio.core.subtitle_io import SubtitleIO
+from chestnut_studio.core.note_manager import NOTE_TYPES, Note, NoteManager
 from chestnut_studio.core.track_config import (
     DEFAULT_TRACK_COUNT,
     MAX_TRACK_COUNT,
@@ -17,12 +15,9 @@ __all__ = [
     "FFmpeg",
     "FFmpegError",
     "VideoInfo",
-    "SubtitleIO",
-    "SubtitleManager",
-    "SubtitleEntry",
-    "SubtitleDict",
-    "load_waveform",
-    "smooth_waveform",
+    "Note",
+    "NoteManager",
+    "NOTE_TYPES",
     "DEFAULT_TRACK_COUNT",
     "MAX_TRACK_COUNT",
     "TRACK_COLORS_HEX",
