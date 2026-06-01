@@ -259,15 +259,7 @@ class MainWindow(QMainWindow):
         key = event.key()
         mod = event.modifiers()
 
-        # 输入框有焦点时只放行 Ctrl+1~4 轨道切换
-        if self.input_bar._input.hasFocus():
-            if mod == Qt.ControlModifier and Qt.Key_1 <= key <= Qt.Key_4:
-                self.input_bar.set_current_track(key - Qt.Key_1 + 1)
-                event.accept()
-                return
-            super().keyPressEvent(event)
-            return
-
+        # ── 全局快捷键（输入框有焦点也生效） ──
         # F1 → 播放/暂停
         if key == Qt.Key_F1:
             self.player_card.play_pause()
@@ -290,6 +282,11 @@ class MainWindow(QMainWindow):
         if mod == Qt.ControlModifier and Qt.Key_1 <= key <= Qt.Key_4:
             self.input_bar.set_current_track(key - Qt.Key_1 + 1)
             event.accept()
+            return
+
+        # ── 输入框有焦点时，其他按键交给输入框处理 ──
+        if self.input_bar._input.hasFocus():
+            super().keyPressEvent(event)
             return
 
         super().keyPressEvent(event)
