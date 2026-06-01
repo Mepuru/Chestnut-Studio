@@ -98,6 +98,12 @@ class MainWindow(QMainWindow):
         quit_action.triggered.connect(self.close)
         file_menu.addAction(quit_action)
 
+        # ── 快捷键按钮（菜单栏右侧） ──
+        menu_bar.addSeparator()
+        self._shortcut_action = QAction("快捷键", self)
+        self._shortcut_action.triggered.connect(self._show_shortcuts)
+        menu_bar.addAction(self._shortcut_action)
+
     def _setup_central_widget(self):
         """创建中央区域布局"""
         central = QWidget()
@@ -153,6 +159,49 @@ class MainWindow(QMainWindow):
     def _setup_drop(self):
         """设置拖放支持"""
         self.setAcceptDrops(True)
+
+    # ── 快捷键帮助 ──
+
+    def _show_shortcuts(self):
+        """显示快捷键列表"""
+        from PySide6.QtWidgets import QDialog, QTableWidget, QTableWidgetItem, QHeaderView, QVBoxLayout
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("快捷键")
+        dialog.setMinimumSize(400, 320)
+        dialog.setObjectName("shortcutDialog")
+
+        table = QTableWidget(dialog)
+        table.setColumnCount(2)
+        table.setHorizontalHeaderLabels(["按键", "功能"])
+        table.horizontalHeader().setStretchLastSection(True)
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.verticalHeader().hide()
+
+        shortcuts = [
+            ("P / K", "播放 / 暂停"),
+            ("A / ←", "后退 5 秒"),
+            ("D / →", "前进 5 秒"),
+            ("F1~F4", "切换轨道"),
+            ("Ctrl+O", "打开视频"),
+            ("Ctrl+E", "导出笔记"),
+            ("Ctrl+I", "导入笔记"),
+            ("Ctrl+Q", "退出"),
+            ("Enter", "发送笔记（输入框）"),
+            ("Delete", "删除选中笔记（列表）"),
+        ]
+
+        table.setRowCount(len(shortcuts))
+        for i, (key, desc) in enumerate(shortcuts):
+            table.setItem(i, 0, QTableWidgetItem(key))
+            table.setItem(i, 1, QTableWidgetItem(desc))
+
+        table.resizeColumnsToContents()
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(table)
+        dialog.exec()
 
     # ── 视频操作 ──
 

@@ -421,6 +421,37 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
     background: none;
 }
 
+/* ── 快捷键对话框 ── */
+#shortcutDialog {
+    background: #1a1a2e;
+}
+
+#shortcutDialog QTableWidget {
+    background: #1a1a2e;
+    border: none;
+    color: #e0e0f0;
+    font-size: 10pt;
+    outline: none;
+}
+
+#shortcutDialog QTableWidget::item {
+    padding: 6px 12px;
+    border: none;
+}
+
+#shortcutDialog QTableWidget::item:selected {
+    background: rgba(124, 92, 252, 0.15);
+}
+
+#shortcutDialog QHeaderView::section {
+    background: #16162b;
+    border: none;
+    border-bottom: 1px solid #25254a;
+    padding: 8px 12px;
+    color: #9090b0;
+    font-weight: 600;
+}
+
 /* ── 工具提示 ── */
 QToolTip {
     background: #1e1e38;
