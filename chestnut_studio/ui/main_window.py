@@ -35,9 +35,9 @@ class MainWindow(QMainWindow):
     │     PlayerCard          │    NotePanel          │
     │     (视频+控制栏)       │    (笔记列表)         │
     │                         │                      │
-    ├─────────────────────────┴──────────────────────┤
-    │     InputBar (类型选择 + 输入框 + 发送)         │
-    └────────────────────────────────────────────────┘
+    ├─────────────────────────┤                      │
+    │     InputBar            │                      │
+    └─────────────────────────┴──────────────────────┘
     """
 
     VIDEO_FILTER = "视频文件 (*.mp4 *.avi *.flv *.mkv *.mov *.wmv *.mp3 *.wav *.aac);;所有文件 (*)"
@@ -108,29 +108,33 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # ── 左侧播放器 + 右侧笔记列表（可拖拽分割） ──
+        # ── 输入栏（放在左侧，与视频右边界对齐） ──
+        self.input_bar = InputBar(self)
+
+        # ── 左侧：播放器 + 输入栏 ｜ 右侧：笔记列表 ──
+        left_widget = QWidget()
+        left_widget.setObjectName("leftPane")
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(0)
+
+        self.player_card = PlayerCard(self)
+        self.player_card.setMinimumWidth(400)
+        left_layout.addWidget(self.player_card, 1)
+        left_layout.addWidget(self.input_bar)
+
         splitter = QSplitter(Qt.Horizontal)
         splitter.setObjectName("mainSplitter")
         splitter.setHandleWidth(1)
+        splitter.addWidget(left_widget)
 
-        # 左侧：视频播放器
-        self.player_card = PlayerCard(self)
-        self.player_card.setMinimumWidth(400)
-        splitter.addWidget(self.player_card)
-
-        # 右侧：笔记列表
         self.note_panel = NotePanel(self._note_manager, self)
         self.note_panel.setMinimumWidth(240)
         self.note_panel.setMaximumWidth(400)
         splitter.addWidget(self.note_panel)
 
-        # 默认比例 65:35
         splitter.setSizes([700, 300])
         main_layout.addWidget(splitter, 1)
-
-        # ── 底部：输入栏 ──
-        self.input_bar = InputBar(self)
-        main_layout.addWidget(self.input_bar)
 
     def _connect_signals(self):
         """连接信号"""
