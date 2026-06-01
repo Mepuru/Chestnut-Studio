@@ -1,3 +1,3 @@
-"""Chestnut Studio - 现代化卡片化打轴工具"""
+"""Chestnut Studio - 视频笔记工具"""
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
