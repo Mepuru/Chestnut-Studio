@@ -35,3 +35,4 @@ config
 # ruff
 .ruff_cache/
 .reasonix/
+*.spec
