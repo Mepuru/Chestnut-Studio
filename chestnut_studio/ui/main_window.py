@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from chestnut_studio.core.ffmpeg import FFmpeg
-from chestnut_studio.core.note_manager import NoteManager
+from chestnut_studio.core.note_manager import NOTE_TYPES, NoteManager
 from chestnut_studio.resources import get_icon_path
 from chestnut_studio.ui.cards.player_card import PlayerCard
 from chestnut_studio.ui.input_bar import InputBar
@@ -41,7 +41,7 @@ class MainWindow(QMainWindow):
     """
 
     VIDEO_FILTER = "视频文件 (*.mp4 *.avi *.flv *.mkv *.mov *.wmv *.mp3 *.wav *.aac);;所有文件 (*)"
-    NOTE_FILTER = "笔记文件 (*.json);;所有文件 (*)"
+    NOTE_FILTER = "笔记文件 (*.json *.txt);;所有文件 (*)"
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -245,21 +245,68 @@ class MainWindow(QMainWindow):
         self.note_panel.refresh()
 
     def _on_export_notes(self):
-        """导出笔记为 JSON"""
+        """导出笔记 — 选轨道、选格式"""
         if self._note_manager.count() == 0:
             QMessageBox.information(self, "导出笔记", "没有笔记可导出。")
             return
 
-        path, _ = QFileDialog.getSaveFileName(self, "导出笔记", "notes.json", self.NOTE_FILTER)
-        if path:
-            self._note_manager.export_json(path)
-            self.statusBar().showMessage(f"已导出 {self._note_manager.count()} 条笔记", 3000)
+        # 轨道选择对话框
+        used_types = self._note_manager.get_used_types()
+        if not used_types:
+            return
+
+        from PySide6.QtWidgets import QCheckBox, QDialog, QDialogButtonBox, QVBoxLayout, QLabel
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("导出笔记")
+        dialog.setMinimumWidth(280)
+
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(QLabel("选择要导出的轨道:"))
+
+        checkboxes = {}
+        for t in NOTE_TYPES:
+            cb = QCheckBox(t)
+            cb.setChecked(t in used_types)
+            cb.setEnabled(t in used_types)
+            checkboxes[t] = cb
+            layout.addWidget(cb)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.button(QDialogButtonBox.Ok).setText("导出")
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+
+        if dialog.exec() != QDialog.Accepted:
+            return
+
+        selected = [t for t, cb in checkboxes.items() if cb.isChecked()]
+        if not selected:
+            self.statusBar().showMessage("未选择任何轨道", 3000)
+            return
+
+        path, fmt = QFileDialog.getSaveFileName(
+            self, "导出笔记", "notes.txt",
+            "文本文件 (*.txt);;JSON (*.json)",
+        )
+        if not path:
+            return
+
+        if path.endswith(".json"):
+            count = self._note_manager.export_json(path, selected)
+        else:
+            count = self._note_manager.export_text(path, selected)
+        self.statusBar().showMessage(f"已导出 {count} 条笔记", 3000)
 
     def _on_import_notes(self):
-        """从 JSON 导入笔记"""
+        """从文件导入笔记（自动识别格式）"""
         path, _ = QFileDialog.getOpenFileName(self, "导入笔记", "", self.NOTE_FILTER)
         if path:
-            count = self._note_manager.import_json(path)
+            if path.endswith(".json"):
+                count = self._note_manager.import_json(path)
+            else:
+                count = self._note_manager.import_text(path)
             self.note_panel.refresh()
             self.statusBar().showMessage(f"已导入 {count} 条笔记", 3000)
 

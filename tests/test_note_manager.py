@@ -45,6 +45,32 @@ class TestNote:
         note = Note.from_dict(d)
         assert note.type == "轨道1"
 
+    def test_to_line(self):
+        note = Note(timestamp_ms=15200, text="你好", type="轨道1")
+        line = note.to_line()
+        assert "轨道1" in line
+        assert "00:15.20" in line
+        assert "你好" in line
+
+    def test_from_line_valid(self):
+        note = Note.from_line("轨道1\t00:15.20\t| 你好")
+        assert note is not None
+        assert note.timestamp_ms == 15200
+        assert note.text == "你好"
+        assert note.type == "轨道1"
+
+    def test_from_line_invalid(self):
+        assert Note.from_line("") is None
+        assert Note.from_line("# 注释行") is None
+        assert Note.from_line("随便写的东西") is None
+
+    def test_roundtrip(self):
+        # 厘秒精度（10ms）无损
+        note = Note(timestamp_ms=123450, text="测试内容", type="轨道3")
+        line = note.to_line()
+        restored = Note.from_line(line)
+        assert restored == note
+
 
 class TestNoteManager:
     """NoteManager 测试"""
@@ -100,6 +126,68 @@ class TestNoteManager:
         t3 = mgr.get_by_type("轨道3")
         assert len(t3) == 1
 
+    def test_get_used_types(self):
+        mgr = NoteManager()
+        assert mgr.get_used_types() == []
+        mgr.add(1000, "a", "轨道2")
+        mgr.add(2000, "b", "轨道4")
+        used = mgr.get_used_types()
+        assert "轨道2" in used
+        assert "轨道4" in used
+        assert "轨道1" not in used
+
+    def test_export_text(self):
+        mgr = NoteManager()
+        mgr.add(15200, "你好", "轨道1")
+        mgr.add(30000, "再见", "轨道2")
+
+        with tempfile.NamedTemporaryFile(suffix=".txt", mode="w", delete=False, encoding="utf-8") as f:
+            path = f.name
+
+        try:
+            count = mgr.export_text(path)
+            assert count == 2
+            with open(path, encoding="utf-8") as f:
+                content = f.read()
+            assert "# Chestnut Studio Notes" in content
+            assert "00:15.20" in content
+            assert "你好" in content
+        finally:
+            Path(path).unlink(missing_ok=True)
+
+    def test_export_text_filtered(self):
+        mgr = NoteManager()
+        mgr.add(1000, "轨道1的", "轨道1")
+        mgr.add(2000, "轨道2的", "轨道2")
+
+        with tempfile.NamedTemporaryFile(suffix=".txt", mode="w", delete=False, encoding="utf-8") as f:
+            path = f.name
+
+        try:
+            count = mgr.export_text(path, ["轨道1"])
+            assert count == 1
+            with open(path, encoding="utf-8") as f:
+                content = f.read()
+            assert "轨道1的" in content
+            assert "轨道2的" not in content
+        finally:
+            Path(path).unlink(missing_ok=True)
+
+    def test_import_text(self):
+        mgr = NoteManager()
+        content = "轨道1\t00:15.20\t| 你好\n轨道2\t01:00.00\t| 再见\n"
+        with tempfile.NamedTemporaryFile(suffix=".txt", mode="w", delete=False, encoding="utf-8") as f:
+            f.write(content)
+            path = f.name
+
+        try:
+            count = mgr.import_text(path)
+            assert count == 2
+            assert mgr.count() == 2
+            assert mgr.get_all()[0].text == "你好"
+        finally:
+            Path(path).unlink(missing_ok=True)
+
     def test_export_json(self):
         mgr = NoteManager()
         mgr.add(1000, "测试", "轨道2")
@@ -108,26 +196,42 @@ class TestNoteManager:
             path = f.name
 
         try:
-            mgr.export_json(path)
-            with open(path, "r", encoding="utf-8") as f:
+            count = mgr.export_json(path)
+            assert count == 1
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
-            assert "version" in data
-            assert "notes" in data
-            assert len(data["notes"]) == 1
             assert data["notes"][0]["text"] == "测试"
+        finally:
+            Path(path).unlink(missing_ok=True)
+
+    def test_export_json_filtered(self):
+        mgr = NoteManager()
+        mgr.add(1000, "轨道1的", "轨道1")
+        mgr.add(2000, "轨道2的", "轨道2")
+
+        with tempfile.NamedTemporaryFile(suffix=".json", mode="w", delete=False, encoding="utf-8") as f:
+            path = f.name
+
+        try:
+            count = mgr.export_json(path, ["轨道1"])
+            assert count == 1
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            assert len(data["notes"]) == 1
+            assert data["notes"][0]["text"] == "轨道1的"
         finally:
             Path(path).unlink(missing_ok=True)
 
     def test_import_json(self):
         mgr = NoteManager()
+        data = {"version": 1, "notes": [{"timestamp_ms": 5000, "text": "导入的笔记", "type": "轨道4"}]}
         with tempfile.NamedTemporaryFile(suffix=".json", mode="w", delete=False, encoding="utf-8") as f:
-            json.dump({"version": 1, "notes": [{"timestamp_ms": 5000, "text": "导入的笔记", "type": "轨道4"}]}, f, ensure_ascii=False)
+            json.dump(data, f, ensure_ascii=False)
             path = f.name
 
         try:
             count = mgr.import_json(path)
             assert count == 1
-            assert mgr.count() == 1
             assert mgr.get_all()[0].type == "轨道4"
         finally:
             Path(path).unlink(missing_ok=True)
