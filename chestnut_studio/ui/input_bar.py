@@ -40,7 +40,7 @@ class InputBar(QWidget):
         self._type_combo.setObjectName("typeCombo")
         for t in NOTE_TYPES:
             self._type_combo.addItem(t)
-        self._type_combo.setFixedWidth(72)
+        self._type_combo.setFixedWidth(84)
         layout.addWidget(self._type_combo)
 
         # ── 输入框 ──
@@ -51,7 +51,7 @@ class InputBar(QWidget):
         layout.addWidget(self._input, 1)
 
         # ── 时间戳显示 ──
-        self._time_label = QLabel("00:00")
+        self._time_label = QLabel("00:00.00")
         self._time_label.setObjectName("timeLabel")
         layout.addWidget(self._time_label)
 
@@ -66,6 +66,11 @@ class InputBar(QWidget):
         """更新当前视频时间戳显示"""
         self._timestamp_ms = ms
         self._time_label.setText(ms_to_time_str(ms))
+
+    def set_current_track(self, track: int):
+        """用 Ctrl+数字 切换轨道（1-4）"""
+        if 1 <= track <= len(NOTE_TYPES):
+            self._type_combo.setCurrentIndex(track - 1)
 
     def _send(self):
         """发送笔记"""

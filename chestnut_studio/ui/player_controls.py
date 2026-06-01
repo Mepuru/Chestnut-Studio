@@ -82,7 +82,7 @@ class PlayerControls(QWidget):
         # ── 当前时间 ──
         self._current_time = QLabel("00:00")
         self._current_time.setObjectName("currentTime")
-        self._current_time.setFixedWidth(44)
+        self._current_time.setFixedWidth(72)
         layout.addWidget(self._current_time)
 
         # ── 进度条 ──
@@ -99,7 +99,7 @@ class PlayerControls(QWidget):
         # ── 总时长 ──
         self._total_time = QLabel("00:00")
         self._total_time.setObjectName("totalTime")
-        self._total_time.setFixedWidth(44)
+        self._total_time.setFixedWidth(72)
         layout.addWidget(self._total_time)
 
         # ── 音量按钮 ──

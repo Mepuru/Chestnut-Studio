@@ -151,6 +151,14 @@ class PlayerCard(QWidget):
     def get_video_path(self) -> str:
         return self._video_path
 
+    def skip_back(self, ms: int = 5000):
+        """后退指定毫秒（默认 5 秒）"""
+        self._skip(-ms)
+
+    def skip_forward(self, ms: int = 5000):
+        """前进指定毫秒（默认 5 秒）"""
+        self._skip(ms)
+
     # ── 内部方法 ──
 
     def _toggle_play_pause(self):

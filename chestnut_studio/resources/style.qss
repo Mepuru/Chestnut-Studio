@@ -130,9 +130,10 @@ QSplitter::handle:horizontal {
 
 #currentTime, #totalTime {
     color: #8080b0;
-    font-size: 11pt;
+    font-size: 10pt;
     font-weight: 500;
     background: transparent;
+    letter-spacing: 0.3px;
 }
 
 /* 进度条 */

@@ -208,15 +208,39 @@ class MainWindow(QMainWindow):
     def keyPressEvent(self, event):
         """全局快捷键"""
         key = event.key()
+        mod = event.modifiers()
 
-        if key == Qt.Key_Space:
+        # 输入框有焦点时只放行特定快捷键
+        if self.input_bar._input.hasFocus():
+            if mod == Qt.ControlModifier and Qt.Key_1 <= key <= Qt.Key_4:
+                self.input_bar.set_current_track(key - Qt.Key_1 + 1)
+                event.accept()
+                return
+            super().keyPressEvent(event)
+            return
+
+        # P / p → 播放/暂停
+        if key in (Qt.Key_P, Qt.Key_K):
             self.player_card.play_pause()
             event.accept()
             return
 
-        # 输入框有焦点时不拦截 Enter
-        if self.input_bar._input.hasFocus():
-            super().keyPressEvent(event)
+        # A / ← → 后退 5 秒
+        if key in (Qt.Key_A, Qt.Key_Left):
+            self.player_card.skip_back()
+            event.accept()
+            return
+
+        # D / → → 前进 5 秒
+        if key in (Qt.Key_D, Qt.Key_Right):
+            self.player_card.skip_forward()
+            event.accept()
+            return
+
+        # Ctrl+1~4 → 切换轨道
+        if mod == Qt.ControlModifier and Qt.Key_1 <= key <= Qt.Key_4:
+            self.input_bar.set_current_track(key - Qt.Key_1 + 1)
+            event.accept()
             return
 
         super().keyPressEvent(event)

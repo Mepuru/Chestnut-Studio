@@ -23,9 +23,10 @@ def main():
     app.setApplicationVersion(get_version())
 
     # 设置窗口图标
+    from PySide6.QtGui import QIcon
     icon_path = get_icon_path()
     if icon_path.exists():
-        app.setWindowIcon(icon_path.as_posix())
+        app.setWindowIcon(QIcon(str(icon_path)))
 
     # 全局字体
     font = QFont("Microsoft YaHei", 10)

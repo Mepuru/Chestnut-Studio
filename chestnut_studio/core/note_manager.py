@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import ClassVar
 
-NOTE_TYPES: ClassVar[list[str]] = ["字幕", "画面"]
+NOTE_TYPES: ClassVar[list[str]] = ["轨道1", "轨道2", "轨道3", "轨道4"]
 """笔记类型列表"""
 
 
@@ -26,7 +26,7 @@ class Note:
 
     timestamp_ms: int
     text: str
-    type: str = "字幕"
+    type: str = "轨道1"
 
     def __post_init__(self):
         if self.type not in NOTE_TYPES:
@@ -42,7 +42,7 @@ class Note:
         return cls(
             timestamp_ms=data["timestamp_ms"],
             text=data["text"],
-            type=data.get("type", "字幕"),
+            type=data.get("type", "轨道1"),
         )
 
 
@@ -54,7 +54,7 @@ class NoteManager:
 
     # ── 增 ──
 
-    def add(self, timestamp_ms: int, text: str, note_type: str = "字幕") -> Note:
+    def add(self, timestamp_ms: int, text: str, note_type: str = "轨道1") -> Note:
         """添加一条笔记，自动按时间排序
 
         Args:
