@@ -21,9 +21,9 @@ NOTE_TYPES: ClassVar[list[str]] = ["轨道1", "轨道2", "轨道3", "轨道4"]
 EXPORT_HEADER = """# Chestnut Studio Notes
 # 视频: {video}
 # 时长: {duration}
-# 导出时间: {time}
-# 格式: 轨道名  时间\t| 内容
-# 批量删除前缀: 用正则替换  ^.+\\d{{2}}:\\d{{2}}\\.\\d{{2}}\\t\\|  为空
+# 分辨率: {resolution}
+# 帧率: {fps}
+# 码率: {bitrate}
 # ---"""
 
 
@@ -147,13 +147,15 @@ class NoteManager:
     # ── 文本格式导出/导入 ──
 
     def export_text(self, path: str | Path, types: list[str] | None = None,
-                    video_name: str = "", video_duration: str = "") -> int:
-        """导出指定轨道为文本格式
-        """
+                    video_name: str = "", video_duration: str = "",
+                    video_resolution: str = "", video_fps: str = "",
+                    video_bitrate: str = "") -> int:
         notes = self._notes if types is None else [n for n in self._notes if n.type in types]
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
         with open(path, "w", encoding="utf-8") as f:
-            f.write(EXPORT_HEADER.format(video=video_name, duration=video_duration, time=now) + chr(10))
+            f.write(EXPORT_HEADER.format(video=video_name, duration=video_duration,
+                                            resolution=video_resolution, fps=video_fps,
+                                            bitrate=video_bitrate, time=now) + chr(10))
             for n in notes:
                 f.write(n.to_line() + chr(10))
         return len(notes)

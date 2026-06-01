@@ -306,7 +306,19 @@ class MainWindow(QMainWindow):
         # 获取视频信息写入头部
         vname = Path(video_path).name if video_path else ""
         dur = ms_to_time_str(self.player_card.get_duration()) if video_path else ""
-        count = self._note_manager.export_text(path, selected_tracks, vname, dur)
+        res = fps = bitrate = ""
+        if video_path:
+            try:
+                info = self._ffmpeg.get_video_info(video_path)
+                if info.width:
+                    res = f"{info.width}x{info.height}"
+                if info.fps:
+                    fps = f"{info.fps:.0f}fps"
+                if info.bitrate:
+                    bitrate = f"{info.bitrate}kbps"
+            except Exception:
+                pass
+        count = self._note_manager.export_text(path, selected_tracks, vname, dur, res, fps, bitrate)
         self.statusBar().showMessage(f"已导出 {count} 条笔记", 3000)
 
     def _on_import_notes(self):
