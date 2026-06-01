@@ -147,11 +147,7 @@ class NotePanel(QWidget):
                 item = QListWidgetItem()
                 item.setData(Qt.UserRole, id(note))
                 widget = NoteItemWidget(note)
-                # 强制布局计算后获取实际高度
-                widget.setFixedHeight(0)
-                widget.adjustSize()
-                hint = widget.sizeHint()
-                item.setSizeHint(QSize(hint.width(), max(hint.height(), 32)))
+                item.setSizeHint(QSize(0, 36))
                 self._list.addItem(item)
                 self._list.setItemWidget(item, widget)
 
