@@ -89,7 +89,8 @@ class PlayerControls(QWidget):
         self._seek_slider.setObjectName("seekSlider")
         self._seek_slider.setRange(0, 0)
         self._seek_slider.setTracking(False)
-        self._seek_slider.sliderMoved.connect(self._on_seek)
+        self._seek_slider.sliderMoved.connect(self._on_seek_preview)
+        self._seek_slider.sliderReleased.connect(self._on_seek_commit)
         self._seek_slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         layout.addWidget(self._seek_slider, 1)
 
@@ -171,8 +172,14 @@ class PlayerControls(QWidget):
 
     # ── 内部方法 ──
 
-    def _on_seek(self, value: int):
-        """进度条拖动"""
+    def _on_seek_preview(self, value: int):
+        """进度条拖动中 — 更新时间预览"""
+        self._current_time.setText(ms_to_time_str(value))
+        self.seek_requested.emit(value)
+
+    def _on_seek_commit(self):
+        """进度条点击/释放 — 跳转到指定位置"""
+        value = self._seek_slider.value()
         self._current_time.setText(ms_to_time_str(value))
         self.seek_requested.emit(value)
 
