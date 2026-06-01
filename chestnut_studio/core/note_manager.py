@@ -24,6 +24,9 @@ EXPORT_HEADER = """# Chestnut Studio Notes
 # 分辨率: {resolution}
 # 帧率: {fps}
 # 码率: {bitrate}
+# 导出时间: {time}
+# 格式: 轨道名  时间	| 内容
+# 批量删除前缀: 用正则替换  ^.+?\d{{2}}:\d{{2}}\.\d{{2}}\t\|  为空
 # ---"""
 
 
