@@ -41,7 +41,7 @@ class MainWindow(QMainWindow):
     """
 
     VIDEO_FILTER = "视频文件 (*.mp4 *.avi *.flv *.mkv *.mov *.wmv *.mp3 *.wav *.aac);;所有文件 (*)"
-    NOTE_FILTER = "笔记文件 (*.txt);;所有文件 (*)"
+    NOTE_FILTER = "笔记文件 (*.txt)"
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -251,18 +251,16 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "导出笔记", "没有笔记可导出。")
             return
 
-        # 导出对话框：选轨道 + 选字段
+        # 导出对话框：选轨道
         used_types = self._note_manager.get_used_types()
         if not used_types:
             return
 
-        from PySide6.QtWidgets import (
-            QCheckBox, QDialog, QDialogButtonBox, QVBoxLayout, QLabel, QGroupBox, QHBoxLayout
-        )
+        from PySide6.QtWidgets import QCheckBox, QDialog, QDialogButtonBox, QVBoxLayout, QLabel
 
         dialog = QDialog(self)
         dialog.setWindowTitle("导出笔记")
-        dialog.setMinimumWidth(300)
+        dialog.setMinimumWidth(280)
 
         layout = QVBoxLayout(dialog)
         layout.addWidget(QLabel("选择要导出的轨道:"))
@@ -274,19 +272,6 @@ class MainWindow(QMainWindow):
             cb.setEnabled(t in used_types)
             track_cbs[t] = cb
             layout.addWidget(cb)
-
-        # 字段选择
-        group = QGroupBox("包含字段")
-        group_layout = QHBoxLayout(group)
-        field_cbs = {
-            "track": QCheckBox("轨道名"),
-            "time": QCheckBox("时间"),
-            "text": QCheckBox("内容"),
-        }
-        for cb in field_cbs.values():
-            cb.setChecked(True)
-            group_layout.addWidget(cb)
-        layout.addWidget(group)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.button(QDialogButtonBox.Ok).setText("导出")
@@ -302,22 +287,13 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("未选择任何轨道", 3000)
             return
 
-        selected_fields = tuple(k for k, cb in field_cbs.items() if cb.isChecked())
-        if not selected_fields:
-            self.statusBar().showMessage("请至少选择一个字段", 3000)
-            return
-
         path, _ = QFileDialog.getSaveFileName(
-            self, "导出笔记", "notes.txt",
-            "文本文件 (*.txt);;JSON (*.json)",
+            self, "导出笔记", "notes.txt", "文本文件 (*.txt)",
         )
         if not path:
             return
 
-        if path.endswith(".json"):
-            count = self._note_manager.export_json(path, selected_tracks)
-        else:
-            count = self._note_manager.export_text(path, selected_tracks, selected_fields)
+        count = self._note_manager.export_text(path, selected_tracks)
         self.statusBar().showMessage(f"已导出 {count} 条笔记", 3000)
 
     def _on_import_notes(self):
