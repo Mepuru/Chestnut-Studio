@@ -24,6 +24,7 @@ from chestnut_studio.ui.cards.player_card import PlayerCard
 from chestnut_studio.ui.input_bar import InputBar
 from chestnut_studio.ui.note_panel import NotePanel
 from chestnut_studio.utils.version import get_version
+from chestnut_studio.utils.time_utils import ms_to_time_str
 
 
 class MainWindow(QMainWindow):
@@ -287,13 +288,25 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("未选择任何轨道", 3000)
             return
 
+        # 默认文件名 = 视频名（过长截断）
+        video_path = self.player_card.get_video_path()
+        default_name = "notes.txt"
+        if video_path:
+            name = Path(video_path).stem
+            if len(name) > 40:
+                name = name[:37] + "..."
+            default_name = name + ".txt"
+
         path, _ = QFileDialog.getSaveFileName(
-            self, "导出笔记", "notes.txt", "文本文件 (*.txt)",
+            self, "导出笔记", default_name, "文本文件 (*.txt)",
         )
         if not path:
             return
 
-        count = self._note_manager.export_text(path, selected_tracks)
+        # 获取视频信息写入头部
+        vname = Path(video_path).name if video_path else ""
+        dur = ms_to_time_str(self.player_card.get_duration()) if video_path else ""
+        count = self._note_manager.export_text(path, selected_tracks, vname, dur)
         self.statusBar().showMessage(f"已导出 {count} 条笔记", 3000)
 
     def _on_import_notes(self):

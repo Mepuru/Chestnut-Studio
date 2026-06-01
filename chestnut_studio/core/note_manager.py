@@ -19,6 +19,8 @@ NOTE_TYPES: ClassVar[list[str]] = ["轨道1", "轨道2", "轨道3", "轨道4"]
 
 # 导出文本格式说明（文件头）
 EXPORT_HEADER = """# Chestnut Studio Notes
+# 视频: {video}
+# 时长: {duration}
 # 导出时间: {time}
 # 格式: 轨道名  时间\t| 内容
 # 批量删除前缀: 用正则替换  ^.+\\d{{2}}:\\d{{2}}\\.\\d{{2}}\\t\\|  为空
@@ -145,33 +147,20 @@ class NoteManager:
     # ── 文本格式导出/导入 ──
 
     def export_text(self, path: str | Path, types: list[str] | None = None,
-                    parts: tuple[str, ...] = ("track", "time", "text")) -> int:
+                    video_name: str = "", video_duration: str = "") -> int:
         """导出指定轨道为文本格式
-
-        Args:
-            path: 输出文件路径
-            types: 要导出的轨道列表，None 表示全部
-            parts: 包含哪些字段，默认全部
-
-        Returns:
-            导出的行数
         """
         notes = self._notes if types is None else [n for n in self._notes if n.type in types]
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
         with open(path, "w", encoding="utf-8") as f:
-            f.write(EXPORT_HEADER.format(time=now) + "\n")
+            f.write(EXPORT_HEADER.format(video=video_name, duration=video_duration, time=now) + chr(10))
             for n in notes:
-                f.write(n.to_line(parts) + "\n")
+                f.write(n.to_line() + chr(10))
         return len(notes)
+
 
     def import_text(self, path: str | Path) -> int:
         """从文本文件导入笔记
-
-        Args:
-            path: 文件路径
-
-        Returns:
-            导入的笔记数量
         """
         count = 0
         with open(path, encoding="utf-8") as f:
@@ -183,8 +172,6 @@ class NoteManager:
         self._notes.sort()
         return count
 
-    # ── JSON 格式导出/导入 ──
-
     def export_json(self, path: str | Path, types: list[str] | None = None) -> int:
         notes = self._notes if types is None else [n for n in self._notes if n.type in types]
         data = {"version": 1, "notes": [n.to_dict() for n in notes]}
@@ -192,6 +179,14 @@ class NoteManager:
             json.dump(data, f, ensure_ascii=False, indent=2)
         return len(notes)
 
+    def import_json(self, path: str | Path) -> int:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        for item in data.get("notes", []):
+            note = Note.from_dict(item)
+            self._notes.append(note)
+        self._notes.sort()
+        return len(data.get("notes", []))
     def import_json(self, path: str | Path) -> int:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
