@@ -3,7 +3,7 @@
 视频播放器右侧的笔记列表，按类型分组显示。
 """
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -30,7 +30,7 @@ class NoteItemWidget(QWidget):
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(6)
 
         # 时间戳标签
@@ -43,6 +43,7 @@ class NoteItemWidget(QWidget):
         text_label = QLabel(self.note.text)
         text_label.setObjectName("noteText")
         text_label.setWordWrap(True)
+        text_label.setMinimumHeight(16)
         layout.addWidget(text_label, 1)
 
     def update_text(self, text: str):
@@ -96,7 +97,7 @@ class NotePanel(QWidget):
         self._list = QListWidget()
         self._list.setObjectName("noteList")
         self._list.setVerticalScrollMode(QListWidget.ScrollPerPixel)
-        self._list.itemDoubleClicked.connect(self._on_item_clicked)
+        self._list.itemClicked.connect(self._on_item_clicked)
         self._list.setContextMenuPolicy(Qt.CustomContextMenu)
         self._list.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self._list, 1)
@@ -144,9 +145,13 @@ class NotePanel(QWidget):
             # 该类型下的笔记
             for note in notes:
                 item = QListWidgetItem()
-                item.setData(Qt.UserRole, id(note))  # 存储笔记对象引用
+                item.setData(Qt.UserRole, id(note))
                 widget = NoteItemWidget(note)
-                item.setSizeHint(widget.sizeHint())
+                # 强制布局计算后获取实际高度
+                widget.setFixedHeight(0)
+                widget.adjustSize()
+                hint = widget.sizeHint()
+                item.setSizeHint(QSize(hint.width(), max(hint.height(), 32)))
                 self._list.addItem(item)
                 self._list.setItemWidget(item, widget)
 
