@@ -1,6 +1,6 @@
 """主窗口模块
 
-B站风格三区域布局：左侧视频播放器 + 右侧笔记列表 + 底部输入栏。
+三区域布局：左侧视频播放器 + 右侧笔记列表 + 底部输入栏。
 纯 QWidget 布局，无 QDockWidget。
 """
 
@@ -210,10 +210,10 @@ class MainWindow(QMainWindow):
         key = event.key()
         mod = event.modifiers()
 
-        # 输入框有焦点时只放行特定快捷键
+        # 输入框有焦点时只放行 F1~F4 轨道切换
         if self.input_bar._input.hasFocus():
-            if mod == Qt.ControlModifier and Qt.Key_1 <= key <= Qt.Key_4:
-                self.input_bar.set_current_track(key - Qt.Key_1 + 1)
+            if Qt.Key_F1 <= key <= Qt.Key_F4:
+                self.input_bar.set_current_track(key - Qt.Key_F1 + 1)
                 event.accept()
                 return
             super().keyPressEvent(event)
@@ -237,9 +237,9 @@ class MainWindow(QMainWindow):
             event.accept()
             return
 
-        # Ctrl+1~4 → 切换轨道
-        if mod == Qt.ControlModifier and Qt.Key_1 <= key <= Qt.Key_4:
-            self.input_bar.set_current_track(key - Qt.Key_1 + 1)
+        # F1~F4 → 切换轨道
+        if Qt.Key_F1 <= key <= Qt.Key_F4:
+            self.input_bar.set_current_track(key - Qt.Key_F1 + 1)
             event.accept()
             return
 
