@@ -40,17 +40,19 @@ class PlayerControls(QWidget):
         self._duration = 0
         self._setup_ui()
 
+    _ICON_SIZE = 18  # 统一图标尺寸
+
     def _setup_ui(self):
         self.setObjectName("playerControls")
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 6, 12, 6)
-        layout.setSpacing(6)
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(4)
 
         # ── 播放/暂停 ──
         self._play_btn = QPushButton()
         self._play_btn.setObjectName("playBtn")
         self._play_btn.setIcon(QIcon(str(get_icon_path("play"))))
-        self._play_btn.setIconSize(self._play_btn.sizeHint() * 1.5)
+        self._play_btn.setIconSize(self._play_btn.sizeHint())
         self._play_btn.setToolTip("播放/暂停 (Space)")
         self._play_btn.setCursor(Qt.PointingHandCursor)
         self._play_btn.clicked.connect(self.play_pause_clicked.emit)
@@ -58,9 +60,9 @@ class PlayerControls(QWidget):
 
         # ── 后退 ──
         self._skip_back_btn = QPushButton()
-        self._skip_back_btn.setObjectName("skipBackBtn")
+        self._skip_back_btn.setObjectName("ctrlBtn")
         self._skip_back_btn.setIcon(QIcon(str(get_icon_path("skip_back"))))
-        self._skip_back_btn.setIconSize(self._skip_back_btn.sizeHint() * 1.4)
+        self._skip_back_btn.setIconSize(self._skip_back_btn.sizeHint())
         self._skip_back_btn.setToolTip("后退 5 秒")
         self._skip_back_btn.setCursor(Qt.PointingHandCursor)
         self._skip_back_btn.clicked.connect(self.skip_back_clicked.emit)
@@ -68,9 +70,9 @@ class PlayerControls(QWidget):
 
         # ── 前进 ──
         self._skip_forward_btn = QPushButton()
-        self._skip_forward_btn.setObjectName("skipForwardBtn")
+        self._skip_forward_btn.setObjectName("ctrlBtn")
         self._skip_forward_btn.setIcon(QIcon(str(get_icon_path("skip_forward"))))
-        self._skip_forward_btn.setIconSize(self._skip_forward_btn.sizeHint() * 1.4)
+        self._skip_forward_btn.setIconSize(self._skip_forward_btn.sizeHint())
         self._skip_forward_btn.setToolTip("前进 5 秒")
         self._skip_forward_btn.setCursor(Qt.PointingHandCursor)
         self._skip_forward_btn.clicked.connect(self.skip_forward_clicked.emit)
@@ -99,9 +101,9 @@ class PlayerControls(QWidget):
 
         # ── 音量按钮 ──
         self._volume_btn = QPushButton()
-        self._volume_btn.setObjectName("volumeBtn")
+        self._volume_btn.setObjectName("ctrlBtn")
         self._volume_btn.setIcon(QIcon(str(get_icon_path("volume"))))
-        self._volume_btn.setIconSize(self._volume_btn.sizeHint() * 1.3)
+        self._volume_btn.setIconSize(self._volume_btn.sizeHint())
         self._volume_btn.setToolTip("静音切换")
         self._volume_btn.setCursor(Qt.PointingHandCursor)
         self._volume_btn.clicked.connect(self._toggle_mute)
@@ -112,7 +114,7 @@ class PlayerControls(QWidget):
         self._volume_slider.setObjectName("volumeSlider")
         self._volume_slider.setRange(0, 100)
         self._volume_slider.setValue(80)
-        self._volume_slider.setFixedWidth(80)
+        self._volume_slider.setFixedWidth(72)
         self._volume_slider.valueChanged.connect(self.volume_changed.emit)
         layout.addWidget(self._volume_slider)
 
@@ -124,7 +126,7 @@ class PlayerControls(QWidget):
             self._rate_combo.addItem(r)
         self._rate_combo.setCurrentIndex(2)  # 1.0x
         self._rate_combo.currentIndexChanged.connect(self._on_rate_changed)
-        self._rate_combo.setFixedWidth(64)
+        self._rate_combo.setFixedWidth(60)
         layout.addWidget(self._rate_combo)
 
     # ── 公有方法 ──

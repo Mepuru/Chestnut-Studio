@@ -100,16 +100,15 @@ QSplitter::handle:horizontal {
 #playerControls {
     background: #14142a;
     border-top: 1px solid #25254a;
-    padding: 4px 8px;
 }
 
 #playerControls QPushButton {
     background: transparent;
     border: none;
     border-radius: 6px;
-    padding: 6px 8px;
-    min-width: 32px;
-    min-height: 32px;
+    padding: 4px;
+    min-width: 30px;
+    min-height: 30px;
 }
 
 #playerControls QPushButton:hover {
@@ -121,8 +120,8 @@ QSplitter::handle:horizontal {
 }
 
 #playBtn {
-    min-width: 36px;
-    min-height: 36px;
+    min-width: 32px;
+    min-height: 32px;
 }
 
 #playBtn:hover {
