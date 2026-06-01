@@ -50,9 +50,28 @@ class Note:
             type=data.get("type", "轨道1"),
         )
 
-    def to_line(self) -> str:
-        """转导出文本行: 轨道名  时间\t| 内容"""
-        return f"{self.type}\t{ms_to_time_str(self.timestamp_ms)}\t| {self.text}"
+    def to_line(self, parts: tuple[str, ...] = ("track", "time", "text")) -> str:
+        """转导出文本行
+
+        Args:
+            parts: 控制包含哪些字段
+                "track" — 轨道名
+                "time"  — 时间
+                "text"  — 内容
+
+        Returns:
+            如 parts=("time","text") → "00:15.20\t| 你好"
+        """
+        cols = []
+        for p in parts:
+            if p == "track":
+                cols.append(self.type)
+            elif p == "time":
+                cols.append(ms_to_time_str(self.timestamp_ms))
+        prefix = "\t".join(cols)
+        if "text" in parts:
+            return f"{prefix}\t| {self.text}" if prefix else self.text
+        return prefix
 
     @classmethod
     def from_line(cls, line: str) -> Note | None:
@@ -125,12 +144,14 @@ class NoteManager:
 
     # ── 文本格式导出/导入 ──
 
-    def export_text(self, path: str | Path, types: list[str] | None = None) -> int:
+    def export_text(self, path: str | Path, types: list[str] | None = None,
+                    parts: tuple[str, ...] = ("track", "time", "text")) -> int:
         """导出指定轨道为文本格式
 
         Args:
             path: 输出文件路径
             types: 要导出的轨道列表，None 表示全部
+            parts: 包含哪些字段，默认全部
 
         Returns:
             导出的行数
@@ -140,7 +161,7 @@ class NoteManager:
         with open(path, "w", encoding="utf-8") as f:
             f.write(EXPORT_HEADER.format(time=now) + "\n")
             for n in notes:
-                f.write(n.to_line() + "\n")
+                f.write(n.to_line(parts) + "\n")
         return len(notes)
 
     def import_text(self, path: str | Path) -> int:
