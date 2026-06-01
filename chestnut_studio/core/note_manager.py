@@ -10,6 +10,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import ClassVar
 
+from datetime import datetime
+
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
 NOTE_TYPES: ClassVar[list[str]] = ["轨道1", "轨道2", "轨道3", "轨道4"]
@@ -17,6 +19,7 @@ NOTE_TYPES: ClassVar[list[str]] = ["轨道1", "轨道2", "轨道3", "轨道4"]
 
 # 导出文本格式说明（文件头）
 EXPORT_HEADER = """# Chestnut Studio Notes
+# 导出时间: {time}
 # 格式: 轨道名  时间\t| 内容
 # 批量删除前缀: 用正则替换  ^.+\\d{{2}}:\\d{{2}}\\.\\d{{2}}\\t\\|  为空
 # ---"""
@@ -133,8 +136,9 @@ class NoteManager:
             导出的行数
         """
         notes = self._notes if types is None else [n for n in self._notes if n.type in types]
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
         with open(path, "w", encoding="utf-8") as f:
-            f.write(EXPORT_HEADER.format("") + "\n")
+            f.write(EXPORT_HEADER.format(time=now) + "\n")
             for n in notes:
                 f.write(n.to_line() + "\n")
         return len(notes)
