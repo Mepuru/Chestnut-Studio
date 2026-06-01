@@ -97,7 +97,7 @@ class NotePanel(QWidget):
         self._list = QListWidget()
         self._list.setObjectName("noteList")
         self._list.setVerticalScrollMode(QListWidget.ScrollPerPixel)
-        self._list.itemClicked.connect(self._on_item_clicked)
+        self._list.itemDoubleClicked.connect(self._on_item_clicked)
         self._list.setContextMenuPolicy(Qt.CustomContextMenu)
         self._list.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self._list, 1)
