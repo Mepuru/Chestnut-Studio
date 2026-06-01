@@ -326,8 +326,16 @@ class MainWindow(QMainWindow):
         path, _ = QFileDialog.getOpenFileName(self, "导入笔记", "", self.NOTE_FILTER)
         if path:
             count = self._note_manager.import_text(path)
+            if count == 0:
+                QMessageBox.warning(self, "导入失败",
+                    "文件格式不匹配，无法导入任何笔记。\n\n"
+                    "请确保每行格式为:\n"
+                    "  轨道名  时间  |  内容\n\n"
+                    "例如:\n"
+                    "  轨道1\t00:15.20\t| 你好")
+            else:
+                self.statusBar().showMessage(f"已导入 {count} 条笔记", 3000)
             self.note_panel.refresh()
-            self.statusBar().showMessage(f"已导入 {count} 条笔记", 3000)
 
     # ── 快捷键 ──
 
