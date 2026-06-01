@@ -180,10 +180,10 @@ class MainWindow(QMainWindow):
         table.verticalHeader().hide()
 
         shortcuts = [
-            ("P / K", "播放 / 暂停"),
-            ("A / ←", "后退 5 秒"),
-            ("D / →", "前进 5 秒"),
-            ("F1~F4", "切换轨道"),
+            ("F1", "播放 / 暂停"),
+            ("F2 / ←", "后退 5 秒"),
+            ("F3 / →", "前进 5 秒"),
+            ("Ctrl+1~4", "切换轨道"),
             ("Ctrl+O", "打开视频"),
             ("Ctrl+E", "导出笔记"),
             ("Ctrl+I", "导入笔记"),
@@ -259,36 +259,36 @@ class MainWindow(QMainWindow):
         key = event.key()
         mod = event.modifiers()
 
-        # 输入框有焦点时只放行 F1~F4 轨道切换
+        # 输入框有焦点时只放行 Ctrl+1~4 轨道切换
         if self.input_bar._input.hasFocus():
-            if Qt.Key_F1 <= key <= Qt.Key_F4:
-                self.input_bar.set_current_track(key - Qt.Key_F1 + 1)
+            if mod == Qt.ControlModifier and Qt.Key_1 <= key <= Qt.Key_4:
+                self.input_bar.set_current_track(key - Qt.Key_1 + 1)
                 event.accept()
                 return
             super().keyPressEvent(event)
             return
 
-        # P / p → 播放/暂停
-        if key in (Qt.Key_P, Qt.Key_K):
+        # F1 → 播放/暂停
+        if key == Qt.Key_F1:
             self.player_card.play_pause()
             event.accept()
             return
 
-        # A / ← → 后退 5 秒
-        if key in (Qt.Key_A, Qt.Key_Left):
+        # F2 / ← → 后退 5 秒
+        if key in (Qt.Key_F2, Qt.Key_Left):
             self.player_card.skip_back()
             event.accept()
             return
 
-        # D / → → 前进 5 秒
-        if key in (Qt.Key_D, Qt.Key_Right):
+        # F3 / → → 前进 5 秒
+        if key in (Qt.Key_F3, Qt.Key_Right):
             self.player_card.skip_forward()
             event.accept()
             return
 
-        # F1~F4 → 切换轨道
-        if Qt.Key_F1 <= key <= Qt.Key_F4:
-            self.input_bar.set_current_track(key - Qt.Key_F1 + 1)
+        # Ctrl+1~4 → 切换轨道
+        if mod == Qt.ControlModifier and Qt.Key_1 <= key <= Qt.Key_4:
+            self.input_bar.set_current_track(key - Qt.Key_1 + 1)
             event.accept()
             return
 
