@@ -82,22 +82,22 @@ class Note:
         if not line or line.startswith("#"):
             return None
         try:
-            # 格式: 轨道名  时间\t| 内容
-            parts = line.split("\t| ", 1)
+            # 格式: 轨道名  时间	| 内容  (或 轨道名	| 内容)
+            parts = line.split("	| ", 1)
             if len(parts) != 2:
                 return None
             meta, text = parts
-            meta_parts = meta.rsplit("\t", 1)
-            if len(meta_parts) != 2:
-                return None
-            track_name, time_str = meta_parts
+            meta_parts = meta.rsplit("	", 1)
+            track_name = meta_parts[0]
             if track_name not in NOTE_TYPES:
                 return None
-            # 解析时间 MM:SS.mm → ms
-            m, rest = time_str.split(":", 1)
-            s, cs = rest.split(".")
-            ms = int(m) * 60000 + int(s) * 1000 + int(cs) * 10
-            return cls(timestamp_ms=ms, text=text, type=track_name)
+            ts = 0
+            if len(meta_parts) == 2:
+                time_str = meta_parts[1]
+                m, rest = time_str.split(":", 1)
+                s, cs = rest.split(".")
+                ts = int(m) * 60000 + int(s) * 1000 + int(cs) * 10
+            return cls(timestamp_ms=ts, text=text, type=track_name)
         except Exception:
             return None
 
@@ -181,14 +181,6 @@ class NoteManager:
             json.dump(data, f, ensure_ascii=False, indent=2)
         return len(notes)
 
-    def import_json(self, path: str | Path) -> int:
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-        for item in data.get("notes", []):
-            note = Note.from_dict(item)
-            self._notes.append(note)
-        self._notes.sort()
-        return len(data.get("notes", []))
     def import_json(self, path: str | Path) -> int:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
