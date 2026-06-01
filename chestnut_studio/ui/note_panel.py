@@ -4,6 +4,7 @@
 """
 
 from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -16,6 +17,18 @@ from PySide6.QtWidgets import (
 )
 
 from chestnut_studio.core.note_manager import NOTE_TYPES, Note, NoteManager
+
+
+class _NoteListWidget(QListWidget):
+    """支持 Delete 键删除的 QListWidget 子类"""
+
+    delete_requested = Signal()
+
+    def keyPressEvent(self, event: QKeyEvent):
+        if event.key() == Qt.Key_Delete:
+            self.delete_requested.emit()
+        else:
+            super().keyPressEvent(event)
 from chestnut_studio.core.track_config import get_track_color
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
@@ -94,12 +107,13 @@ class NotePanel(QWidget):
         layout.addWidget(title_bar)
 
         # ── 笔记列表 ──
-        self._list = QListWidget()
+        self._list = _NoteListWidget()
         self._list.setObjectName("noteList")
         self._list.setVerticalScrollMode(QListWidget.ScrollPerPixel)
         self._list.itemDoubleClicked.connect(self._on_item_clicked)
         self._list.setContextMenuPolicy(Qt.CustomContextMenu)
         self._list.customContextMenuRequested.connect(self._show_context_menu)
+        self._list.delete_requested.connect(self._delete_selected)
         layout.addWidget(self._list, 1)
 
         # ── 空状态提示 ──
@@ -170,6 +184,16 @@ class NotePanel(QWidget):
         delete_action = menu.addAction("删除笔记")
         action = menu.exec(self._list.mapToGlobal(pos))
         if action == delete_action:
+            self._note_manager.remove(widget.note)
+            self.refresh()
+
+    def _delete_selected(self):
+        """删除当前选中的笔记"""
+        item = self._list.currentItem()
+        if not item:
+            return
+        widget = self._list.itemWidget(item)
+        if isinstance(widget, NoteItemWidget):
             self._note_manager.remove(widget.note)
             self.refresh()
 
