@@ -69,7 +69,8 @@ class NotePanel(QWidget):
     显示按类型分组的笔记列表，支持点击跳转和右键删除。
     """
 
-    jump_to_position = Signal(int)  # 点击笔记跳转到视频位置
+    jump_to_position = Signal(int)  # 双击笔记跳转到视频位置
+    edit_requested = Signal(str, str)  # 双击笔记载入输入框 (type, text)
 
     def __init__(self, note_manager: NoteManager, parent=None):
         super().__init__(parent)
@@ -166,10 +167,11 @@ class NotePanel(QWidget):
                 self._list.setItemWidget(item, widget)
 
     def _on_item_clicked(self, item: QListWidgetItem):
-        """双击笔记跳转到对应视频位置"""
+        """双击笔记：跳转视频位置 + 载入输入框"""
         widget = self._list.itemWidget(item)
         if isinstance(widget, NoteItemWidget):
             self.jump_to_position.emit(widget.note.timestamp_ms)
+            self.edit_requested.emit(widget.note.type, widget.note.text)
 
     def _show_context_menu(self, pos):
         """右键菜单：删除笔记"""

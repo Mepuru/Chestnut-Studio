@@ -72,6 +72,14 @@ class InputBar(QWidget):
         if 1 <= track <= len(NOTE_TYPES):
             self._type_combo.setCurrentIndex(track - 1)
 
+    def load_for_edit(self, note_type: str, text: str):
+        """载入笔记到输入框方便修改"""
+        if note_type in NOTE_TYPES:
+            self._type_combo.setCurrentText(note_type)
+        self._input.setText(text)
+        self._input.setFocus()
+        self._input.selectAll()
+
     def _send(self):
         """发送笔记"""
         text = self._input.text().strip()

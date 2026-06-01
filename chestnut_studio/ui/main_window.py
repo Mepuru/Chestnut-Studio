@@ -164,8 +164,9 @@ class MainWindow(QMainWindow):
         # 输入栏发送笔记 → 添加到管理器 + 刷新列表
         self.input_bar.note_sent.connect(self._on_note_sent)
 
-        # 笔记列表双击 → 跳转到视频位置
+        # 笔记列表双击 → 跳转视频 + 载入输入框
         self.note_panel.jump_to_position.connect(self.player_card.set_position)
+        self.note_panel.edit_requested.connect(self.input_bar.load_for_edit)
 
     def _setup_drop(self):
         """设置拖放支持"""
