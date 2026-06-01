@@ -1,50 +1,49 @@
-/* Chestnut Studio — B站风格深色主题 */
+/* Chestnut Studio — 现代暗色主题 */
 
 /* ── 全局 ── */
 * {
-    font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+    font-family: "Microsoft YaHei", "Segoe UI", -apple-system, sans-serif;
 }
 
 QWidget {
-    background: #1a1a2e;
-    color: #e4e4e7;
+    background: #0e0e10;
+    color: #e8e8ea;
     font-size: 9pt;
 }
 
 QMainWindow {
-    background: #1a1a2e;
+    background: #0e0e10;
 }
 
 /* ── 菜单栏 ── */
 QMenuBar {
-    background: #16162b;
-    border: none;
-    border-bottom: 1px solid #2a2a40;
-    padding: 2px 8px;
+    background: #141416;
+    border-bottom: 1px solid #1f1f23;
+    padding: 2px 6px;
 }
 
 QMenuBar::item {
     background: transparent;
-    padding: 6px 14px;
-    color: #a1a1aa;
+    padding: 5px 12px;
+    color: #a0a0a8;
     border-radius: 4px;
 }
 
 QMenuBar::item:selected {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.06);
     color: #ffffff;
 }
 
 QMenu {
-    background: #1e1e36;
-    border: 1px solid #2a2a40;
-    border-radius: 8px;
+    background: #18181b;
+    border: 1px solid #2a2a2e;
+    border-radius: 6px;
     padding: 4px;
 }
 
 QMenu::item {
-    padding: 8px 24px;
-    color: #c4c4d4;
+    padding: 7px 20px;
+    color: #c8c8cc;
     border-radius: 4px;
 }
 
@@ -55,16 +54,15 @@ QMenu::item:selected {
 
 QMenu::separator {
     height: 1px;
-    background: #2a2a40;
-    margin: 4px 10px;
+    background: #2a2a2e;
+    margin: 4px 8px;
 }
 
 /* ── 状态栏 ── */
 QStatusBar {
-    background: #16162b;
-    border: none;
-    border-top: 1px solid #2a2a40;
-    color: #7a7a8a;
+    background: #141416;
+    border-top: 1px solid #1f1f23;
+    color: #6e6e76;
     padding: 2px 8px;
 }
 
@@ -74,15 +72,11 @@ QStatusBar::item {
 
 /* ── 分割条 ── */
 QSplitter::handle {
-    background: #2a2a40;
+    background: #1f1f23;
 }
 
 QSplitter::handle:horizontal {
-    width: 2px;
-}
-
-QSplitter::handle:vertical {
-    height: 2px;
+    width: 1px;
 }
 
 /* ── 播放器区域 ── */
@@ -98,77 +92,78 @@ QSplitter::handle:vertical {
 
 /* ── 播放控制栏 ── */
 #playerControls {
-    background: #16162b;
-    border-top: 1px solid #2a2a40;
+    background: #141416;
+    border-top: 1px solid #1f1f23;
+    padding: 2px 0;
 }
 
 #playerControls QPushButton {
     background: transparent;
     border: none;
-    padding: 6px;
+    padding: 5px;
     border-radius: 4px;
-    min-width: 32px;
-    min-height: 32px;
+    min-width: 30px;
+    min-height: 30px;
 }
 
 #playerControls QPushButton:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 #playerControls QPushButton:pressed {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.04);
 }
 
 #playBtn {
-    min-width: 36px;
-    min-height: 36px;
+    min-width: 34px;
+    min-height: 34px;
 }
 
+/* 时间标签 */
 #currentTime, #totalTime {
-    color: #a1a1aa;
+    color: #a0a0a8;
     font-size: 11pt;
     font-weight: 500;
-    font-variant-numeric: tabular-nums;
     background: transparent;
 }
 
 /* 进度条 */
 #seekSlider::groove:horizontal {
-    background: #2a2a40;
-    height: 4px;
-    border-radius: 2px;
+    background: #2a2a2e;
+    height: 3px;
+    border-radius: 1.5px;
 }
 
 #seekSlider::handle:horizontal {
     background: #fb7299;
-    width: 14px;
-    height: 14px;
-    margin: -5px 0;
-    border-radius: 7px;
+    width: 12px;
+    height: 12px;
+    margin: -4.5px 0;
+    border-radius: 6px;
 }
 
 #seekSlider::handle:horizontal:hover {
     background: #ff8cab;
-    width: 16px;
-    height: 16px;
-    margin: -6px 0;
-    border-radius: 8px;
+    width: 14px;
+    height: 14px;
+    margin: -5.5px 0;
+    border-radius: 7px;
 }
 
 #seekSlider::sub-page:horizontal {
     background: #fb7299;
-    border-radius: 2px;
+    border-radius: 1.5px;
 }
 
 /* 音量滑块 */
 #volumeSlider::groove:horizontal {
-    background: #2a2a40;
+    background: #2a2a2e;
     height: 3px;
     border-radius: 1.5px;
 }
 
 #volumeSlider::handle:horizontal {
-    background: #e4e4e7;
+    background: #e8e8ea;
     width: 10px;
     height: 10px;
     margin: -3.5px 0;
@@ -180,19 +175,19 @@ QSplitter::handle:vertical {
 }
 
 #volumeSlider::sub-page:horizontal {
-    background: #fb7299;
+    background: #e8e8ea;
     border-radius: 1.5px;
 }
 
 /* 倍速下拉框 */
 #rateCombo {
     background: transparent;
-    border: 1px solid #2a2a40;
+    border: 1px solid #2a2a2e;
     border-radius: 4px;
-    padding: 4px 8px;
-    color: #a1a1aa;
+    padding: 3px 6px;
+    color: #a0a0a8;
     font-size: 10pt;
-    min-height: 24px;
+    min-height: 22px;
 }
 
 #rateCombo:hover {
@@ -202,35 +197,36 @@ QSplitter::handle:vertical {
 
 #rateCombo::drop-down {
     border: none;
-    width: 16px;
+    width: 14px;
 }
 
 #rateCombo QAbstractItemView {
-    background: #1e1e36;
-    border: 1px solid #2a2a40;
+    background: #18181b;
+    border: 1px solid #2a2a2e;
     border-radius: 6px;
     selection-background-color: #fb7299;
     selection-color: #ffffff;
-    color: #c4c4d4;
+    color: #c8c8cc;
     padding: 4px;
     outline: none;
 }
 
 /* ── 输入栏 ── */
 #inputBar {
-    background: #16162b;
-    border-top: 1px solid #2a2a40;
+    background: #141416;
+    border-top: 1px solid #1f1f23;
+    padding: 6px 0;
 }
 
-/* 类型选择按钮 - 分段控件风格 */
+/* 类型选择按钮 */
 #typeBtn_字幕, #typeBtn_画面 {
     background: transparent;
-    border: 1px solid #2a2a40;
-    color: #7a7a8a;
-    padding: 6px 16px;
+    border: 1px solid #2a2a2e;
+    color: #6e6e76;
+    padding: 5px 14px;
     font-size: 10pt;
     font-weight: 500;
-    min-height: 28px;
+    min-height: 26px;
 }
 
 #typeBtn_字幕 {
@@ -250,29 +246,28 @@ QSplitter::handle:vertical {
 }
 
 #typeBtn_字幕:hover:!checked, #typeBtn_画面:hover:!checked {
-    color: #ffffff;
-    border-color: #3a3a50;
+    color: #c8c8cc;
+    border-color: #3a3a3e;
 }
 
 /* 时间戳标签 */
 #timeLabel {
     color: #fb7299;
-    font-size: 11pt;
+    font-size: 10pt;
     font-weight: 600;
-    font-variant-numeric: tabular-nums;
     background: transparent;
     padding: 0 4px;
 }
 
 /* 输入框 */
 #noteInput {
-    background: #1e1e36;
-    border: 1px solid #2a2a40;
+    background: #1a1a1e;
+    border: 1px solid #2a2a2e;
     border-radius: 6px;
-    padding: 8px 12px;
-    color: #e4e4e7;
+    padding: 7px 12px;
+    color: #e8e8ea;
     font-size: 10pt;
-    min-height: 20px;
+    min-height: 18px;
     selection-background-color: #fb7299;
 }
 
@@ -289,9 +284,9 @@ QSplitter::handle:vertical {
     background: #fb7299;
     border: none;
     border-radius: 6px;
-    padding: 6px 14px;
-    min-width: 36px;
-    min-height: 32px;
+    padding: 5px 12px;
+    min-width: 34px;
+    min-height: 30px;
 }
 
 #sendBtn:hover {
@@ -304,39 +299,40 @@ QSplitter::handle:vertical {
 
 /* ── 笔记列表面板 ── */
 #notePanel {
-    background: #16162b;
-    border-left: 1px solid #2a2a40;
+    background: #111113;
+    border-left: 1px solid #1f1f23;
 }
 
 #notePanelTitle {
-    background: #16162b;
-    border-bottom: 1px solid #2a2a40;
+    background: #141416;
+    border-bottom: 1px solid #1f1f23;
+    padding: 6px 0;
 }
 
 #notePanelTitleText {
-    color: #e4e4e7;
+    color: #e8e8ea;
     font-size: 11pt;
     font-weight: 600;
     background: transparent;
 }
 
 #notePanelCount {
-    color: #7a7a8a;
-    font-size: 9pt;
-    background: #2a2a40;
+    color: #6e6e76;
+    font-size: 8pt;
+    background: #1f1f23;
     border-radius: 8px;
-    padding: 1px 8px;
-    min-width: 16px;
+    padding: 1px 7px;
+    min-width: 14px;
 }
 
 #clearBtn {
     background: transparent;
-    border: 1px solid #2a2a40;
+    border: 1px solid #2a2a2e;
     border-radius: 4px;
-    color: #7a7a8a;
-    font-size: 9pt;
-    padding: 2px 10px;
-    min-height: 22px;
+    color: #6e6e76;
+    font-size: 8pt;
+    padding: 2px 8px;
+    min-height: 20px;
 }
 
 #clearBtn:hover {
@@ -355,10 +351,15 @@ QSplitter::handle:vertical {
     background: transparent;
     border: none;
     padding: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 #noteList::item:selected {
-    background: rgba(251, 114, 153, 0.1);
+    background: rgba(251, 114, 153, 0.08);
+}
+
+#noteList::item:hover {
+    background: rgba(255, 255, 255, 0.03);
 }
 
 /* 笔记分组标题 */
@@ -366,23 +367,22 @@ QSplitter::handle:vertical {
     font-size: 9pt;
     font-weight: 600;
     background: transparent;
-    padding: 2px 0;
+    padding: 4px 0 2px;
 }
 
 /* 笔记条目 */
 #noteTime {
     color: #fb7299;
-    font-size: 10pt;
+    font-size: 9pt;
     font-weight: 600;
-    font-variant-numeric: tabular-nums;
     background: transparent;
 }
 
 #noteText {
-    color: #c4c4d4;
-    font-size: 10pt;
+    color: #c8c8cc;
+    font-size: 9pt;
     background: transparent;
-    line-height: 1.4;
+    line-height: 1.3;
 }
 
 /* 空状态提示 */
@@ -390,24 +390,24 @@ QSplitter::handle:vertical {
     color: #52525b;
     font-size: 10pt;
     background: transparent;
-    padding: 40px 20px;
+    padding: 30px 16px;
 }
 
 /* ── 滚动条 ── */
 QScrollBar:vertical {
     background: transparent;
-    width: 6px;
+    width: 5px;
     border: none;
 }
 
 QScrollBar::handle:vertical {
-    background: #2a2a40;
-    min-height: 30px;
-    border-radius: 3px;
+    background: #2a2a2e;
+    min-height: 28px;
+    border-radius: 2.5px;
 }
 
 QScrollBar::handle:vertical:hover {
-    background: #3a3a50;
+    background: #3a3a3e;
 }
 
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
@@ -420,18 +420,18 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
 
 QScrollBar:horizontal {
     background: transparent;
-    height: 6px;
+    height: 5px;
     border: none;
 }
 
 QScrollBar::handle:horizontal {
-    background: #2a2a40;
-    min-width: 30px;
-    border-radius: 3px;
+    background: #2a2a2e;
+    min-width: 28px;
+    border-radius: 2.5px;
 }
 
 QScrollBar::handle:horizontal:hover {
-    background: #3a3a50;
+    background: #3a3a3e;
 }
 
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
@@ -442,40 +442,40 @@ QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
     background: none;
 }
 
-/* ── 下拉框（通用） ── */
+/* ── 下拉框 ── */
 QComboBox {
-    background: #1e1e36;
-    border: 1px solid #2a2a40;
+    background: #1a1a1e;
+    border: 1px solid #2a2a2e;
     border-radius: 4px;
     padding: 4px 8px;
-    color: #e4e4e7;
+    color: #e8e8ea;
 }
 
 QComboBox:hover {
-    border-color: #3a3a50;
+    border-color: #3a3a3e;
 }
 
 QComboBox::drop-down {
     border: none;
-    width: 20px;
+    width: 18px;
 }
 
 QComboBox QAbstractItemView {
-    background: #1e1e36;
-    border: 1px solid #2a2a40;
+    background: #18181b;
+    border: 1px solid #2a2a2e;
     border-radius: 6px;
     selection-background-color: #fb7299;
     selection-color: #ffffff;
-    color: #c4c4d4;
+    color: #c8c8cc;
     padding: 4px;
 }
 
 /* ── 工具提示 ── */
 QToolTip {
-    background: #1e1e36;
-    border: 1px solid #2a2a40;
+    background: #18181b;
+    border: 1px solid #2a2a2e;
     border-radius: 4px;
-    padding: 6px 10px;
-    color: #e4e4e7;
+    padding: 5px 8px;
+    color: #e8e8ea;
     font-size: 9pt;
 }
