@@ -41,7 +41,7 @@ class MainWindow(QMainWindow):
     """
 
     VIDEO_FILTER = "视频文件 (*.mp4 *.avi *.flv *.mkv *.mov *.wmv *.mp3 *.wav *.aac);;所有文件 (*)"
-    NOTE_FILTER = "笔记文件 (*.json *.txt);;所有文件 (*)"
+    NOTE_FILTER = "笔记文件 (*.txt);;所有文件 (*)"
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -301,13 +301,10 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"已导出 {count} 条笔记", 3000)
 
     def _on_import_notes(self):
-        """从文件导入笔记（自动识别格式）"""
+        """从 txt 文件导入笔记"""
         path, _ = QFileDialog.getOpenFileName(self, "导入笔记", "", self.NOTE_FILTER)
         if path:
-            if path.endswith(".json"):
-                count = self._note_manager.import_json(path)
-            else:
-                count = self._note_manager.import_text(path)
+            count = self._note_manager.import_text(path)
             self.note_panel.refresh()
             self.statusBar().showMessage(f"已导入 {count} 条笔记", 3000)
 
