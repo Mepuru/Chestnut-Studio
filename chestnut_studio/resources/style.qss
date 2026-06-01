@@ -70,10 +70,18 @@ QStatusBar {
     border-top: 1px solid #25254a;
     color: #7070a0;
     font-size: 8pt;
+    padding: 1px 4px;
 }
 
 QStatusBar::item {
     border: none;
+}
+
+#versionLabel {
+    color: #505080;
+    font-size: 8pt;
+    padding: 0 6px;
+    background: transparent;
 }
 
 /* ── 分割条 ── */

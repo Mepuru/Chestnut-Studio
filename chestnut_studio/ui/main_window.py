@@ -61,6 +61,7 @@ class MainWindow(QMainWindow):
         # 创建 UI
         self._setup_menu_bar()
         self._setup_central_widget()
+        self._setup_statusbar()
         self._connect_signals()
         self._setup_drop()
 
@@ -141,6 +142,16 @@ class MainWindow(QMainWindow):
 
         splitter.setSizes([700, 300])
         main_layout.addWidget(splitter, 1)
+
+    def _setup_statusbar(self):
+        """配置状态栏：左侧信息、右侧版本号"""
+        from PySide6.QtWidgets import QLabel
+
+        self.statusBar().showMessage("拖入视频文件 或 Ctrl+O 打开")
+
+        ver_label = QLabel(f"v{get_version()}")
+        ver_label.setObjectName("versionLabel")
+        self.statusBar().addPermanentWidget(ver_label)
 
     def _connect_signals(self):
         """连接信号"""
