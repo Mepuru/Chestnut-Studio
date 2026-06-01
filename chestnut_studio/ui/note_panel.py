@@ -1,0 +1,178 @@
+"""笔记列表面板模块
+
+视频播放器右侧的笔记列表，按类型分组显示。
+"""
+
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QMenu,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+from chestnut_studio.core.note_manager import NOTE_TYPES, Note, NoteManager
+from chestnut_studio.core.track_config import get_track_color
+from chestnut_studio.utils.time_utils import ms_to_time_str
+
+
+class NoteItemWidget(QWidget):
+    """单条笔记的显示控件"""
+
+    def __init__(self, note: Note, parent=None):
+        super().__init__(parent)
+        self.note = note
+        self._setup_ui()
+
+    def _setup_ui(self):
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(6)
+
+        # 时间戳标签
+        time_label = QLabel(ms_to_time_str(self.note.timestamp_ms))
+        time_label.setObjectName("noteTime")
+        time_label.setFixedWidth(52)
+        layout.addWidget(time_label)
+
+        # 笔记文本（可换行）
+        text_label = QLabel(self.note.text)
+        text_label.setObjectName("noteText")
+        text_label.setWordWrap(True)
+        layout.addWidget(text_label, 1)
+
+    def update_text(self, text: str):
+        self.note.text = text
+
+
+class NotePanel(QWidget):
+    """笔记列表面板
+
+    显示按类型分组的笔记列表，支持点击跳转和右键删除。
+    """
+
+    jump_to_position = Signal(int)  # 点击笔记跳转到视频位置
+
+    def __init__(self, note_manager: NoteManager, parent=None):
+        super().__init__(parent)
+        self._note_manager = note_manager
+        self._setup_ui()
+
+    def _setup_ui(self):
+        self.setObjectName("notePanel")
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # ── 标题栏 ──
+        title_bar = QWidget()
+        title_bar.setObjectName("notePanelTitle")
+        title_layout = QHBoxLayout(title_bar)
+        title_layout.setContentsMargins(12, 8, 12, 8)
+
+        title_label = QLabel("笔记")
+        title_label.setObjectName("notePanelTitleText")
+        title_layout.addWidget(title_label)
+
+        self._count_label = QLabel("0")
+        self._count_label.setObjectName("notePanelCount")
+        title_layout.addWidget(self._count_label)
+
+        title_layout.addStretch()
+
+        self._clear_btn = QPushButton("清空")
+        self._clear_btn.setObjectName("clearBtn")
+        self._clear_btn.setCursor(Qt.PointingHandCursor)
+        self._clear_btn.clicked.connect(self._clear_all)
+        title_layout.addWidget(self._clear_btn)
+
+        layout.addWidget(title_bar)
+
+        # ── 笔记列表 ──
+        self._list = QListWidget()
+        self._list.setObjectName("noteList")
+        self._list.setVerticalScrollMode(QListWidget.ScrollPerPixel)
+        self._list.itemDoubleClicked.connect(self._on_item_clicked)
+        self._list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._list.customContextMenuRequested.connect(self._show_context_menu)
+        layout.addWidget(self._list, 1)
+
+        # ── 空状态提示 ──
+        self._empty_label = QLabel("暂无笔记\n在下方输入并发送")
+        self._empty_label.setObjectName("noteEmptyLabel")
+        self._empty_label.setAlignment(Qt.AlignCenter)
+        self._empty_label.setWordWrap(True)
+        self._empty_label.hide()
+        layout.addWidget(self._empty_label)
+
+    def refresh(self):
+        """刷新笔记列表显示"""
+        self._list.clear()
+        self._count_label.setText(str(self._note_manager.count()))
+
+        if self._note_manager.count() == 0:
+            self._empty_label.show()
+            return
+        self._empty_label.hide()
+
+        # 按类型分组添加
+        for note_type in NOTE_TYPES:
+            notes = self._note_manager.get_by_type(note_type)
+            if not notes:
+                continue
+
+            # 类型分组标题
+            group_item = QListWidgetItem()
+            group_widget = QWidget()
+            group_layout = QHBoxLayout(group_widget)
+            group_layout.setContentsMargins(8, 2, 8, 2)
+            group_label = QLabel(f"── {note_type} ──")
+            group_label.setObjectName("noteGroupLabel")
+            color = get_track_color(NOTE_TYPES.index(note_type) + 1)
+            group_label.setStyleSheet(f"color: {color};")
+            group_layout.addWidget(group_label)
+            group_layout.addStretch()
+            group_item.setSizeHint(group_widget.sizeHint())
+            group_item.setFlags(group_item.flags() & ~Qt.ItemIsSelectable)
+            self._list.addItem(group_item)
+            self._list.setItemWidget(group_item, group_widget)
+
+            # 该类型下的笔记
+            for note in notes:
+                item = QListWidgetItem()
+                item.setData(Qt.UserRole, id(note))  # 存储笔记对象引用
+                widget = NoteItemWidget(note)
+                item.setSizeHint(widget.sizeHint())
+                self._list.addItem(item)
+                self._list.setItemWidget(item, widget)
+
+    def _on_item_clicked(self, item: QListWidgetItem):
+        """双击笔记跳转到对应视频位置"""
+        widget = self._list.itemWidget(item)
+        if isinstance(widget, NoteItemWidget):
+            self.jump_to_position.emit(widget.note.timestamp_ms)
+
+    def _show_context_menu(self, pos):
+        """右键菜单：删除笔记"""
+        item = self._list.itemAt(pos)
+        if not item:
+            return
+        widget = self._list.itemWidget(item)
+        if not isinstance(widget, NoteItemWidget):
+            return
+
+        menu = QMenu(self)
+        delete_action = menu.addAction("删除笔记")
+        action = menu.exec(self._list.mapToGlobal(pos))
+        if action == delete_action:
+            self._note_manager.remove(widget.note)
+            self.refresh()
+
+    def _clear_all(self):
+        """清空所有笔记"""
+        self._note_manager.clear()
+        self.refresh()
