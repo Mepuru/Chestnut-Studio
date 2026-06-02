@@ -79,9 +79,9 @@ class Note:
             rest = line
             # 跳过可选的 #id 前缀
             if rest[0] == "#":
-                space_pos = rest.find(" ")
-                if space_pos > 1 and rest[1:space_pos].isdigit():
-                    rest = rest[space_pos+1:]
+                sep = rest.find(chr(9))
+                if sep > 1 and rest[1:sep].isdigit():
+                    rest = rest[sep+1:]
             
             parts = rest.split("	| ", 1)
             if len(parts) != 2:
