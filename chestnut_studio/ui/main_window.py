@@ -222,9 +222,10 @@ class MainWindow(QMainWindow):
 
         def _edit_term_at(pos):
             row = table.rowAt(pos.y())
-            if row < 0 or row >= len(terms):
+            all_terms = self._note_manager.get_terms()
+            if row < 0 or row >= len(all_terms):
                 return
-            t = terms[row]
+            t = all_terms[row]
             menu = QMenu(table)
             edit_action = menu.addAction("编辑")
             delete_action = menu.addAction("删除")
@@ -236,7 +237,10 @@ class MainWindow(QMainWindow):
                 _reload_table()
 
         def _edit_term(row):
-            t = terms[row]
+            all_terms = self._note_manager.get_terms()
+            if row >= len(all_terms):
+                return
+            t = all_terms[row]
             from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton, QHBoxLayout)
 
             # 从 note 中提取原文和参考
@@ -376,9 +380,10 @@ class MainWindow(QMainWindow):
 
         def _edit_term_at(pos):
             row = table.rowAt(pos.y())
-            if row < 0 or row >= len(terms):
+            all_terms = self._note_manager.get_terms()
+            if row < 0 or row >= len(all_terms):
                 return
-            t = terms[row]
+            t = all_terms[row]
             menu = QMenu(table)
             edit_action = menu.addAction("编辑")
             delete_action = menu.addAction("删除")
@@ -390,7 +395,10 @@ class MainWindow(QMainWindow):
                 _reload_table()
 
         def _edit_term(row):
-            t = terms[row]
+            all_terms = self._note_manager.get_terms()
+            if row >= len(all_terms):
+                return
+            t = all_terms[row]
             from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton, QHBoxLayout)
 
             # 从 note 中提取原文和参考
