@@ -289,6 +289,7 @@ class NotePanel(QWidget):
             self.refresh()
 
     def _clear_all(self):
-        """清空所有笔记"""
+        """清空所有笔记和术语"""
+        self._note_manager.clear_terms()
         self._note_manager.clear()
         self.refresh()
