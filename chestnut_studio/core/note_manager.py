@@ -126,17 +126,41 @@ class Term:
     note: str = ""   # 备注
 
     def to_line(self) -> str:
-        """转导出文本行"""
-        parts = [self.source, self.translation]
+        """转导出块格式"""
+        lines = ["# ---"]
+        lines.append(f"# 词: {self.source}")
+        lines.append(f"# 译: {self.translation}")
         if self.origin:
-            parts.append(self.origin)
+            lines.append(f"# 出: {self.origin}")
         if self.note:
-            parts.append(self.note)
-        return " | ".join(parts)
+            for n_line in self.note.split(chr(10)):
+                lines.append(f"# {n_line}")
+        return chr(10).join(lines)
+
+    @classmethod
+    def from_block(cls, block: str) -> Term | None:
+        """从块格式解析 Term（跨多行）"""
+        lines = [l.strip() for l in block.strip().split(chr(10))]
+        source = ""
+        translation = ""
+        origin = ""
+        note_lines = []
+        for line in lines:
+            if line.startswith("# 词: "):
+                source = line[4:]
+            elif line.startswith("# 译: "):
+                translation = line[4:]
+            elif line.startswith("# 出: "):
+                origin = line[4:]
+            elif line.startswith("# ") and not line.startswith("# ---") and not line.startswith("# 词:") and not line.startswith("# 译:") and not line.startswith("# 出:"):
+                note_lines.append(line[2:])
+        if source and translation:
+            return cls(source=source, translation=translation, origin=origin, note=chr(10).join(note_lines))
+        return None
 
     @classmethod
     def from_line(cls, line: str) -> Term | None:
-        """从文本行解析 Term"""
+        """保留旧版单行解析兼容"""
         line = line.strip()
         if not line or line.startswith("#"):
             return None
