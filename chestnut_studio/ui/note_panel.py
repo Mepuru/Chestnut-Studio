@@ -149,6 +149,7 @@ class NotePanel(QWidget):
 
     def refresh(self):
         """刷新笔记列表显示"""
+        scroll_pos = self._list.verticalScrollBar().value() if self._list.count() else 0
         self._list.clear()
         self._count_label.setText(str(self._note_manager.count()))
 
@@ -157,10 +158,7 @@ class NotePanel(QWidget):
             return
         self._empty_label.hide()
 
-        if self._sort_mode == "track":
-            self._refresh_by_track()
-        else:
-            self._refresh_by_time()
+
         self._recalc_item_heights()
 
     def _add_note_item(self, note: Note):
