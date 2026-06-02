@@ -75,6 +75,7 @@ class NotePanel(QWidget):
     def __init__(self, note_manager: NoteManager, parent=None):
         super().__init__(parent)
         self._note_manager = note_manager
+        self._sort_mode = "time"  # "time" | "track"
         self._setup_ui()
 
     def _setup_ui(self):
@@ -96,6 +97,12 @@ class NotePanel(QWidget):
         self._count_label = QLabel("0")
         self._count_label.setObjectName("notePanelCount")
         title_layout.addWidget(self._count_label)
+
+        self._sort_btn = QPushButton("时间")
+        self._sort_btn.setObjectName("sortBtn")
+        self._sort_btn.setCursor(Qt.PointingHandCursor)
+        self._sort_btn.clicked.connect(self._toggle_sort)
+        title_layout.addWidget(self._sort_btn)
 
         title_layout.addStretch()
 
@@ -125,6 +132,12 @@ class NotePanel(QWidget):
         self._empty_label.hide()
         layout.addWidget(self._empty_label)
 
+    def _toggle_sort(self):
+        """切换排序方式"""
+        self._sort_mode = "track" if self._sort_mode == "time" else "time"
+        self._sort_btn.setText("轨道" if self._sort_mode == "time" else "时间")
+        self.refresh()
+
     def refresh(self):
         """刷新笔记列表显示"""
         self._list.clear()
@@ -135,7 +148,27 @@ class NotePanel(QWidget):
             return
         self._empty_label.hide()
 
-        # 按类型分组添加
+        if self._sort_mode == "track":
+            self._refresh_by_track()
+        else:
+            self._refresh_by_time()
+
+    def _add_note_item(self, note: Note):
+        """添加一条笔记到列表"""
+        item = QListWidgetItem()
+        item.setData(Qt.UserRole, id(note))
+        widget = NoteItemWidget(note)
+        item.setSizeHint(QSize(0, 36))
+        self._list.addItem(item)
+        self._list.setItemWidget(item, widget)
+
+    def _refresh_by_time(self):
+        """按时间排序（不分组）"""
+        for note in self._note_manager.get_all():
+            self._add_note_item(note)
+
+    def _refresh_by_track(self):
+        """按轨道分组排序"""
         for note_type in NOTE_TYPES:
             notes = self._note_manager.get_by_type(note_type)
             if not notes:
@@ -157,14 +190,8 @@ class NotePanel(QWidget):
             self._list.addItem(group_item)
             self._list.setItemWidget(group_item, group_widget)
 
-            # 该类型下的笔记
             for note in notes:
-                item = QListWidgetItem()
-                item.setData(Qt.UserRole, id(note))
-                widget = NoteItemWidget(note)
-                item.setSizeHint(QSize(0, 36))
-                self._list.addItem(item)
-                self._list.setItemWidget(item, widget)
+                self._add_note_item(note)
 
     def _on_item_clicked(self, item: QListWidgetItem):
         """双击笔记：跳转视频位置 + 载入输入框"""
