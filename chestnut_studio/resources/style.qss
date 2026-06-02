@@ -235,33 +235,13 @@ QSplitter::handle:horizontal {
     border-top: 1px solid #25254a;
 }
 
-#typeCombo {
-    background: #1e1e38;
-    border: 1px solid #2e2e50;
-    border-radius: 6px;
-    padding: 4px 8px;
-    color: #c0c0d8;
-    font-size: 9pt;
-    min-height: 28px;
-}
-
-#typeCombo:hover {
-    border-color: #7c5cfc;
-}
-
-#typeCombo::drop-down {
-    border: none;
-    width: 18px;
-}
-
-#typeCombo QAbstractItemView {
-    background: #1e1e38;
-    border: 1px solid #2e2e50;
-    border-radius: 8px;
-    selection-background-color: #7c5cfc;
-    selection-color: #ffffff;
-    color: #c0c0d8;
-    padding: 4px;
+#trackBadge {
+    background: transparent;
+    font-size: 12pt;
+    font-weight: bold;
+    min-width: 32px;
+    min-height: 32px;
+    border-radius: 16px;
 }
 
 #noteInput {

@@ -14,7 +14,7 @@ from datetime import datetime
 
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
-NOTE_TYPES: ClassVar[list[str]] = ["轨道1", "轨道2", "轨道3", "轨道4"]
+NOTE_TYPES: ClassVar[list[str]] = [f"轨道{i}" for i in range(1, 10)] + ["轨道0"]
 """笔记类型列表"""
 
 # 导出文本格式说明（文件头）

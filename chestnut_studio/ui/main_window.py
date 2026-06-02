@@ -196,7 +196,7 @@ class MainWindow(QMainWindow):
             ("F1", "播放 / 暂停"),
             ("F2 / ←", "后退 5 秒"),
             ("F3 / →", "前进 5 秒"),
-            ("Ctrl+1~4", "切换轨道"),
+            ("Ctrl+0~9", "切换轨道"),
             ("Ctrl+O", "打开视频"),
             ("Ctrl+E", "导出笔记"),
             ("Ctrl+I", "导入笔记"),
@@ -363,9 +363,10 @@ class MainWindow(QMainWindow):
             event.accept()
             return
 
-        # Ctrl+1~4 → 切换轨道
-        if mod == Qt.ControlModifier and Qt.Key_1 <= key <= Qt.Key_4:
-            self.input_bar.set_current_track(key - Qt.Key_1 + 1)
+        # Ctrl+1~9 / Ctrl+0 → 切换轨道
+        if mod == Qt.ControlModifier and Qt.Key_0 <= key <= Qt.Key_9:
+            track = 10 if key == Qt.Key_0 else key - Qt.Key_1 + 1
+            self.input_bar.set_current_track(track)
             event.accept()
             return
 

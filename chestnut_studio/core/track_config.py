@@ -4,10 +4,10 @@
 """
 
 # 默认初始显示的轨道数
-DEFAULT_TRACK_COUNT = 8
+DEFAULT_TRACK_COUNT = 10
 
 # 最大支持的轨道数
-MAX_TRACK_COUNT = 8
+MAX_TRACK_COUNT = 10
 
 # 轨道前景色（十六进制），按轨道号索引
 # 轨道号从 1 开始，使用时需 -1 作为索引
@@ -20,6 +20,8 @@ TRACK_COLORS_HEX: list[str] = [
     "#06b6d4",  # 轨道6: 青色
     "#f97316",  # 轨道7: 橙红色
     "#84cc16",  # 轨道8: 黄绿色
+    "#ef4444",  # 轨道9: 红色
+    "#a855f7",  # 轨道0: 紫罗兰
 ]
 
 
