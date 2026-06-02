@@ -36,9 +36,10 @@ from chestnut_studio.utils.time_utils import ms_to_time_str
 class NoteItemWidget(QWidget):
     """单条笔记的显示控件"""
 
-    def __init__(self, note: Note, parent=None):
+    def __init__(self, note: Note, note_id: int = 0, parent=None):
         super().__init__(parent)
         self.note = note
+        self._note_id = note_id
         self._setup_ui()
 
     def _setup_ui(self):
@@ -47,7 +48,7 @@ class NoteItemWidget(QWidget):
         layout.setSpacing(6)
 
         # 序号
-        id_label = QLabel(f"#{self.note.id}")
+        id_label = QLabel(f"#{self._note_id}" if self._note_id else "")
         id_label.setObjectName("noteId")
         id_label.setFixedWidth(28)
         layout.addWidget(id_label)
@@ -166,7 +167,8 @@ class NotePanel(QWidget):
         """添加一条笔记到列表"""
         item = QListWidgetItem()
         item.setData(Qt.UserRole, id(note))
-        widget = NoteItemWidget(note)
+        note_id = self._note_manager.get_note_id(note)
+        widget = NoteItemWidget(note, note_id)
         # 估算多行文本所需高度（初始值，resize 时会重新计算）
         est_lines = max(1, (len(note.text) + 11) // 12)
         h = max(36, 18 + est_lines * 18)

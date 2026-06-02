@@ -41,7 +41,6 @@ class Note:
     timestamp_ms: int = 0
     text: str = ""
     type: str = "轨道1"
-    id: int = 0  # 序号（由 NoteManager 自动分配）
 
     def __post_init__(self):
         if self.type not in NOTE_TYPES:
@@ -93,13 +92,12 @@ class Note:
         if len(line) > 1 and line[0] == "#" and not line[1].isdigit():
             return None
         try:
-            # 格式: #id 轨道名  时间	| 内容
-            note_id = 0
+            # 格式: [#id ]轨道名  时间	| 内容
             rest = line
+            # 跳过可选的 #id 前缀
             if rest[0] == "#":
                 space_pos = rest.find(" ")
                 if space_pos > 1 and rest[1:space_pos].isdigit():
-                    note_id = int(rest[1:space_pos])
                     rest = rest[space_pos+1:]
             
             parts = rest.split("	| ", 1)
@@ -115,7 +113,7 @@ class Note:
             m, r = time_str.split(":", 1)
             s, cs = r.split(".")
             ms = int(m) * 60000 + int(s) * 1000 + int(cs) * 10
-            return cls(id=note_id, timestamp_ms=ms, text=text, type=track_name)
+            return cls(timestamp_ms=ms, text=text, type=track_name)
         except Exception:
             return None
 
@@ -162,13 +160,11 @@ class NoteManager:
     def __init__(self):
         self._notes: list[Note] = []
         self._terms: list[Term] = []
-        self._next_id: int = 1
 
     # ── 增 ──
 
     def add(self, timestamp_ms: int, text: str, note_type: str = "轨道1") -> Note:
-        note = Note(id=self._next_id, timestamp_ms=timestamp_ms, text=text, type=note_type)
-        self._next_id += 1
+        note = Note(timestamp_ms=timestamp_ms, text=text, type=note_type)
         self._notes.append(note)
         self._notes.sort(key=lambda n: n.timestamp_ms)
         return note
@@ -218,12 +214,21 @@ class NoteManager:
         return len(notes)
 
 
-    def _reassign_ids(self):
-        """按时间排序重新分配所有笔记的序号"""
+    def assign_ids(self) -> dict[int, int]:
+        """按时间排序分配序号，返回 {序号: position} 映射"""
         self._notes.sort(key=lambda n: n.timestamp_ms)
+        id_map = {}
         for i, note in enumerate(self._notes, 1):
-            note.id = i
-        self._next_id = len(self._notes) + 1
+            id_map[id(note)] = i
+        return id_map
+
+    def get_note_id(self, note: Note) -> int:
+        """获取笔记在当前排序下的序号"""
+        self._notes.sort(key=lambda n: n.timestamp_ms)
+        for i, n in enumerate(self._notes, 1):
+            if n is note:
+                return i
+        return 0
 
     def import_text(self, path: str | Path) -> int:
         """从文本文件导入笔记
@@ -233,11 +238,9 @@ class NoteManager:
             for line in f:
                 note = Note.from_line(line)
                 if note:
-                    note.id = self._next_id
-                    self._next_id += 1
                     self._notes.append(note)
                     count += 1
-        self._reassign_ids()
+        self._notes.sort()
         return count
 
     def export_json(self, path: str | Path, types: list[str] | None = None) -> int:
@@ -252,10 +255,8 @@ class NoteManager:
             data = json.load(f)
         for item in data.get("notes", []):
             note = Note.from_dict(item)
-            note.id = self._next_id
-            self._next_id += 1
             self._notes.append(note)
-        self._reassign_ids()
+        self._notes.sort()
         return len(data.get("notes", []))
 
     # ── 术语库 ──
