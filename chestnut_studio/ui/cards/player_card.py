@@ -67,8 +67,7 @@ class PlayerCard(QWidget):
         self._controls.skip_back_clicked.connect(lambda: self._skip(-5000))
         self._controls.skip_forward_clicked.connect(lambda: self._skip(5000))
         self._controls.seek_requested.connect(self.set_position)
-        self._controls.seeking_started.connect(self._on_seeking_started)
-        self._controls.seeking_finished.connect(self._on_seeking_finished)
+
         self._controls.volume_changed.connect(self.set_volume)
         self._controls.rate_changed.connect(self.set_playback_rate)
 
@@ -170,19 +169,7 @@ class PlayerCard(QWidget):
         new_pos = max(0, min(self._player.position() + ms, self._duration))
         self.set_position(new_pos)
 
-    def _on_seeking_started(self):
-        """用户开始拖拽 — 断开 positionChanged，彻底阻止回写"""
-        try:
-            self._player.positionChanged.disconnect(self._on_position_changed)
-        except TypeError:
-            pass  # 已经断开
 
-    def _on_seeking_finished(self):
-        """用户释放进度条 — 重连 positionChanged"""
-        try:
-            self._player.positionChanged.connect(self._on_position_changed)
-        except RuntimeError:
-            pass  # 已经连接
 
     def _on_position_changed(self, position: int):
         self._controls.set_position(position)
