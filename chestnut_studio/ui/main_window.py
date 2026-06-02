@@ -229,13 +229,32 @@ class MainWindow(QMainWindow):
             t = terms[row]
             from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton, QHBoxLayout)
 
+            # 从 note 中提取原文和参考
+            ctx = ""
+            ref = ""
+            rest_note = t.note
+            lines = rest_note.split(chr(10))
+            clean = []
+            for ln in lines:
+                if ln.startswith("原文: "):
+                    ctx = ln[4:]
+                elif ln.startswith("参考: "):
+                    ref = ln[4:]
+                elif ln.strip():
+                    clean.append(ln)
+            rest_note = chr(10).join(clean)
+
             d = QDialog(dialog)
             d.setWindowTitle(f"编辑术语: {t.source}")
-            d.setMinimumSize(450, 400)
+            d.setMinimumSize(450, 420)
             lay = QVBoxLayout(d)
             lay.setSpacing(6)
 
-            lay.addWidget(QLabel("术语（日语）:"))
+            lay.addWidget(QLabel("原文（上下文）:"))
+            ce = QLineEdit(ctx)
+            lay.addWidget(ce)
+
+            lay.addWidget(QLabel("术语（关键词）:"))
             se = QLineEdit(t.source)
             lay.addWidget(se)
 
@@ -247,11 +266,16 @@ class MainWindow(QMainWindow):
             oe = QLineEdit(t.origin)
             lay.addWidget(oe)
 
+            lay.addWidget(QLabel("参考资料:"))
+            re = QLineEdit(ref)
+            re.setPlaceholderText("词典/网站/工具书名称或链接...")
+            lay.addWidget(re)
+
             lay.addWidget(QLabel("备注:"))
             ne = QTextEdit()
-            ne.setPlainText(t.note)
+            ne.setPlainText(rest_note)
             ne.setAcceptRichText(False)
-            ne.setMinimumHeight(120)
+            ne.setMinimumHeight(80)
             lay.addWidget(ne)
 
             btn_layout = QHBoxLayout()
@@ -267,7 +291,13 @@ class MainWindow(QMainWindow):
                 new_s = se.text().strip()
                 new_t = te.text().strip()
                 new_o = oe.text().strip()
+                new_ctx = ce.text().strip()
+                new_ref = re.text().strip()
                 new_n = ne.toPlainText().strip()
+                if new_ref:
+                    new_n = "参考: " + new_ref + (chr(10) + new_n if new_n else "")
+                if new_ctx:
+                    new_n = "原文: " + new_ctx + (chr(10) + new_n if new_n else "")
                 if new_s and new_t:
                     self._note_manager.update_term(t.source, new_s, new_t, new_o, new_n)
                     _reload_table()
@@ -343,13 +373,32 @@ class MainWindow(QMainWindow):
             t = terms[row]
             from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton, QHBoxLayout)
 
+            # 从 note 中提取原文和参考
+            ctx = ""
+            ref = ""
+            rest_note = t.note
+            lines = rest_note.split(chr(10))
+            clean = []
+            for ln in lines:
+                if ln.startswith("原文: "):
+                    ctx = ln[4:]
+                elif ln.startswith("参考: "):
+                    ref = ln[4:]
+                elif ln.strip():
+                    clean.append(ln)
+            rest_note = chr(10).join(clean)
+
             d = QDialog(dialog)
             d.setWindowTitle(f"编辑术语: {t.source}")
-            d.setMinimumSize(450, 400)
+            d.setMinimumSize(450, 420)
             lay = QVBoxLayout(d)
             lay.setSpacing(6)
 
-            lay.addWidget(QLabel("术语（日语）:"))
+            lay.addWidget(QLabel("原文（上下文）:"))
+            ce = QLineEdit(ctx)
+            lay.addWidget(ce)
+
+            lay.addWidget(QLabel("术语（关键词）:"))
             se = QLineEdit(t.source)
             lay.addWidget(se)
 
@@ -361,11 +410,16 @@ class MainWindow(QMainWindow):
             oe = QLineEdit(t.origin)
             lay.addWidget(oe)
 
+            lay.addWidget(QLabel("参考资料:"))
+            re = QLineEdit(ref)
+            re.setPlaceholderText("词典/网站/工具书名称或链接...")
+            lay.addWidget(re)
+
             lay.addWidget(QLabel("备注:"))
             ne = QTextEdit()
-            ne.setPlainText(t.note)
+            ne.setPlainText(rest_note)
             ne.setAcceptRichText(False)
-            ne.setMinimumHeight(120)
+            ne.setMinimumHeight(80)
             lay.addWidget(ne)
 
             btn_layout = QHBoxLayout()
@@ -381,7 +435,13 @@ class MainWindow(QMainWindow):
                 new_s = se.text().strip()
                 new_t = te.text().strip()
                 new_o = oe.text().strip()
+                new_ctx = ce.text().strip()
+                new_ref = re.text().strip()
                 new_n = ne.toPlainText().strip()
+                if new_ref:
+                    new_n = "参考: " + new_ref + (chr(10) + new_n if new_n else "")
+                if new_ctx:
+                    new_n = "原文: " + new_ctx + (chr(10) + new_n if new_n else "")
                 if new_s and new_t:
                     self._note_manager.update_term(t.source, new_s, new_t, new_o, new_n)
                     _reload_table()
