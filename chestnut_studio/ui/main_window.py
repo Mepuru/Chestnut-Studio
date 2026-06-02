@@ -196,8 +196,8 @@ class MainWindow(QMainWindow):
         dialog.setObjectName("shortcutDialog")
 
         table = QTableWidget(dialog)
-        table.setColumnCount(4)
-        table.setHorizontalHeaderLabels(["原文", "译文", "出处", "备注"])
+        table.setColumnCount(5)
+        table.setHorizontalHeaderLabels(["术语", "译文", "出处", "原文", "备注"])
         table.horizontalHeader().setStretchLastSection(True)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -205,10 +205,16 @@ class MainWindow(QMainWindow):
 
         table.setRowCount(len(terms))
         for i, t in enumerate(terms):
+            ctx = ""
+            for ln in t.note.split(chr(10)):
+                if ln.startswith("原文: "):
+                    ctx = ln[4:]
+                    break
             table.setItem(i, 0, QTableWidgetItem(t.source))
             table.setItem(i, 1, QTableWidgetItem(t.translation))
             table.setItem(i, 2, QTableWidgetItem(t.origin))
-            table.setItem(i, 3, QTableWidgetItem(t.note))
+            table.setItem(i, 3, QTableWidgetItem(ctx))
+            table.setItem(i, 4, QTableWidgetItem(t.note.replace(chr(10), " ")))
 
         table.resizeColumnsToContents()
         table.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -221,9 +227,13 @@ class MainWindow(QMainWindow):
             t = terms[row]
             menu = QMenu(table)
             edit_action = menu.addAction("编辑")
+            delete_action = menu.addAction("删除")
             action = menu.exec(table.mapToGlobal(pos))
             if action == edit_action:
                 _edit_term(row)
+            elif action == delete_action:
+                self._note_manager.remove_term(t.source)
+                _reload_table()
 
         def _edit_term(row):
             t = terms[row]
@@ -306,10 +316,16 @@ class MainWindow(QMainWindow):
             terms2 = self._note_manager.get_terms()
             table.setRowCount(len(terms2))
             for i, t2 in enumerate(terms2):
+                ctx = ""
+                for ln in t2.note.split(chr(10)):
+                    if ln.startswith("原文: "):
+                        ctx = ln[4:]
+                        break
                 table.setItem(i, 0, QTableWidgetItem(t2.source))
                 table.setItem(i, 1, QTableWidgetItem(t2.translation))
                 table.setItem(i, 2, QTableWidgetItem(t2.origin))
-                table.setItem(i, 3, QTableWidgetItem(t2.note))
+                table.setItem(i, 3, QTableWidgetItem(ctx))
+                table.setItem(i, 4, QTableWidgetItem(t2.note.replace(chr(10), " ")))
             table.resizeColumnsToContents()
 
         layout = QVBoxLayout(dialog)
@@ -365,9 +381,13 @@ class MainWindow(QMainWindow):
             t = terms[row]
             menu = QMenu(table)
             edit_action = menu.addAction("编辑")
+            delete_action = menu.addAction("删除")
             action = menu.exec(table.mapToGlobal(pos))
             if action == edit_action:
                 _edit_term(row)
+            elif action == delete_action:
+                self._note_manager.remove_term(t.source)
+                _reload_table()
 
         def _edit_term(row):
             t = terms[row]
@@ -450,10 +470,16 @@ class MainWindow(QMainWindow):
             terms2 = self._note_manager.get_terms()
             table.setRowCount(len(terms2))
             for i, t2 in enumerate(terms2):
+                ctx = ""
+                for ln in t2.note.split(chr(10)):
+                    if ln.startswith("原文: "):
+                        ctx = ln[4:]
+                        break
                 table.setItem(i, 0, QTableWidgetItem(t2.source))
                 table.setItem(i, 1, QTableWidgetItem(t2.translation))
                 table.setItem(i, 2, QTableWidgetItem(t2.origin))
-                table.setItem(i, 3, QTableWidgetItem(t2.note))
+                table.setItem(i, 3, QTableWidgetItem(ctx))
+                table.setItem(i, 4, QTableWidgetItem(t2.note.replace(chr(10), " ")))
             table.resizeColumnsToContents()
 
         layout = QVBoxLayout(dialog)
