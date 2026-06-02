@@ -34,12 +34,15 @@ class InputBar(QWidget):
         layout.setContentsMargins(12, 8, 12, 8)
         layout.setSpacing(8)
 
-        # ── 轨道号徽标 ──
-        self._track_badge = QLabel()
-        self._track_badge.setObjectName("trackBadge")
-        self._track_badge.setFixedSize(32, 32)
-        self._track_badge.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self._track_badge)
+        # ── 轨道指示器（色块 + 轨道名） ──
+        self._color_dot = QLabel()
+        self._color_dot.setFixedSize(10, 10)
+        self._color_dot.setObjectName("colorDot")
+        layout.addWidget(self._color_dot)
+
+        self._track_label = QLabel("轨道1")
+        self._track_label.setObjectName("trackLabel")
+        layout.addWidget(self._track_label)
 
         # ── 输入框 ──
         self._input = QLineEdit()
@@ -63,15 +66,14 @@ class InputBar(QWidget):
         self._update_badge()
 
     def _update_badge(self):
-        """更新轨道徽标颜色和数字"""
+        """更新轨道色块和名称"""
         track_num = self._current_track_idx + 1
-        label = "0" if track_num == 10 else str(track_num)
         color = get_track_color(track_num)
-        self._track_badge.setText(label)
-        self._track_badge.setStyleSheet(
-            f"background: {color}20; color: {color}; "
-            f"font-size: 12pt; font-weight: bold; border-radius: 16px;"
+        self._color_dot.setStyleSheet(
+            f"background: {color}; border-radius: 5px;"
         )
+        self._track_label.setText(NOTE_TYPES[self._current_track_idx])
+        self._track_label.setStyleSheet(f"color: {color};")
 
     def set_timestamp(self, ms: int):
         """更新当前视频时间戳显示"""

@@ -235,13 +235,18 @@ QSplitter::handle:horizontal {
     border-top: 1px solid #25254a;
 }
 
-#trackBadge {
+#colorDot {
+    min-width: 10px;
+    min-height: 10px;
+    max-width: 10px;
+    max-height: 10px;
+    border-radius: 5px;
+}
+
+#trackLabel {
+    font-size: 10pt;
+    font-weight: 600;
     background: transparent;
-    font-size: 12pt;
-    font-weight: bold;
-    min-width: 32px;
-    min-height: 32px;
-    border-radius: 16px;
 }
 
 #noteInput {
