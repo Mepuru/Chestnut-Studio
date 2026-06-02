@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -169,51 +168,12 @@ class Term:
             return None
 
 
-def _get_data_dir() -> Path:
-    """获取用户数据目录（跨平台）"""
-    if sys.platform == "win32":
-        base = Path.home() / "AppData" / "Local"
-    else:
-        base = Path.home() / ".local" / "share"
-    return base / "chestnut-studio"
-
-
 class NoteManager:
     """笔记管理器"""
 
     def __init__(self):
         self._notes: list[Note] = []
         self._terms: list[Term] = []
-        self._save_path: Path = _get_data_dir() / "notes.json"
-        self.auto_load()
-
-    # ── 自动持久化 ──
-
-    def auto_save(self) -> None:
-        """自动保存笔记和术语到用户数据目录"""
-        data = {
-            "version": 2,
-            "notes": [n.to_dict() for n in self._notes],
-            "terms": [
-                {"source": t.source, "translation": t.translation, "origin": t.origin, "note": t.note}
-                for t in self._terms
-            ],
-        }
-        self._save_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self._save_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-
-    def auto_load(self) -> None:
-        """从用户数据目录自动加载笔记和术语"""
-        if not self._save_path.exists():
-            return
-        with open(self._save_path, encoding="utf-8") as f:
-            data = json.load(f)
-        for item in data.get("notes", []):
-            self._notes.append(Note.from_dict(item))
-        for item in data.get("terms", []):
-            self._terms.append(Term(**item))
-        self._notes.sort()
 
     # ── 增 ──
 
@@ -221,7 +181,6 @@ class NoteManager:
         note = Note(timestamp_ms=timestamp_ms, text=text, type=note_type)
         self._notes.append(note)
         self._notes.sort(key=lambda n: n.timestamp_ms)
-        self.auto_save()
         return note
 
     # ── 删 ──
@@ -229,14 +188,12 @@ class NoteManager:
     def remove(self, note: Note) -> bool:
         try:
             self._notes.remove(note)
-            self.auto_save()
             return True
         except ValueError:
             return False
 
     def clear(self):
         self._notes.clear()
-        self.auto_save()
 
     # ── 查 ──
 
@@ -336,10 +293,8 @@ class NoteManager:
         for i, t in enumerate(self._terms):
             if t.source == source:
                 self._terms[i] = term
-                self.auto_save()
                 return term
         self._terms.append(term)
-        self.auto_save()
         return term
 
     def get_terms(self) -> list[Term]:
@@ -350,7 +305,6 @@ class NoteManager:
         for i, t in enumerate(self._terms):
             if t.source == old_source:
                 self._terms[i] = Term(source=new_source, translation=translation, origin=origin, note=note)
-                self.auto_save()
                 return True
         return False
 
@@ -358,13 +312,11 @@ class NoteManager:
         for i, t in enumerate(self._terms):
             if t.source == source:
                 self._terms.pop(i)
-                self.auto_save()
                 return True
         return False
 
     def clear_terms(self):
         self._terms.clear()
-        self.auto_save()
 
     def term_count(self) -> int:
         return len(self._terms)
