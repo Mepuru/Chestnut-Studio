@@ -100,7 +100,7 @@ class NotePanel(QWidget):
         self._count_label.setObjectName("notePanelCount")
         title_layout.addWidget(self._count_label)
 
-        self._sort_btn = QPushButton("时间")
+        self._sort_btn = QPushButton("轨道")  # 初始时间排序，点此切换到轨道
         self._sort_btn.setObjectName("sortBtn")
         self._sort_btn.setCursor(Qt.PointingHandCursor)
         self._sort_btn.clicked.connect(self._toggle_sort)
