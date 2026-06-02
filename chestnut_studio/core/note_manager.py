@@ -86,10 +86,10 @@ class Note:
     def from_line(cls, line: str) -> Note | None:
         """从文本行解析 Note，解析失败返回 None"""
         line = line.strip()
-        if not line or line.startswith("#"):
+        if not line:
             return None
-        # 跳过注释行（只有 # 开头且第二位不是数字的才是注释）
-        if len(line) > 1 and line[0] == "#" and not line[1].isdigit():
+        # 跳过注释行（# 开头且第二位不是数字的）
+        if line.startswith("#") and (len(line) < 2 or not line[1].isdigit()):
             return None
         try:
             # 格式: [#id ]轨道名  时间	| 内容
