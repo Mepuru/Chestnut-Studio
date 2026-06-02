@@ -116,14 +116,14 @@ class Term:
         if self.origin:
             lines.append(f"# 出: {self.origin}")
         if self.note:
-            for n_line in self.note.split(chr(10)):
+            for n_line in self.note.split("\n"):
                 lines.append(f"# {n_line}")
-        return chr(10).join(lines)
+        return "\n".join(lines)
 
     @classmethod
     def from_block(cls, block: str) -> Term | None:
         """从块格式解析 Term（跨多行）"""
-        lines = [l.strip() for l in block.strip().split(chr(10))]
+        lines = [l.strip() for l in block.strip().split("\n")]
         source = ""
         translation = ""
         origin = ""
@@ -138,7 +138,7 @@ class Term:
             elif line.startswith("# ") and not line.startswith("# ---") and not line.startswith("# 词:") and not line.startswith("# 译:") and not line.startswith("# 出:"):
                 note_lines.append(line[2:])
         if source and translation:
-            return cls(source=source, translation=translation, origin=origin, note=chr(10).join(note_lines))
+            return cls(source=source, translation=translation, origin=origin, note="\n".join(note_lines))
         return None
 
     @classmethod
@@ -215,10 +215,10 @@ class NoteManager:
         with open(path, "w", encoding="utf-8") as f:
             f.write(EXPORT_HEADER.format(video=video_name, duration=video_duration,
                                             resolution=video_resolution, fps=video_fps,
-                                            bitrate=video_bitrate, time=now, terms=len(self._terms)) + chr(10))
+                                            bitrate=video_bitrate, time=now, terms=len(self._terms)) + "\n")
             id_map = self.assign_ids()
             for n in notes:
-                f.write(n.to_line(id_map.get(id(n), 0)) + chr(10))
+                f.write(n.to_line(id_map.get(id(n), 0)) + "\n")
         return len(notes)
 
 
@@ -307,9 +307,9 @@ class NoteManager:
     def export_terms(self, path: str | Path) -> int:
         """导出术语库到文件末尾"""
         with open(path, "a", encoding="utf-8") as f:
-            f.write(chr(10) + "# --- 术语 ---" + chr(10))
+            f.write("\n" + "# --- 术语 ---" + "\n")
             for term in self._terms:
-                f.write(term.to_line() + chr(10))
+                f.write(term.to_line() + "\n")
         return len(self._terms)
 
     def import_terms(self, path: str | Path) -> int:
@@ -332,7 +332,7 @@ class NoteManager:
                         if t:
                             self._terms.append(t)
                             count += 1
-                    block = s + chr(10)
+                    block = s + "\n"
                 else:
                     block += line
             if block:

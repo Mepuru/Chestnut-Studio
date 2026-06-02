@@ -328,9 +328,9 @@ class MainWindow(QMainWindow):
             ref = ref_edit.text().strip()
             n = note_edit.toPlainText().strip()
             if ref:
-                n = ("参考: " + ref) + (chr(10) + n if n else "")
+                n = ("参考: " + ref) + ("\n" + n if n else "")
             if ctx:
-                n = "原文: " + ctx + (chr(10) + n if n else "")
+                n = "原文: " + ctx + ("\n" + n if n else "")
             if source and trans:
                 self._on_term_added(source, trans, o, n)
 
