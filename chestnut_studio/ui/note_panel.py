@@ -154,14 +154,15 @@ class NotePanel(QWidget):
             self._refresh_by_track()
         else:
             self._refresh_by_time()
+        self._recalc_item_heights()
 
     def _add_note_item(self, note: Note):
         """添加一条笔记到列表"""
         item = QListWidgetItem()
         item.setData(Qt.UserRole, id(note))
         widget = NoteItemWidget(note)
-        # 估算多行文本所需高度: 每行约 15 中文字符，行高 18px
-        est_lines = max(1, (len(note.text) + 14) // 15)
+        # 估算多行文本所需高度（初始值，resize 时会重新计算）
+        est_lines = max(1, (len(note.text) + 11) // 12)
         h = max(36, 18 + est_lines * 18)
         item.setSizeHint(QSize(0, h))
         self._list.addItem(item)
@@ -197,6 +198,23 @@ class NotePanel(QWidget):
 
             for note in notes:
                 self._add_note_item(note)
+
+    def resizeEvent(self, event):
+        """窗口大小变化时重新计算笔记高度"""
+        super().resizeEvent(event)
+        self._recalc_item_heights()
+
+    def _recalc_item_heights(self):
+        """根据当前列表宽度重新估算每条笔记的高度"""
+        available_width = self._list.viewport().width() - 74  # 减去时间标签+边距
+        chars_per_line = max(8, available_width // 12)  # 中文字符约 12px
+        for i in range(self._list.count()):
+            item = self._list.item(i)
+            widget = self._list.itemWidget(item)
+            if isinstance(widget, NoteItemWidget):
+                est_lines = max(1, (len(widget.note.text) + chars_per_line - 1) // chars_per_line)
+                h = max(36, 18 + est_lines * 18)
+                item.setSizeHint(QSize(0, h))
 
     def _on_item_clicked(self, item: QListWidgetItem):
         """双击笔记：跳转视频位置 + 载入输入框"""
