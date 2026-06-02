@@ -16,7 +16,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from chestnut_studio.core.note_manager import NOTE_TYPES, Note, NoteManager
+from chestnut_studio.core.note_manager import Note, NoteManager
+from chestnut_studio.core.track_config import NOTE_TYPES
 
 
 class _NoteListWidget(QListWidget):

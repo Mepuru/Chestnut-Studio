@@ -8,14 +8,11 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import ClassVar
 
 from datetime import datetime
 
+from chestnut_studio.core.track_config import NOTE_TYPES
 from chestnut_studio.utils.time_utils import ms_to_time_str
-
-NOTE_TYPES: ClassVar[list[str]] = [f"轨道{i}" for i in range(1, 10)] + ["轨道10"]
-"""笔记类型列表"""
 
 # 导出文本格式说明（文件头）
 EXPORT_HEADER = """# Chestnut Studio Notes
