@@ -47,7 +47,7 @@ class NoteItemWidget(QWidget):
         layout.setSpacing(6)
 
         # 序号
-        id_label = QLabel(f"#{self.note.id}" if self.note.id else "")
+        id_label = QLabel(f"#{self.note.id}")
         id_label.setObjectName("noteId")
         id_label.setFixedWidth(28)
         layout.addWidget(id_label)
