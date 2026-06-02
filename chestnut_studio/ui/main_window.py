@@ -183,7 +183,7 @@ class MainWindow(QMainWindow):
 
     def _show_terms(self):
         """显示术语列表"""
-        from PySide6.QtWidgets import QDialog, QTableWidget, QTableWidgetItem, QHeaderView, QVBoxLayout
+        from PySide6.QtWidgets import QDialog, QMenu, QTableWidget, QTableWidgetItem, QHeaderView, QVBoxLayout
 
         terms = self._note_manager.get_terms()
         if not terms:

@@ -59,28 +59,11 @@ class Note:
             type=data.get("type", "轨道1"),
         )
 
-    def to_line(self, parts: tuple[str, ...] = ("track", "time", "text")) -> str:
-        """转导出文本行
-
-        Args:
-            parts: 控制包含哪些字段
-                "track" — 轨道名
-                "time"  — 时间
-                "text"  — 内容
-
-        Returns:
-            如 parts=("time","text") → "00:15.20\t| 你好"
-        """
-        cols = []
-        for p in parts:
-            if p == "track":
-                cols.append(self.type)
-            elif p == "time":
-                cols.append(ms_to_time_str(self.timestamp_ms))
-        prefix = "\t".join(cols)
-        if "text" in parts:
-            return f"{prefix}\t| {self.text}" if prefix else self.text
-        return prefix
+    def to_line(self, note_id: int = 0) -> str:
+        """转导出文本行: #id 轨道名  时间	| 内容"""
+        if note_id:
+            return f"#{note_id}	{self.type}	{ms_to_time_str(self.timestamp_ms)}	| {self.text}"
+        return f"{self.type}	{ms_to_time_str(self.timestamp_ms)}	| {self.text}"
 
     @classmethod
     def from_line(cls, line: str) -> Note | None:
@@ -233,8 +216,9 @@ class NoteManager:
             f.write(EXPORT_HEADER.format(video=video_name, duration=video_duration,
                                             resolution=video_resolution, fps=video_fps,
                                             bitrate=video_bitrate, time=now, terms=len(self._terms)) + chr(10))
+            id_map = self.assign_ids()
             for n in notes:
-                f.write(n.to_line() + chr(10))
+                f.write(n.to_line(id_map.get(id(n), 0)) + chr(10))
         return len(notes)
 
 
