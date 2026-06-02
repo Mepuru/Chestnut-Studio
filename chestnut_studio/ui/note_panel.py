@@ -160,8 +160,15 @@ class NotePanel(QWidget):
             return
         self._empty_label.hide()
 
-
+        if self._sort_mode == "track":
+            self._refresh_by_track()
+        else:
+            self._refresh_by_time()
         self._recalc_item_heights()
+        if at_bottom:
+            scroll_bar.setValue(scroll_bar.maximum())
+        else:
+            scroll_bar.setValue(scroll_pos)
 
     def _add_note_item(self, note: Note):
         """添加一条笔记到列表"""
