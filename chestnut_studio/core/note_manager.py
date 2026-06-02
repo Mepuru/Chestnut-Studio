@@ -218,6 +218,13 @@ class NoteManager:
         return len(notes)
 
 
+    def _reassign_ids(self):
+        """按时间排序重新分配所有笔记的序号"""
+        self._notes.sort(key=lambda n: n.timestamp_ms)
+        for i, note in enumerate(self._notes, 1):
+            note.id = i
+        self._next_id = len(self._notes) + 1
+
     def import_text(self, path: str | Path) -> int:
         """从文本文件导入笔记
         """
@@ -226,9 +233,11 @@ class NoteManager:
             for line in f:
                 note = Note.from_line(line)
                 if note:
+                    note.id = self._next_id
+                    self._next_id += 1
                     self._notes.append(note)
                     count += 1
-        self._notes.sort()
+        self._reassign_ids()
         return count
 
     def export_json(self, path: str | Path, types: list[str] | None = None) -> int:
@@ -243,8 +252,10 @@ class NoteManager:
             data = json.load(f)
         for item in data.get("notes", []):
             note = Note.from_dict(item)
+            note.id = self._next_id
+            self._next_id += 1
             self._notes.append(note)
-        self._notes.sort()
+        self._reassign_ids()
         return len(data.get("notes", []))
 
     # ── 术语库 ──
