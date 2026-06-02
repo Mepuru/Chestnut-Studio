@@ -303,15 +303,14 @@ class MainWindow(QMainWindow):
         origin_text = Path(self.player_card.get_video_path()).name if self.player_card.get_video_path() else ""
         origin_text = f"{origin_text} {origin}" if origin_text else origin
 
-        # 原文上下文（只读提示）
-        context_label = QLabel(f"<span style='color:#7070a0;'>原文: {note_text}</span>")
-        context_label.setTextFormat(Qt.RichText)
-        context_label.setWordWrap(True)
-        layout.addWidget(context_label)
+        layout.addWidget(QLabel("原文（上下文）:"))
+        context_edit = QLineEdit(note_text)
+        context_edit.selectAll()
+        layout.addWidget(context_edit)
 
-        layout.addWidget(QLabel("术语（日语）:"))
-        source_edit = QLineEdit(note_text)
-        source_edit.selectAll()
+        layout.addWidget(QLabel("术语（关键词）:"))
+        source_edit = QLineEdit()
+        source_edit.setPlaceholderText("从原文复制要查询的词...")
         layout.addWidget(source_edit)
 
         layout.addWidget(QLabel("译文（中文）:"))
