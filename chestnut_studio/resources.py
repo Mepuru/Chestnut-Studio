@@ -16,7 +16,7 @@ def _get_resources_dir() -> Path:
     Returns:
         资源目录的绝对路径
     """
-    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         # PyInstaller 打包环境
         return Path(sys._MEIPASS) / "chestnut_studio" / "resources"
     else:

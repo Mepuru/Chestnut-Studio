@@ -24,8 +24,8 @@ from chestnut_studio.resources import get_icon_path
 from chestnut_studio.ui.cards.player_card import PlayerCard
 from chestnut_studio.ui.input_bar import InputBar
 from chestnut_studio.ui.note_panel import NotePanel
-from chestnut_studio.utils.version import get_version
 from chestnut_studio.utils.time_utils import ms_to_time_str
+from chestnut_studio.utils.version import get_version
 
 
 class MainWindow(QMainWindow):
@@ -197,7 +197,7 @@ class MainWindow(QMainWindow):
 
     def _show_shortcuts(self):
         """显示快捷键列表"""
-        from PySide6.QtWidgets import QDialog, QTableWidget, QTableWidgetItem, QHeaderView, QVBoxLayout
+        from PySide6.QtWidgets import QDialog, QTableWidget, QTableWidgetItem, QVBoxLayout
 
         dialog = QDialog(self)
         dialog.setWindowTitle("快捷键")
@@ -269,8 +269,7 @@ class MainWindow(QMainWindow):
 
     def _on_term_requested(self, note_text: str, origin: str):
         """从笔记打开术语录入"""
-        from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QLineEdit,
-                                       QTextEdit, QPushButton, QHBoxLayout)
+        from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QTextEdit, QVBoxLayout
 
         dialog = QDialog(self)
         dialog.setWindowTitle("术语")
@@ -351,7 +350,7 @@ class MainWindow(QMainWindow):
         if not used_types:
             return
 
-        from PySide6.QtWidgets import QCheckBox, QDialog, QDialogButtonBox, QVBoxLayout, QLabel
+        from PySide6.QtWidgets import QCheckBox, QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
         dialog = QDialog(self)
         dialog.setWindowTitle("导出笔记")
@@ -392,7 +391,10 @@ class MainWindow(QMainWindow):
             default_name = name + ".txt"
 
         path, _ = QFileDialog.getSaveFileName(
-            self, "导出笔记", default_name, "文本文件 (*.txt)",
+            self,
+            "导出笔记",
+            default_name,
+            "文本文件 (*.txt)",
         )
         if not path:
             return
@@ -423,14 +425,20 @@ class MainWindow(QMainWindow):
             count = self._note_manager.import_text(path)
             term_count = self._note_manager.import_terms(path)
             if count == 0:
-                QMessageBox.warning(self, "导入失败",
+                QMessageBox.warning(
+                    self,
+                    "导入失败",
                     "文件格式不匹配，无法导入任何笔记。\n\n"
                     "请确保每行格式为:\n"
                     "  轨道名  时间  |  内容\n\n"
                     "例如:\n"
-                    "  轨道1\t00:15.20\t| 你好")
+                    "  轨道1\t00:15.20\t| 你好",
+                )
             else:
-                self.statusBar().showMessage(f"已导入 {count} 条笔记", 3000)
+                msg = f"已导入 {count} 条笔记"
+                if term_count:
+                    msg += f"，{term_count} 条术语"
+                self.statusBar().showMessage(msg, 3000)
             self.note_panel.refresh()
 
     # ── 快捷键 ──

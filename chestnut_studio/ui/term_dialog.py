@@ -4,11 +4,9 @@
 """
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QDialog,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
     QMenu,
@@ -59,9 +57,9 @@ def _build_note(context: str, reference: str, rest_note: str) -> str:
 class TermEditDialog(QDialog):
     """单个术语的编辑/新建对话框"""
 
-    def __init__(self, parent: QWidget | None = None,
-                 term: Term | None = None,
-                 note_manager: NoteManager | None = None):
+    def __init__(
+        self, parent: QWidget | None = None, term: Term | None = None, note_manager: NoteManager | None = None
+    ):
         super().__init__(parent)
         self._note_manager = note_manager
         self._original_source = term.source if term else ""

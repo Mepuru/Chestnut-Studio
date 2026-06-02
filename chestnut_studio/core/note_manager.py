@@ -7,9 +7,8 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
-from pathlib import Path
-
 from datetime import datetime
+from pathlib import Path
 
 from chestnut_studio.core.track_config import NOTE_TYPES
 from chestnut_studio.utils.time_utils import ms_to_time_str
@@ -24,7 +23,7 @@ EXPORT_HEADER = """# Chestnut Studio Notes
 # 码率: {bitrate}
 # 导出时间: {time}
 # 格式: 轨道名  时间	| 内容
-# 批量删除前缀: 用正则替换  ^.+?\d{{2}}:\d{{2}}\.\d{{2}}\t\|  为空
+# 批量删除前缀: 用正则替换  ^.+?\\d{{2}}:\\d{{2}}\\.\\d{{2}}\t\\|  为空
 # ---"""
 
 
@@ -78,8 +77,8 @@ class Note:
             if rest[0] == "#":
                 sep = rest.find(chr(9))
                 if sep > 1 and rest[1:sep].isdigit():
-                    rest = rest[sep+1:]
-            
+                    rest = rest[sep + 1 :]
+
             parts = rest.split("	| ", 1)
             if len(parts) != 2:
                 return None
@@ -97,13 +96,15 @@ class Note:
         except (ValueError, IndexError, KeyError):
             return None
 
+
 @dataclass
 class Term:
     """术语条目"""
-    source: str      # 原文（日语）
-    translation: str # 译文（中文）
-    origin: str = "" # 出处
-    note: str = ""   # 备注
+
+    source: str  # 原文（日语）
+    translation: str  # 译文（中文）
+    origin: str = ""  # 出处
+    note: str = ""  # 备注
 
     def to_line(self) -> str:
         """转导出块格式"""
@@ -120,7 +121,7 @@ class Term:
     @classmethod
     def from_block(cls, block: str) -> Term | None:
         """从块格式解析 Term（跨多行）"""
-        lines = [l.strip() for l in block.strip().split("\n")]
+        lines = [ln.strip() for ln in block.strip().split("\n")]
         source = ""
         translation = ""
         origin = ""
@@ -132,7 +133,13 @@ class Term:
                 translation = line[5:]
             elif line.startswith("# 出: "):
                 origin = line[5:]
-            elif line.startswith("# ") and not line.startswith("# ---") and not line.startswith("# 词:") and not line.startswith("# 译:") and not line.startswith("# 出:"):
+            elif (
+                line.startswith("# ")
+                and not line.startswith("# ---")
+                and not line.startswith("# 词:")
+                and not line.startswith("# 译:")
+                and not line.startswith("# 出:")
+            ):
                 note_lines.append(line[2:])
         if source and translation:
             return cls(source=source, translation=translation, origin=origin, note="\n".join(note_lines))
@@ -203,21 +210,35 @@ class NoteManager:
 
     # ── 文本格式导出/导入 ──
 
-    def export_text(self, path: str | Path, types: list[str] | None = None,
-                    video_name: str = "", video_duration: str = "",
-                    video_resolution: str = "", video_fps: str = "",
-                    video_bitrate: str = "") -> int:
+    def export_text(
+        self,
+        path: str | Path,
+        types: list[str] | None = None,
+        video_name: str = "",
+        video_duration: str = "",
+        video_resolution: str = "",
+        video_fps: str = "",
+        video_bitrate: str = "",
+    ) -> int:
         notes = self._notes if types is None else [n for n in self._notes if n.type in types]
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
         with open(path, "w", encoding="utf-8") as f:
-            f.write(EXPORT_HEADER.format(video=video_name, duration=video_duration,
-                                            resolution=video_resolution, fps=video_fps,
-                                            bitrate=video_bitrate, time=now, terms=len(self._terms)) + "\n")
+            f.write(
+                EXPORT_HEADER.format(
+                    video=video_name,
+                    duration=video_duration,
+                    resolution=video_resolution,
+                    fps=video_fps,
+                    bitrate=video_bitrate,
+                    time=now,
+                    terms=len(self._terms),
+                )
+                + "\n"
+            )
             id_map = self.assign_ids()
             for n in notes:
                 f.write(n.to_line(id_map.get(id(n), 0)) + "\n")
         return len(notes)
-
 
     def assign_ids(self) -> dict[int, int]:
         """按时间排序分配序号，返回 {序号: position} 映射"""
@@ -236,8 +257,7 @@ class NoteManager:
         return 0
 
     def import_text(self, path: str | Path) -> int:
-        """从文本文件导入笔记
-        """
+        """从文本文件导入笔记"""
         count = 0
         with open(path, encoding="utf-8") as f:
             for line in f:

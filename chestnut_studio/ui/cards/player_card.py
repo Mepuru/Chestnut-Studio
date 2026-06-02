@@ -169,8 +169,6 @@ class PlayerCard(QWidget):
         new_pos = max(0, min(self._player.position() + ms, self._duration))
         self.set_position(new_pos)
 
-
-
     def _on_position_changed(self, position: int):
         self._controls.set_position(position)
         self.position_changed.emit(position)

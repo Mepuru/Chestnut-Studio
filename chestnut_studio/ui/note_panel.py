@@ -17,7 +17,8 @@ from PySide6.QtWidgets import (
 )
 
 from chestnut_studio.core.note_manager import Note, NoteManager
-from chestnut_studio.core.track_config import NOTE_TYPES
+from chestnut_studio.core.track_config import NOTE_TYPES, get_track_color
+from chestnut_studio.utils.time_utils import ms_to_time_str
 
 
 class _NoteListWidget(QListWidget):
@@ -33,8 +34,6 @@ class _NoteListWidget(QListWidget):
             self.m_pressed.emit()
         else:
             super().keyPressEvent(event)
-from chestnut_studio.core.track_config import get_track_color
-from chestnut_studio.utils.time_utils import ms_to_time_str
 
 
 class NoteItemWidget(QWidget):

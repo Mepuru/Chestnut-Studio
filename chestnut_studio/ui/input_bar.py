@@ -12,8 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from chestnut_studio.core.track_config import NOTE_TYPES
-from chestnut_studio.core.track_config import get_track_color
+from chestnut_studio.core.track_config import NOTE_TYPES, get_track_color
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
 
@@ -69,9 +68,7 @@ class InputBar(QWidget):
         """更新轨道色块和名称"""
         track_num = self._current_track_idx + 1
         color = get_track_color(track_num)
-        self._color_dot.setStyleSheet(
-            f"background: {color}; border-radius: 5px;"
-        )
+        self._color_dot.setStyleSheet(f"background: {color}; border-radius: 5px;")
         self._track_label.setText(NOTE_TYPES[self._current_track_idx])
         self._track_label.setStyleSheet(f"color: {color};")
 
@@ -94,8 +91,7 @@ class InputBar(QWidget):
 
     def _add_term(self):
         """打开术语对话框"""
-        from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QLineEdit,
-                                       QTextEdit, QPushButton, QHBoxLayout)
+        from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QTextEdit, QVBoxLayout
 
         dialog = QDialog(self)
         dialog.setWindowTitle("积累")
