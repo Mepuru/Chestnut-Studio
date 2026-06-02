@@ -211,6 +211,76 @@ class MainWindow(QMainWindow):
             table.setItem(i, 3, QTableWidgetItem(t.note))
 
         table.resizeColumnsToContents()
+        table.setContextMenuPolicy(Qt.CustomContextMenu)
+        table.customContextMenuRequested.connect(lambda pos: _edit_term_at(pos))
+
+        def _edit_term_at(pos):
+            row = table.rowAt(pos.y())
+            if row < 0 or row >= len(terms):
+                return
+            t = terms[row]
+            menu = QMenu(table)
+            edit_action = menu.addAction("编辑")
+            action = menu.exec(table.mapToGlobal(pos))
+            if action == edit_action:
+                _edit_term(row)
+
+        def _edit_term(row):
+            t = terms[row]
+            from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton, QHBoxLayout)
+
+            d = QDialog(dialog)
+            d.setWindowTitle(f"编辑术语: {t.source}")
+            d.setMinimumSize(450, 400)
+            lay = QVBoxLayout(d)
+            lay.setSpacing(6)
+
+            lay.addWidget(QLabel("术语（日语）:"))
+            se = QLineEdit(t.source)
+            lay.addWidget(se)
+
+            lay.addWidget(QLabel("译文（中文）:"))
+            te = QLineEdit(t.translation)
+            lay.addWidget(te)
+
+            lay.addWidget(QLabel("出处:"))
+            oe = QLineEdit(t.origin)
+            lay.addWidget(oe)
+
+            lay.addWidget(QLabel("备注:"))
+            ne = QTextEdit()
+            ne.setPlainText(t.note)
+            ne.setMinimumHeight(120)
+            lay.addWidget(ne)
+
+            btn_layout = QHBoxLayout()
+            save_btn = QPushButton("保存")
+            save_btn.clicked.connect(d.accept)
+            cancel_btn = QPushButton("取消")
+            cancel_btn.clicked.connect(d.reject)
+            btn_layout.addWidget(save_btn)
+            btn_layout.addWidget(cancel_btn)
+            lay.addLayout(btn_layout)
+
+            if d.exec() == QDialog.Accepted:
+                new_s = se.text().strip()
+                new_t = te.text().strip()
+                new_o = oe.text().strip()
+                new_n = ne.toPlainText().strip()
+                if new_s and new_t:
+                    self._note_manager.update_term(t.source, new_s, new_t, new_o, new_n)
+                    _reload_table()
+
+        def _reload_table():
+            terms2 = self._note_manager.get_terms()
+            table.setRowCount(len(terms2))
+            for i, t2 in enumerate(terms2):
+                table.setItem(i, 0, QTableWidgetItem(t2.source))
+                table.setItem(i, 1, QTableWidgetItem(t2.translation))
+                table.setItem(i, 2, QTableWidgetItem(t2.origin))
+                table.setItem(i, 3, QTableWidgetItem(t2.note))
+            table.resizeColumnsToContents()
+
         layout = QVBoxLayout(dialog)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(table)
@@ -254,6 +324,76 @@ class MainWindow(QMainWindow):
             table.setItem(i, 1, QTableWidgetItem(desc))
 
         table.resizeColumnsToContents()
+        table.setContextMenuPolicy(Qt.CustomContextMenu)
+        table.customContextMenuRequested.connect(lambda pos: _edit_term_at(pos))
+
+        def _edit_term_at(pos):
+            row = table.rowAt(pos.y())
+            if row < 0 or row >= len(terms):
+                return
+            t = terms[row]
+            menu = QMenu(table)
+            edit_action = menu.addAction("编辑")
+            action = menu.exec(table.mapToGlobal(pos))
+            if action == edit_action:
+                _edit_term(row)
+
+        def _edit_term(row):
+            t = terms[row]
+            from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton, QHBoxLayout)
+
+            d = QDialog(dialog)
+            d.setWindowTitle(f"编辑术语: {t.source}")
+            d.setMinimumSize(450, 400)
+            lay = QVBoxLayout(d)
+            lay.setSpacing(6)
+
+            lay.addWidget(QLabel("术语（日语）:"))
+            se = QLineEdit(t.source)
+            lay.addWidget(se)
+
+            lay.addWidget(QLabel("译文（中文）:"))
+            te = QLineEdit(t.translation)
+            lay.addWidget(te)
+
+            lay.addWidget(QLabel("出处:"))
+            oe = QLineEdit(t.origin)
+            lay.addWidget(oe)
+
+            lay.addWidget(QLabel("备注:"))
+            ne = QTextEdit()
+            ne.setPlainText(t.note)
+            ne.setMinimumHeight(120)
+            lay.addWidget(ne)
+
+            btn_layout = QHBoxLayout()
+            save_btn = QPushButton("保存")
+            save_btn.clicked.connect(d.accept)
+            cancel_btn = QPushButton("取消")
+            cancel_btn.clicked.connect(d.reject)
+            btn_layout.addWidget(save_btn)
+            btn_layout.addWidget(cancel_btn)
+            lay.addLayout(btn_layout)
+
+            if d.exec() == QDialog.Accepted:
+                new_s = se.text().strip()
+                new_t = te.text().strip()
+                new_o = oe.text().strip()
+                new_n = ne.toPlainText().strip()
+                if new_s and new_t:
+                    self._note_manager.update_term(t.source, new_s, new_t, new_o, new_n)
+                    _reload_table()
+
+        def _reload_table():
+            terms2 = self._note_manager.get_terms()
+            table.setRowCount(len(terms2))
+            for i, t2 in enumerate(terms2):
+                table.setItem(i, 0, QTableWidgetItem(t2.source))
+                table.setItem(i, 1, QTableWidgetItem(t2.translation))
+                table.setItem(i, 2, QTableWidgetItem(t2.origin))
+                table.setItem(i, 3, QTableWidgetItem(t2.note))
+            table.resizeColumnsToContents()
+
         layout = QVBoxLayout(dialog)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(table)

@@ -299,6 +299,14 @@ class NoteManager:
     def get_terms(self) -> list[Term]:
         return list(self._terms)
 
+    def update_term(self, old_source: str, new_source: str, translation: str, origin: str, note: str) -> bool:
+        """更新术语"""
+        for i, t in enumerate(self._terms):
+            if t.source == old_source:
+                self._terms[i] = Term(source=new_source, translation=translation, origin=origin, note=note)
+                return True
+        return False
+
     def remove_term(self, source: str) -> bool:
         for i, t in enumerate(self._terms):
             if t.source == source:
