@@ -23,10 +23,13 @@ class _NoteListWidget(QListWidget):
     """支持 Delete 键删除的 QListWidget 子类"""
 
     delete_requested = Signal()
+    m_pressed = Signal()
 
     def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key_Delete:
             self.delete_requested.emit()
+        elif event.key() == Qt.Key_M:
+            self.m_pressed.emit()
         else:
             super().keyPressEvent(event)
 from chestnut_studio.core.track_config import get_track_color
@@ -80,6 +83,7 @@ class NotePanel(QWidget):
 
     jump_to_position = Signal(int)  # 双击笔记跳转到视频位置
     edit_requested = Signal(str, str)  # 双击笔记载入输入框 (type, text)
+    term_requested = Signal(str, str)  # 打开术语录入 (note_text, origin)
 
     def __init__(self, note_manager: NoteManager, parent=None):
         super().__init__(parent)
@@ -115,6 +119,12 @@ class NotePanel(QWidget):
 
         title_layout.addStretch()
 
+        self._term_btn = QPushButton("术语")
+        self._term_btn.setObjectName("termBtn")
+        self._term_btn.setCursor(Qt.PointingHandCursor)
+        self._term_btn.clicked.connect(self._on_term_requested)
+        title_layout.addWidget(self._term_btn)
+
         self._clear_btn = QPushButton("清空")
         self._clear_btn.setObjectName("clearBtn")
         self._clear_btn.setCursor(Qt.PointingHandCursor)
@@ -131,6 +141,7 @@ class NotePanel(QWidget):
         self._list.setContextMenuPolicy(Qt.CustomContextMenu)
         self._list.customContextMenuRequested.connect(self._show_context_menu)
         self._list.delete_requested.connect(self._delete_selected)
+        self._list.m_pressed.connect(self._on_term_requested)
         layout.addWidget(self._list, 1)
 
         # ── 空状态提示 ──
@@ -253,6 +264,15 @@ class NotePanel(QWidget):
         if action == delete_action:
             self._note_manager.remove(widget.note)
             self.refresh()
+
+    def _on_term_requested(self):
+        """选中笔记后打开术语录入"""
+        item = self._list.currentItem()
+        if not item:
+            return
+        widget = self._list.itemWidget(item)
+        if isinstance(widget, NoteItemWidget):
+            self.term_requested.emit(widget.note.text, f"#{self._note_manager.get_note_id(widget.note)}")
 
     def _delete_selected(self):
         """删除当前选中的笔记"""

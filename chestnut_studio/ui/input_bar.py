@@ -56,13 +56,6 @@ class InputBar(QWidget):
         self._time_label.setObjectName("timeLabel")
         layout.addWidget(self._time_label)
 
-        # ── 术语按钮 ──
-        self._term_btn = QPushButton("术语")
-        self._term_btn.setObjectName("termBtn")
-        self._term_btn.setCursor(Qt.PointingHandCursor)
-        self._term_btn.clicked.connect(self._add_term)
-        layout.addWidget(self._term_btn)
-
         # ── 发送按钮 ──
         self._send_btn = QPushButton("发送")
         self._send_btn.setObjectName("sendBtn")

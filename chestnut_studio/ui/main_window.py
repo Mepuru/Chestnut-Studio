@@ -172,6 +172,7 @@ class MainWindow(QMainWindow):
         # 笔记列表双击 → 跳转视频 + 载入输入框
         self.note_panel.jump_to_position.connect(self.player_card.set_position)
         self.note_panel.edit_requested.connect(self.input_bar.load_for_edit)
+        self.note_panel.term_requested.connect(self._on_term_requested)
         self.input_bar.term_added.connect(self._on_term_added)
 
     def _setup_drop(self):
@@ -287,6 +288,55 @@ class MainWindow(QMainWindow):
         """收到新笔记"""
         self._note_manager.add(timestamp_ms=timestamp_ms, text=text, note_type=note_type)
         self.note_panel.refresh()
+
+    def _on_term_requested(self, note_text: str, origin: str):
+        """从笔记打开术语录入"""
+        from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QLineEdit,
+                                       QTextEdit, QPushButton, QHBoxLayout)
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("术语")
+        dialog.setMinimumSize(450, 400)
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(6)
+
+        layout.addWidget(QLabel("原文（日语）:"))
+        source_edit = QLineEdit(note_text)
+        source_edit.selectAll()
+        layout.addWidget(source_edit)
+
+        layout.addWidget(QLabel("译文（中文）:"))
+        trans_edit = QLineEdit()
+        trans_edit.setPlaceholderText("对应的中文翻译...")
+        layout.addWidget(trans_edit)
+
+        layout.addWidget(QLabel("出处:"))
+        vname = Path(self.player_card.get_video_path()).name if self.player_card.get_video_path() else ""
+        origin_edit = QLineEdit(f"{vname} {origin}" if vname else origin)
+        layout.addWidget(origin_edit)
+
+        layout.addWidget(QLabel("备注:"))
+        note_edit = QTextEdit()
+        note_edit.setPlaceholderText("语法说明、用法注意...")
+        note_edit.setMinimumHeight(100)
+        layout.addWidget(note_edit)
+
+        btn_layout = QHBoxLayout()
+        save_btn = QPushButton("保存")
+        save_btn.clicked.connect(dialog.accept)
+        cancel_btn = QPushButton("取消")
+        cancel_btn.clicked.connect(dialog.reject)
+        btn_layout.addWidget(save_btn)
+        btn_layout.addWidget(cancel_btn)
+        layout.addLayout(btn_layout)
+
+        if dialog.exec() == QDialog.Accepted:
+            source = source_edit.text().strip()
+            trans = trans_edit.text().strip()
+            o = origin_edit.text().strip()
+            n = note_edit.toPlainText().strip()
+            if source and trans:
+                self._on_term_added(source, trans, o, n)
 
     def _on_term_added(self, source: str, translation: str, origin: str, note: str):
         """添加术语"""

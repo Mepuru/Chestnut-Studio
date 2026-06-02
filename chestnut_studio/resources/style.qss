@@ -276,21 +276,6 @@ QSplitter::handle:horizontal {
     padding: 0 4px;
 }
 
-#termBtn {
-    background: transparent;
-    border: 1px solid #2e2e50;
-    border-radius: 6px;
-    color: #9090b0;
-    font-size: 9pt;
-    padding: 6px 12px;
-    min-height: 28px;
-}
-
-#termBtn:hover {
-    border-color: #7c5cfc;
-    color: #e0e0f0;
-}
-
 #sendBtn {
     background: #7c5cfc;
     color: #ffffff;
