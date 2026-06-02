@@ -184,12 +184,11 @@ class PlayerControls(QWidget):
         self._is_seeking = True
 
     def _on_seek_preview(self, value: int):
-        """进度条拖拽中 — 实时更新预览并 seek"""
+        """进度条拖拽中 — 仅更新时间预览，不 seek"""
         self._current_time.setText(ms_to_time_str(value))
-        self.seek_requested.emit(value)
 
     def _on_seek_commit(self):
-        """进度条释放/点击轨道 — 跳转并恢复位置回写"""
+        """进度条释放/点击轨道 — 跳转到目标位置"""
         value = self._seek_slider.value()
         self._current_time.setText(ms_to_time_str(value))
         self.seek_requested.emit(value)
