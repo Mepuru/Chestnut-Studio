@@ -158,7 +158,10 @@ class NotePanel(QWidget):
         item = QListWidgetItem()
         item.setData(Qt.UserRole, id(note))
         widget = NoteItemWidget(note)
-        item.setSizeHint(QSize(0, 36))
+        # 估算多行文本所需高度: 每行约 26 字符，行高 18px
+        est_lines = max(1, (len(note.text) + 25) // 26)
+        h = max(36, 18 + est_lines * 18)
+        item.setSizeHint(QSize(0, h))
         self._list.addItem(item)
         self._list.setItemWidget(item, widget)
 
