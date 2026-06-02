@@ -257,7 +257,7 @@ class MainWindow(QMainWindow):
             res_text = f"{info.width}×{info.height} " if info.width else ""
             status = f"已打开: {filename}  |  {res_text}{fps_text}"
             self.statusBar().showMessage(status, 5000)
-        except Exception:
+        except Exception:  # ffmpeg 调用可能因缺少可执行文件/格式不支持失败
             self.statusBar().showMessage(f"已打开: {filename}", 5000)
 
     # ── 笔记操作 ──
@@ -410,7 +410,7 @@ class MainWindow(QMainWindow):
                     fps = f"{info.fps:.0f}fps"
                 if info.bitrate:
                     bitrate = f"{info.bitrate}kbps"
-            except Exception:
+            except Exception:  # ffmpeg 调用失败时跳过视频信息
                 pass
         count = self._note_manager.export_text(path, selected_tracks, vname, dur, res, fps, bitrate)
         self._note_manager.export_terms(path)

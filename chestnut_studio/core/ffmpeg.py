@@ -97,7 +97,7 @@ class FFmpeg:
             else:
                 ms = "0"
             return int(h) * 3600000 + int(m) * 60000 + int(s) * 1000 + int(ms)
-        except Exception:
+        except (ValueError, IndexError):
             return 0
 
     def _parse_bitrate(self, line: str) -> int:
@@ -117,7 +117,7 @@ class FFmpeg:
                         break
                 if num_str:
                     return int(num_str)
-        except Exception:
+        except (ValueError, IndexError):
             pass
         return 0
 
@@ -136,6 +136,6 @@ class FFmpeg:
                     width, height = int(w), int(h.split()[0])
                 if "fps" in part:
                     fps = float(part.split("fps")[0].strip())
-        except Exception:
+        except (ValueError, IndexError):
             pass
         return width, height, fps

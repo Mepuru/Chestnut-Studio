@@ -215,6 +215,5 @@ class LogManager:
         for handler in handlers:
             try:
                 handler(record)
-            except Exception:
-                # 处理器异常不应影响主程序
+            except Exception:  # 故意宽捕：handler 异常不影响主程序
                 pass

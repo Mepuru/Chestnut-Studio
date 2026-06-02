@@ -94,7 +94,7 @@ class Note:
             s, cs = r.split(".")
             ms = int(m) * 60000 + int(s) * 1000 + int(cs) * 10
             return cls(timestamp_ms=ms, text=text, type=track_name)
-        except Exception:
+        except (ValueError, IndexError, KeyError):
             return None
 
 @dataclass
@@ -154,7 +154,7 @@ class Term:
             if len(parts) > 3:
                 term.note = parts[3]
             return term
-        except Exception:
+        except (ValueError, IndexError):
             return None
 
 
