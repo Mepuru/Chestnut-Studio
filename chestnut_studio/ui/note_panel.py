@@ -46,10 +46,12 @@ class NoteItemWidget(QWidget):
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(6)
 
-        # 时间戳标签
+        # 时间戳标签（按轨道区分颜色）
         time_label = QLabel(ms_to_time_str(self.note.timestamp_ms))
         time_label.setObjectName("noteTime")
         time_label.setFixedWidth(52)
+        color = get_track_color(NOTE_TYPES.index(self.note.type) + 1)
+        time_label.setStyleSheet(f"color: {color}; font-weight: 600; background: transparent;")
         layout.addWidget(time_label)
 
         # 笔记文本（可换行）
