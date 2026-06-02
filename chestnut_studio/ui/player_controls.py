@@ -30,14 +30,15 @@ class PlayerControls(QWidget):
     play_pause_clicked = Signal()
     skip_back_clicked = Signal()
     skip_forward_clicked = Signal()
-    seek_requested = Signal(int)  # 拖动进度条到指定毫秒
-    volume_changed = Signal(int)  # 0-100
+    seek_requested = Signal(int)
+    seeking_started = Signal()
+    seeking_finished = Signal()
+    volume_changed = Signal(int)
     rate_changed = Signal(float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._is_playing = False
-        self._is_seeking = False  # 用户正在拖拽/点击进度条，阻止位置回写
         self._duration = 0
         self._setup_ui()
 
@@ -147,12 +148,7 @@ class PlayerControls(QWidget):
         self._total_time.setText(ms_to_time_str(ms))
 
     def set_position(self, ms: int):
-        """更新进度条位置和当前时间（播放中自动轮询）
-
-        用户正在拖拽进度条时不更新滑块，避免覆盖用户选择的位置。
-        """
-        if self._is_seeking:
-            return
+        """更新进度条位置和当前时间"""
         self._seek_slider.blockSignals(True)
         self._seek_slider.setValue(ms)
         self._seek_slider.blockSignals(False)
@@ -180,8 +176,8 @@ class PlayerControls(QWidget):
     # ── 内部方法 ──
 
     def _on_seek_start(self):
-        """进度条按下 — 标记拖拽中，暂停位置回写"""
-        self._is_seeking = True
+        """进度条按下 — 通知 PlayerCard 暂停位置回写"""
+        self.seeking_started.emit()
 
     def _on_seek_preview(self, value: int):
         """进度条拖拽中 — 仅更新时间预览，不 seek"""
@@ -192,7 +188,7 @@ class PlayerControls(QWidget):
         value = self._seek_slider.value()
         self._current_time.setText(ms_to_time_str(value))
         self.seek_requested.emit(value)
-        self._is_seeking = False
+        self.seeking_finished.emit()
 
     def _toggle_mute(self):
         """静音切换"""

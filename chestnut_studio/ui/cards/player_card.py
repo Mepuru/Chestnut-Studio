@@ -30,6 +30,7 @@ class PlayerCard(QWidget):
         self._video_path = ""
         self._duration = 0
         self._is_playing = False
+        self._block_position = False  # 拖拽进度条时暂停位置回写
         self._volume = 80
         self._muted = False
         self._playback_rate = 1.0
@@ -67,6 +68,8 @@ class PlayerCard(QWidget):
         self._controls.skip_back_clicked.connect(lambda: self._skip(-5000))
         self._controls.skip_forward_clicked.connect(lambda: self._skip(5000))
         self._controls.seek_requested.connect(self.set_position)
+        self._controls.seeking_started.connect(self._on_seeking_started)
+        self._controls.seeking_finished.connect(self._on_seeking_finished)
         self._controls.volume_changed.connect(self.set_volume)
         self._controls.rate_changed.connect(self.set_playback_rate)
 
@@ -168,7 +171,17 @@ class PlayerCard(QWidget):
         new_pos = max(0, min(self._player.position() + ms, self._duration))
         self.set_position(new_pos)
 
+    def _on_seeking_started(self):
+        """用户开始拖拽进度条 — 阻止位置回写"""
+        self._block_position = True
+
+    def _on_seeking_finished(self):
+        """用户释放进度条 — 恢复位置回写"""
+        self._block_position = False
+
     def _on_position_changed(self, position: int):
+        if self._block_position:
+            return
         self._controls.set_position(position)
         self.position_changed.emit(position)
 
