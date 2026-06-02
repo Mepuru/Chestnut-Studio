@@ -250,6 +250,7 @@ class MainWindow(QMainWindow):
             lay.addWidget(QLabel("备注:"))
             ne = QTextEdit()
             ne.setPlainText(t.note)
+            ne.setAcceptRichText(False)
             ne.setMinimumHeight(120)
             lay.addWidget(ne)
 
@@ -363,6 +364,7 @@ class MainWindow(QMainWindow):
             lay.addWidget(QLabel("备注:"))
             ne = QTextEdit()
             ne.setPlainText(t.note)
+            ne.setAcceptRichText(False)
             ne.setMinimumHeight(120)
             lay.addWidget(ne)
 
@@ -470,6 +472,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(QLabel("备注:"))
         note_edit = QTextEdit()
         note_edit.setPlaceholderText("语法说明、用法注意...")
+        note_edit.setAcceptRichText(False)
         note_edit.setMinimumHeight(80)
         layout.addWidget(note_edit)
 
