@@ -1,22 +1,39 @@
 """版本号工具
 
 版本号唯一来源：pyproject.toml [project] version 字段。
-运行时通过 importlib.metadata 读取，打包后也能正确获取。
+运行时优先级：importlib.metadata → 直接读取 pyproject.toml。
 """
 
+import re
 from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
+
+
+def _read_pyproject_toml() -> str:
+    """从 pyproject.toml 直接读取版本号（开发模式 / PyInstaller 后备）"""
+    # 依次尝试常见路径
+    candidates = [
+        Path(__file__).parent.parent.parent / "pyproject.toml",
+        Path.cwd() / "pyproject.toml",
+    ]
+    for path in candidates:
+        if path.exists():
+            match = re.search(r'^version\s*=\s*"([^"]+)"', path.read_text("utf-8"), re.MULTILINE)
+            if match:
+                return match.group(1)
+    return "unknown"
 
 
 def get_version() -> str:
     """获取当前版本号
 
-    从 pyproject.toml 中定义的版本号读取（通过 importlib.metadata）。
-    如果无法获取（如未安装），返回 "unknown"。
+    从 pyproject.toml 中定义的版本号读取。
+    优先级: importlib.metadata → 直接读取 pyproject.toml → "unknown"
 
     Returns:
-        版本号字符串，如 "1.1.1"
+        版本号字符串，如 "2.1.0"
     """
     try:
         return version("chestnut-studio")
     except PackageNotFoundError:
-        return "unknown"
+        return _read_pyproject_toml()

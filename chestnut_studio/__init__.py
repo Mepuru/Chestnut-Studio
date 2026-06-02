@@ -1,3 +1,5 @@
 """Chestnut Studio - 视频笔记工具"""
 
-__version__ = "2.0.0"
+from chestnut_studio.utils.version import get_version
+
+__version__ = get_version()
