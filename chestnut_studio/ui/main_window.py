@@ -248,9 +248,9 @@ class MainWindow(QMainWindow):
         self.note_panel.refresh()
 
     def _on_term_added(self, source: str, translation: str, origin: str, note: str):
-        """添加积累条目"""
+        """添加术语"""
         self._note_manager.add_term(source, translation, origin, note)
-        self.statusBar().showMessage(f"积累: {source} → {translation}", 3000)
+        self.statusBar().showMessage(f"术语: {source} → {translation}", 3000)
 
     def _on_export_notes(self):
         """导出笔记 — 选轨道、选格式"""

@@ -57,7 +57,7 @@ class InputBar(QWidget):
         layout.addWidget(self._time_label)
 
         # ── 术语按钮 ──
-        self._term_btn = QPushButton("积累")
+        self._term_btn = QPushButton("术语")
         self._term_btn.setObjectName("termBtn")
         self._term_btn.setCursor(Qt.PointingHandCursor)
         self._term_btn.clicked.connect(self._add_term)
@@ -100,7 +100,7 @@ class InputBar(QWidget):
     term_added = Signal(str, str, str, str)  # (source, translation, origin, note)
 
     def _add_term(self):
-        """打开积累对话框（日中对译学习用）"""
+        """打开术语对话框"""
         from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QLineEdit,
                                        QTextEdit, QPushButton, QHBoxLayout)
 

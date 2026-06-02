@@ -104,7 +104,7 @@ class Note:
 
 @dataclass
 class Term:
-    """积累条目（日中对译学习用）"""
+    """术语条目"""
     source: str      # 原文（日语）
     translation: str # 译文（中文）
     origin: str = "" # 出处
@@ -260,7 +260,7 @@ class NoteManager:
     def export_terms(self, path: str | Path) -> int:
         """导出术语库到文件末尾"""
         with open(path, "a", encoding="utf-8") as f:
-            f.write(chr(10) + "# --- 术语库 ---" + chr(10))
+            f.write(chr(10) + "# --- 术语 ---" + chr(10))
             for term in self._terms:
                 f.write(term.to_line() + chr(10))
         return len(self._terms)
@@ -272,7 +272,7 @@ class NoteManager:
         with open(path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
-                if line == "# --- 术语库 ---" or line == "# 术语库" or line.startswith("# 术语"):
+                if line == "# --- 术语 ---" or line == "# 术语库" or line.startswith("# 术语"):
                     in_terms = True
                     continue
                 if in_terms:
