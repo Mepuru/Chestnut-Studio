@@ -313,20 +313,31 @@ class NoteManager:
         return len(self._terms)
 
     def import_terms(self, path: str | Path) -> int:
-        """从文件导入术语"""
+        """从文件导入术语（区块格式）"""
         count = 0
         in_terms = False
+        block = ""
         with open(path, encoding="utf-8") as f:
             for line in f:
-                line = line.strip()
-                if line == "# --- 术语 ---" or line == "# 术语库" or line.startswith("# 术语"):
-                    in_terms = True
+                s = line.strip()
+                if not in_terms:
+                    if s == "# --- 术语 ---" or s == "# 术语":
+                        in_terms = True
                     continue
-                if in_terms:
-                    if line.startswith("# ---") or line.startswith("# "):
-                        continue
-                    term = Term.from_line(line)
-                    if term:
-                        self._terms.append(term)
-                        count += 1
+                if not s:
+                    continue
+                if s.startswith("# ---"):
+                    if block:
+                        t = Term.from_block(block)
+                        if t:
+                            self._terms.append(t)
+                            count += 1
+                    block = s + chr(10)
+                else:
+                    block += line
+            if block:
+                t = Term.from_block(block)
+                if t:
+                    self._terms.append(t)
+                    count += 1
         return count
