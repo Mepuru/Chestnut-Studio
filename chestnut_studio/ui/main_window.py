@@ -300,7 +300,16 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(dialog)
         layout.setSpacing(6)
 
-        layout.addWidget(QLabel("原文（日语）:"))
+        origin_text = Path(self.player_card.get_video_path()).name if self.player_card.get_video_path() else ""
+        origin_text = f"{origin_text} {origin}" if origin_text else origin
+
+        # 原文上下文（只读提示）
+        context_label = QLabel(f"<span style='color:#7070a0;'>原文: {note_text}</span>")
+        context_label.setTextFormat(Qt.RichText)
+        context_label.setWordWrap(True)
+        layout.addWidget(context_label)
+
+        layout.addWidget(QLabel("术语（日语）:"))
         source_edit = QLineEdit(note_text)
         source_edit.selectAll()
         layout.addWidget(source_edit)
@@ -311,14 +320,18 @@ class MainWindow(QMainWindow):
         layout.addWidget(trans_edit)
 
         layout.addWidget(QLabel("出处:"))
-        vname = Path(self.player_card.get_video_path()).name if self.player_card.get_video_path() else ""
-        origin_edit = QLineEdit(f"{vname} {origin}" if vname else origin)
+        origin_edit = QLineEdit(origin_text)
         layout.addWidget(origin_edit)
+
+        layout.addWidget(QLabel("参考资料:"))
+        ref_edit = QLineEdit()
+        ref_edit.setPlaceholderText("词典/网站/工具书名称或链接...")
+        layout.addWidget(ref_edit)
 
         layout.addWidget(QLabel("备注:"))
         note_edit = QTextEdit()
         note_edit.setPlaceholderText("语法说明、用法注意...")
-        note_edit.setMinimumHeight(100)
+        note_edit.setMinimumHeight(80)
         layout.addWidget(note_edit)
 
         btn_layout = QHBoxLayout()
@@ -334,7 +347,10 @@ class MainWindow(QMainWindow):
             source = source_edit.text().strip()
             trans = trans_edit.text().strip()
             o = origin_edit.text().strip()
+            ref = ref_edit.text().strip()
             n = note_edit.toPlainText().strip()
+            if ref:
+                n = ("参考: " + ref) + (chr(10) + n if n else "")
             if source and trans:
                 self._on_term_added(source, trans, o, n)
 

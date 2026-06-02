@@ -259,9 +259,13 @@ class NotePanel(QWidget):
             return
 
         menu = QMenu(self)
-        delete_action = menu.addAction("删除笔记")
+        term_action = menu.addAction("术语 (M)")
+        menu.addSeparator()
+        delete_action = menu.addAction("删除笔记 (Delete)")
         action = menu.exec(self._list.mapToGlobal(pos))
-        if action == delete_action:
+        if action == term_action:
+            self._on_term_requested()
+        elif action == delete_action:
             self._note_manager.remove(widget.note)
             self.refresh()
 
