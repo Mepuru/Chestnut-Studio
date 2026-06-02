@@ -1,7 +1,7 @@
 [project]
 name = "chestnut-studio"
 version = "2.1.0"
-description = "B站风格视频笔记工具 — 边看视频边记时间戳笔记"
+description = "视频笔记工具 — 边看视频边记时间戳笔记"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
