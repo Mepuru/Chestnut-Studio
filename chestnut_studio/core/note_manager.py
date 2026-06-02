@@ -130,11 +130,11 @@ class Term:
         note_lines = []
         for line in lines:
             if line.startswith("# 词: "):
-                source = line[4:]
+                source = line[5:]
             elif line.startswith("# 译: "):
-                translation = line[4:]
+                translation = line[5:]
             elif line.startswith("# 出: "):
-                origin = line[4:]
+                origin = line[5:]
             elif line.startswith("# ") and not line.startswith("# ---") and not line.startswith("# 词:") and not line.startswith("# 译:") and not line.startswith("# 出:"):
                 note_lines.append(line[2:])
         if source and translation:
