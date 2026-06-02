@@ -149,7 +149,9 @@ class NotePanel(QWidget):
 
     def refresh(self):
         """刷新笔记列表显示"""
-        scroll_pos = self._list.verticalScrollBar().value() if self._list.count() else 0
+        scroll_bar = self._list.verticalScrollBar()
+        scroll_pos = scroll_bar.value() if self._list.count() else 0
+        at_bottom = scroll_pos >= scroll_bar.maximum() - 5 if self._list.count() else False
         self._list.clear()
         self._count_label.setText(str(self._note_manager.count()))
 
