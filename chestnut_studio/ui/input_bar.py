@@ -57,7 +57,7 @@ class InputBar(QWidget):
         layout.addWidget(self._time_label)
 
         # ── 术语按钮 ──
-        self._term_btn = QPushButton("术语")
+        self._term_btn = QPushButton("积累")
         self._term_btn.setObjectName("termBtn")
         self._term_btn.setCursor(Qt.PointingHandCursor)
         self._term_btn.clicked.connect(self._add_term)
@@ -97,29 +97,38 @@ class InputBar(QWidget):
     def get_current_track_type(self) -> str:
         return NOTE_TYPES[self._current_track_idx]
 
-    term_added = Signal(str, str, str)  # (source, translation, note)
+    term_added = Signal(str, str, str, str)  # (source, translation, origin, note)
 
     def _add_term(self):
-        """打开添加术语对话框"""
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout
+        """打开积累对话框（日中对译学习用）"""
+        from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QLineEdit,
+                                       QTextEdit, QPushButton, QHBoxLayout)
 
         dialog = QDialog(self)
-        dialog.setWindowTitle("添加术语")
-        dialog.setMinimumWidth(350)
+        dialog.setWindowTitle("积累")
+        dialog.setMinimumSize(450, 400)
         layout = QVBoxLayout(dialog)
+        layout.setSpacing(6)
 
-        layout.addWidget(QLabel("原文:"))
+        layout.addWidget(QLabel("原文（日语）:"))
         source_edit = QLineEdit()
-        source_edit.setPlaceholderText("输入原文...")
+        source_edit.setPlaceholderText("遇到不会的日语词/句...")
         layout.addWidget(source_edit)
 
-        layout.addWidget(QLabel("译文:"))
+        layout.addWidget(QLabel("译文（中文）:"))
         trans_edit = QLineEdit()
-        trans_edit.setPlaceholderText("输入译文...")
+        trans_edit.setPlaceholderText("对应的中文翻译...")
         layout.addWidget(trans_edit)
 
-        layout.addWidget(QLabel("备注（可选）:"))
-        note_edit = QLineEdit()
+        layout.addWidget(QLabel("出处:"))
+        origin_edit = QLineEdit()
+        origin_edit.setPlaceholderText("出自哪部作品/哪一集/时间...")
+        layout.addWidget(origin_edit)
+
+        layout.addWidget(QLabel("备注:"))
+        note_edit = QTextEdit()
+        note_edit.setPlaceholderText("语法说明、用法注意、相关词汇...")
+        note_edit.setMinimumHeight(100)
         layout.addWidget(note_edit)
 
         btn_layout = QHBoxLayout()
@@ -135,9 +144,10 @@ class InputBar(QWidget):
         if dialog.exec() == QDialog.Accepted:
             source = source_edit.text().strip()
             trans = trans_edit.text().strip()
+            origin = origin_edit.text().strip()
             note = note_edit.text().strip()
             if source and trans:
-                self.term_added.emit(source, trans, note)
+                self.term_added.emit(source, trans, origin, note)
 
     def load_for_edit(self, note_type: str, text: str):
         """载入笔记到输入框方便修改"""

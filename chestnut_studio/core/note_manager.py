@@ -104,17 +104,20 @@ class Note:
 
 @dataclass
 class Term:
-    """术语条目"""
-    source: str
-    translation: str
-    note: str = ""
+    """积累条目（日中对译学习用）"""
+    source: str      # 原文（日语）
+    translation: str # 译文（中文）
+    origin: str = "" # 出处
+    note: str = ""   # 备注
 
     def to_line(self) -> str:
-        """转导出文本行: source = translation  # note"""
-        line = f"{self.source} = {self.translation}"
+        """转导出文本行"""
+        parts = [self.source, self.translation]
+        if self.origin:
+            parts.append(self.origin)
         if self.note:
-            line += f"  # {self.note}"
-        return line
+            parts.append(self.note)
+        return " | ".join(parts)
 
     @classmethod
     def from_line(cls, line: str) -> Term | None:
@@ -123,15 +126,15 @@ class Term:
         if not line or line.startswith("#"):
             return None
         try:
-            if " = " not in line:
+            parts = [p.strip() for p in line.split(" | ", 3)]
+            if len(parts) < 2:
                 return None
-            parts = line.split(" = ", 1)
-            source = parts[0].strip()
-            rest = parts[1]
-            note = ""
-            if "  # " in rest:
-                rest, note = rest.split("  # ", 1)
-            return cls(source=source, translation=rest.strip(), note=note.strip())
+            term = cls(source=parts[0], translation=parts[1])
+            if len(parts) > 2:
+                term.origin = parts[2]
+            if len(parts) > 3:
+                term.note = parts[3]
+            return term
         except Exception:
             return None
 
@@ -227,9 +230,9 @@ class NoteManager:
 
     # ── 术语库 ──
 
-    def add_term(self, source: str, translation: str, note: str = "") -> Term:
+    def add_term(self, source: str, translation: str, origin: str = "", note: str = "") -> Term:
         """添加术语"""
-        term = Term(source=source, translation=translation, note=note)
+        term = Term(source=source, translation=translation, origin=origin, note=note)
         # 如果 source 已存在则替换
         for i, t in enumerate(self._terms):
             if t.source == source:
