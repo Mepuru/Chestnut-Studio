@@ -383,6 +383,13 @@ QSplitter::handle:horizontal {
     letter-spacing: 1px;
 }
 
+#noteId {
+    color: #505080;
+    font-size: 8pt;
+    font-weight: 500;
+    background: transparent;
+}
+
 #noteTime {
     color: #7c5cfc;
     font-size: 9pt;

@@ -19,6 +19,7 @@ NOTE_TYPES: ClassVar[list[str]] = [f"轨道{i}" for i in range(1, 10)] + ["轨�
 
 # 导出文本格式说明（文件头）
 EXPORT_HEADER = """# Chestnut Studio Notes
+# 术语数: {terms}
 # 视频: {video}
 # 时长: {duration}
 # 分辨率: {resolution}
@@ -30,13 +31,17 @@ EXPORT_HEADER = """# Chestnut Studio Notes
 # ---"""
 
 
-@dataclass(order=True)
+@dataclass
 class Note:
     """单条笔记"""
 
-    timestamp_ms: int
-    text: str
+    def __lt__(self, other):
+        return self.timestamp_ms < other.timestamp_ms
+
+    timestamp_ms: int = 0
+    text: str = ""
     type: str = "轨道1"
+    id: int = 0  # 序号（由 NoteManager 自动分配）
 
     def __post_init__(self):
         if self.type not in NOTE_TYPES:
@@ -84,8 +89,20 @@ class Note:
         line = line.strip()
         if not line or line.startswith("#"):
             return None
+        # 跳过注释行（只有 # 开头且第二位不是数字的才是注释）
+        if len(line) > 1 and line[0] == "#" and not line[1].isdigit():
+            return None
         try:
-            parts = line.split("	| ", 1)
+            # 格式: #id 轨道名  时间	| 内容
+            note_id = 0
+            rest = line
+            if rest[0] == "#":
+                space_pos = rest.find(" ")
+                if space_pos > 1 and rest[1:space_pos].isdigit():
+                    note_id = int(rest[1:space_pos])
+                    rest = rest[space_pos+1:]
+            
+            parts = rest.split("	| ", 1)
             if len(parts) != 2:
                 return None
             meta, text = parts
@@ -95,10 +112,10 @@ class Note:
             track_name, time_str = meta_parts
             if track_name not in NOTE_TYPES:
                 return None
-            m, rest = time_str.split(":", 1)
-            s, cs = rest.split(".")
+            m, r = time_str.split(":", 1)
+            s, cs = r.split(".")
             ms = int(m) * 60000 + int(s) * 1000 + int(cs) * 10
-            return cls(timestamp_ms=ms, text=text, type=track_name)
+            return cls(id=note_id, timestamp_ms=ms, text=text, type=track_name)
         except Exception:
             return None
 
@@ -145,13 +162,15 @@ class NoteManager:
     def __init__(self):
         self._notes: list[Note] = []
         self._terms: list[Term] = []
+        self._next_id: int = 1
 
     # ── 增 ──
 
     def add(self, timestamp_ms: int, text: str, note_type: str = "轨道1") -> Note:
-        note = Note(timestamp_ms=timestamp_ms, text=text, type=note_type)
+        note = Note(id=self._next_id, timestamp_ms=timestamp_ms, text=text, type=note_type)
+        self._next_id += 1
         self._notes.append(note)
-        self._notes.sort()
+        self._notes.sort(key=lambda n: n.timestamp_ms)
         return note
 
     # ── 删 ──
@@ -193,7 +212,7 @@ class NoteManager:
         with open(path, "w", encoding="utf-8") as f:
             f.write(EXPORT_HEADER.format(video=video_name, duration=video_duration,
                                             resolution=video_resolution, fps=video_fps,
-                                            bitrate=video_bitrate, time=now) + chr(10))
+                                            bitrate=video_bitrate, time=now, terms=len(self._terms)) + chr(10))
             for n in notes:
                 f.write(n.to_line() + chr(10))
         return len(notes)

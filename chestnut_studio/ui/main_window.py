@@ -106,6 +106,10 @@ class MainWindow(QMainWindow):
         self._shortcut_action.triggered.connect(self._show_shortcuts)
         menu_bar.addAction(self._shortcut_action)
 
+        self._term_view_action = QAction("术语", self)
+        self._term_view_action.triggered.connect(self._show_terms)
+        menu_bar.addAction(self._term_view_action)
+
     def _setup_central_widget(self):
         """创建中央区域布局"""
         central = QWidget()
@@ -173,6 +177,43 @@ class MainWindow(QMainWindow):
     def _setup_drop(self):
         """设置拖放支持"""
         self.setAcceptDrops(True)
+
+    # ── 术语查看 ──
+
+    def _show_terms(self):
+        """显示术语列表"""
+        from PySide6.QtWidgets import QDialog, QTableWidget, QTableWidgetItem, QHeaderView, QVBoxLayout
+
+        terms = self._note_manager.get_terms()
+        if not terms:
+            QMessageBox.information(self, "术语", "暂无术语。")
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"术语 ({len(terms)})")
+        dialog.setMinimumSize(500, 400)
+        dialog.setObjectName("shortcutDialog")
+
+        table = QTableWidget(dialog)
+        table.setColumnCount(4)
+        table.setHorizontalHeaderLabels(["原文", "译文", "出处", "备注"])
+        table.horizontalHeader().setStretchLastSection(True)
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.verticalHeader().hide()
+
+        table.setRowCount(len(terms))
+        for i, t in enumerate(terms):
+            table.setItem(i, 0, QTableWidgetItem(t.source))
+            table.setItem(i, 1, QTableWidgetItem(t.translation))
+            table.setItem(i, 2, QTableWidgetItem(t.origin))
+            table.setItem(i, 3, QTableWidgetItem(t.note))
+
+        table.resizeColumnsToContents()
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(table)
+        dialog.exec()
 
     # ── 快捷键帮助 ──
 

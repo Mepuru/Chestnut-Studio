@@ -46,6 +46,12 @@ class NoteItemWidget(QWidget):
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(6)
 
+        # 序号
+        id_label = QLabel(f"#{self.note.id}" if self.note.id else "")
+        id_label.setObjectName("noteId")
+        id_label.setFixedWidth(28)
+        layout.addWidget(id_label)
+
         # 时间戳标签（按轨道区分颜色）
         time_label = QLabel(ms_to_time_str(self.note.timestamp_ms))
         time_label.setObjectName("noteTime")
@@ -206,7 +212,7 @@ class NotePanel(QWidget):
 
     def _recalc_item_heights(self):
         """根据当前列表宽度重新估算每条笔记的高度"""
-        available_width = self._list.viewport().width() - 74  # 减去时间标签+边距
+        available_width = self._list.viewport().width() - 102  # 减去序号+时间+边距
         chars_per_line = max(8, available_width // 12)  # 中文字符约 12px
         for i in range(self._list.count()):
             item = self._list.item(i)
