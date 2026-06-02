@@ -168,6 +168,7 @@ class MainWindow(QMainWindow):
         # 笔记列表双击 → 跳转视频 + 载入输入框
         self.note_panel.jump_to_position.connect(self.player_card.set_position)
         self.note_panel.edit_requested.connect(self.input_bar.load_for_edit)
+        self.input_bar.term_added.connect(self._on_term_added)
 
     def _setup_drop(self):
         """设置拖放支持"""
@@ -246,6 +247,11 @@ class MainWindow(QMainWindow):
         self._note_manager.add(timestamp_ms=timestamp_ms, text=text, note_type=note_type)
         self.note_panel.refresh()
 
+    def _on_term_added(self, source: str, translation: str, note: str):
+        """添加术语"""
+        self._note_manager.add_term(source, translation, note)
+        self.statusBar().showMessage(f"术语已添加: {source} = {translation}", 3000)
+
     def _on_export_notes(self):
         """导出笔记 — 选轨道、选格式"""
         if self._note_manager.count() == 0:
@@ -319,6 +325,7 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
         count = self._note_manager.export_text(path, selected_tracks, vname, dur, res, fps, bitrate)
+        self._note_manager.export_terms(path)
         self.statusBar().showMessage(f"已导出 {count} 条笔记", 3000)
 
     def _on_import_notes(self):

@@ -102,11 +102,46 @@ class Note:
         except Exception:
             return None
 
+@dataclass
+class Term:
+    """术语条目"""
+    source: str
+    translation: str
+    note: str = ""
+
+    def to_line(self) -> str:
+        """转导出文本行: source = translation  # note"""
+        line = f"{self.source} = {self.translation}"
+        if self.note:
+            line += f"  # {self.note}"
+        return line
+
+    @classmethod
+    def from_line(cls, line: str) -> Term | None:
+        """从文本行解析 Term"""
+        line = line.strip()
+        if not line or line.startswith("#"):
+            return None
+        try:
+            if " = " not in line:
+                return None
+            parts = line.split(" = ", 1)
+            source = parts[0].strip()
+            rest = parts[1]
+            note = ""
+            if "  # " in rest:
+                rest, note = rest.split("  # ", 1)
+            return cls(source=source, translation=rest.strip(), note=note.strip())
+        except Exception:
+            return None
+
+
 class NoteManager:
     """笔记管理器"""
 
     def __init__(self):
         self._notes: list[Note] = []
+        self._terms: list[Term] = []
 
     # ── 增 ──
 
@@ -189,3 +224,59 @@ class NoteManager:
             self._notes.append(note)
         self._notes.sort()
         return len(data.get("notes", []))
+
+    # ── 术语库 ──
+
+    def add_term(self, source: str, translation: str, note: str = "") -> Term:
+        """添加术语"""
+        term = Term(source=source, translation=translation, note=note)
+        # 如果 source 已存在则替换
+        for i, t in enumerate(self._terms):
+            if t.source == source:
+                self._terms[i] = term
+                return term
+        self._terms.append(term)
+        return term
+
+    def get_terms(self) -> list[Term]:
+        return list(self._terms)
+
+    def remove_term(self, source: str) -> bool:
+        for i, t in enumerate(self._terms):
+            if t.source == source:
+                self._terms.pop(i)
+                return True
+        return False
+
+    def clear_terms(self):
+        self._terms.clear()
+
+    def term_count(self) -> int:
+        return len(self._terms)
+
+    def export_terms(self, path: str | Path) -> int:
+        """导出术语库到文件末尾"""
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(chr(10) + "# --- 术语库 ---" + chr(10))
+            for term in self._terms:
+                f.write(term.to_line() + chr(10))
+        return len(self._terms)
+
+    def import_terms(self, path: str | Path) -> int:
+        """从文件导入术语"""
+        count = 0
+        in_terms = False
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line == "# --- 术语库 ---" or line == "# 术语库" or line.startswith("# 术语"):
+                    in_terms = True
+                    continue
+                if in_terms:
+                    if line.startswith("# ---") or line.startswith("# "):
+                        continue
+                    term = Term.from_line(line)
+                    if term:
+                        self._terms.append(term)
+                        count += 1
+        return count

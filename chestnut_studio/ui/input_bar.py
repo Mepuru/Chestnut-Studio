@@ -56,6 +56,13 @@ class InputBar(QWidget):
         self._time_label.setObjectName("timeLabel")
         layout.addWidget(self._time_label)
 
+        # ── 术语按钮 ──
+        self._term_btn = QPushButton("术语")
+        self._term_btn.setObjectName("termBtn")
+        self._term_btn.setCursor(Qt.PointingHandCursor)
+        self._term_btn.clicked.connect(self._add_term)
+        layout.addWidget(self._term_btn)
+
         # ── 发送按钮 ──
         self._send_btn = QPushButton("发送")
         self._send_btn.setObjectName("sendBtn")
@@ -89,6 +96,48 @@ class InputBar(QWidget):
 
     def get_current_track_type(self) -> str:
         return NOTE_TYPES[self._current_track_idx]
+
+    term_added = Signal(str, str, str)  # (source, translation, note)
+
+    def _add_term(self):
+        """打开添加术语对话框"""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("添加术语")
+        dialog.setMinimumWidth(350)
+        layout = QVBoxLayout(dialog)
+
+        layout.addWidget(QLabel("原文:"))
+        source_edit = QLineEdit()
+        source_edit.setPlaceholderText("输入原文...")
+        layout.addWidget(source_edit)
+
+        layout.addWidget(QLabel("译文:"))
+        trans_edit = QLineEdit()
+        trans_edit.setPlaceholderText("输入译文...")
+        layout.addWidget(trans_edit)
+
+        layout.addWidget(QLabel("备注（可选）:"))
+        note_edit = QLineEdit()
+        layout.addWidget(note_edit)
+
+        btn_layout = QHBoxLayout()
+        save_btn = QPushButton("保存")
+        save_btn.clicked.connect(dialog.accept)
+        cancel_btn = QPushButton("取消")
+        cancel_btn.clicked.connect(dialog.reject)
+        btn_layout.addWidget(save_btn)
+        btn_layout.addWidget(cancel_btn)
+        layout.addLayout(btn_layout)
+
+        source_edit.setFocus()
+        if dialog.exec() == QDialog.Accepted:
+            source = source_edit.text().strip()
+            trans = trans_edit.text().strip()
+            note = note_edit.text().strip()
+            if source and trans:
+                self.term_added.emit(source, trans, note)
 
     def load_for_edit(self, note_type: str, text: str):
         """载入笔记到输入框方便修改"""
