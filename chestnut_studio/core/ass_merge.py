@@ -67,7 +67,8 @@ class MergePlan:
     notes: list[TxtNote]
     total_notes: int  # TXT 总条数
     auto_matched: int  # 100% 确定自动匹配的条数
-    uncertain: list[UncertainMatch]  # 不确定的匹配项
+    uncertain: list[UncertainMatch]  # 不确定的匹配项（需手动）
+    risky: list[UncertainMatch]  # 潜在风险项（重叠区就近分配）
     _raw_ass_lines: list[str] = field(repr=False)  # 原始 ASS 行
     track_colors: dict[str, str] = field(default_factory=dict)  # 轨道名→颜色
 
@@ -89,13 +90,10 @@ class MergePlan:
             f"&H00000000,&HFF000000,-1,0,0,0,100,100,0,0,1,5,5,2,10,10,10,1"
         )
 
-    def generate_report(self, max_success_show: int = 0) -> str:
-        """生成合并报告——头信息 + 待处理区 + 成功区
+    def generate_report(self) -> str:
+        """生成合并报告——三节：待处理 / 潜在风险 / 自动匹配
 
         格式与 Chestnut Studio 导出的 TXT 一致：`#` 注释头、等宽排版。
-
-        Args:
-            max_success_show: 成功匹配最多显示条数（0 表示全部）
         """
         from datetime import datetime
 
@@ -105,7 +103,6 @@ class MergePlan:
         pct = 100.0 * self.auto_matched / self.total_notes if self.total_notes else 0
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-        # 轨道颜色摘要
         color_summary = (
             ", ".join("%s=%s" % (k, v) for k, v in sorted(self.track_colors.items())) if self.track_colors else "（无）"
         )
@@ -117,52 +114,65 @@ class MergePlan:
         lines.append("# 源 ASS: " + Path(self.ass_path).name)
         lines.append("# 源 TXT: " + Path(self.txt_path).name)
         lines.append("#")
-        lines.append("# ASS 总行数: %d" % total_ass)
-        lines.append("# 笔记总数: %d" % self.total_notes)
-        lines.append("# ---")
+        lines.append("# ASS 行数: %d / TXT 笔记数: %d" % (total_ass, self.total_notes))
         lines.append("# 自动匹配: %d / %d（%.1f%%）" % (self.auto_matched, self.total_notes, pct))
-        lines.append("# 待处理: %d 项" % len(self.uncertain))
-        lines.append("# 空行: %d / %d" % (empty, total_ass))
-        lines.append("#")
+        lines.append("# 潜在风险: %d 项 / 待处理: %d 项 / 空行: %d" % (len(self.risky), len(self.uncertain), empty))
         lines.append("# 轨道颜色: " + color_summary)
         lines.append("# ---")
 
-        # Section 1: 待处理
+        # Section 1
         lines.append("")
-        lines.append("# 第 1 节 — 待处理（%d 项）" % len(self.uncertain))
+        lines.append("# 第 1 节 — 待手动处理（%d 项）" % len(self.uncertain))
         lines.append("")
 
         if not self.uncertain:
-            lines.append("# 全部匹配确定无误，无需手动处理。")
+            lines.append("# 无待处理项。")
             lines.append("")
         else:
             for i, u in enumerate(self.uncertain, 1):
-                lines.append("%d. ASS 第 %d 行  %s → %s" % (i, u.ass_idx + 1, u.ass_start, u.ass_end))
+                lines.append("%d. ASS #%d  %s → %s" % (i, u.ass_idx + 1, u.ass_start, u.ass_end))
                 lines.append("   原因: %s" % u.reason)
                 for n in u.notes:
-                    lines.append("   · TXT 第 %d 条  [%s]  %s" % (n.index, n.track, n.text))
+                    lines.append("   · TXT #%d  [%s]  %s" % (n.index, n.track, n.text))
                 lines.append("")
 
-        # Section 2: 自动匹配
+        # Section 2
         lines.append("# ---")
         lines.append("")
-        lines.append("# 第 2 节 — 已自动匹配（%d 条）" % self.auto_matched)
+        lines.append("# 第 2 节 — 潜在风险（%d 项）" % len(self.risky))
+        lines.append("# 说明：以下条目在重叠时间段内自动分配，建议在 Aegisub 中复核。")
         lines.append("")
 
-        success_items = [d for d in self.dialogues if d.text]
-        show_count = max_success_show if max_success_show > 0 else len(success_items)
-        show_count = min(show_count, len(success_items))
-
-        for i, d in enumerate(success_items[:show_count], 1):
-            tag = "[%s] " % d.track if d.track else ""
-            lines.append("%d. ASS 第 %d 行  %s → %s" % (i, d.line_index + 1, d.start_str, d.end_str))
-            lines.append("   · %s%s" % (tag, d.text[:80]))
+        if not self.risky:
+            lines.append("# 无潜在风险项。")
             lines.append("")
+        else:
+            for i, r in enumerate(self.risky, 1):
+                sourceline = ""
+                if r.notes:
+                    n = r.notes[0]
+                    sourceline = "  | 源 TXT #%d  [%s]  %s" % (n.index, n.track, n.text)
+                lines.append("%d. ASS #%d  %s → %s" % (i, r.ass_idx + 1, r.ass_start, r.ass_end))
+                lines.append("   原因: %s" % r.reason)
+                if sourceline:
+                    lines.append(sourceline)
+                lines.append("")
 
-        if show_count < len(success_items):
-            lines.append(
-                "# ... 还有 %d 条已匹配未显示（共 %d 条）" % (len(success_items) - show_count, len(success_items))
-            )
+        # Section 3
+        lines.append("# ---")
+        lines.append("")
+
+        safe_indices = set(r.ass_idx for r in self.risky)
+        safe_items = [d for d in self.dialogues if d.text and d.line_index not in safe_indices]
+        lines.append("# ---")
+        lines.append("")
+        lines.append("# 第 3 节 — 已自动匹配（%d 条，独占区 100%% 确定）" % len(safe_items))
+        lines.append("")
+
+        for i, d in enumerate(safe_items, 1):
+            tag = "[%s] " % d.track if d.track else ""
+            lines.append("%d. ASS #%d  %s → %s" % (i, d.line_index + 1, d.start_str, d.end_str))
+            lines.append("   · %s%s" % (tag, d.text[:80]))
             lines.append("")
 
         return "\n".join(lines)
@@ -458,6 +468,7 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
 
     # ── 第二轮：确定匹配 / 入不确定列表 ──
     uncertain: list[UncertainMatch] = []
+    risky: list[UncertainMatch] = []
     auto_matched = 0
 
     for di, d in enumerate(dialogues):
@@ -544,6 +555,23 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
                     b._exclusive_text = note.text  # type: ignore[attr-defined]
                     b._exclusive_track = note.track  # type: ignore[attr-defined]
                 auto_matched += 1
+                # 记录为潜在风险
+                risky.append(
+                    UncertainMatch(
+                        ass_idx=op["a_idx"]
+                        if abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s)
+                        else op["b_idx"],
+                        ass_start=a.start_str
+                        if abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s)
+                        else b.start_str,
+                        ass_end=a.end_str
+                        if abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s)
+                        else b.end_str,
+                        notes=[note],
+                        reason="重叠区——按时间就近分配到 %s"
+                        % ("A 轴" if abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s) else "B 轴"),
+                    )
+                )
             else:
                 # 多条 TXT 争重叠区，无法自动判断
                 for ai in involved:
@@ -575,6 +603,7 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
         total_notes=len(notes),
         auto_matched=auto_matched,
         uncertain=uncertain,
+        risky=risky,
         track_colors=track_colors,
         _raw_ass_lines=raw_lines,
     )
