@@ -134,7 +134,7 @@ class MergeDialog(QDialog):
         ass = self._ass_path.text()
         if ass and ass != "未选择":
             name = Path(ass)
-            self._out_path.setText(str(name.parent / ("merged_" + name.name)))
+            self._out_path.setText(str(name.parent / name.name))
             self._out_path.setStyleSheet("")
 
     # ── 分析 ──
@@ -176,12 +176,11 @@ class MergeDialog(QDialog):
             out = self._out_path.text()
 
         try:
-            self._plan.write(out)
-            report_path = Path(out).with_suffix(".report.txt")
+            ass_path, report_path = self._plan.write(out)
             QMessageBox.information(
                 self,
                 "导出成功",
-                f"已生成合并字幕:\n{out}\n\n"
+                f"已生成合并字幕:\n{ass_path}\n\n"
                 f"合并报告:\n{report_path}\n\n"
                 f"自动匹配: {self._plan.auto_matched}/{self._plan.total_notes}\n"
                 f"待处理: {len(self._plan.uncertain)} 项（详见报告）",

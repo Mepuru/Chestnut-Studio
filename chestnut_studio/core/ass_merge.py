@@ -163,12 +163,25 @@ class MergePlan:
 
     def write(self, output_path: str):
         """写出合并后的 ASS 文件 + 同目录下的报告"""
+        from datetime import datetime
+
+        date_tag = datetime.now().strftime("%y%m%d")
+        ass_path = Path(output_path)
+
+        # ASS 文件名: [YYMMDD]M_originname.ass
+        ass_name = f"{date_tag}M_{ass_path.name}"
+        final_ass = ass_path.parent / ass_name
+
         lines = self._repr_lines()
-        with open(output_path, "w", encoding="utf-8") as f:
+        with open(final_ass, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
-        # 同时写出报告
-        report_path = Path(output_path).with_suffix(".report.txt")
+
+        # 报告文件名: [YYMMDD]R_originname.txt
+        report_name = f"{date_tag}R_{ass_path.stem}.txt"
+        report_path = ass_path.parent / report_name
         report_path.write_text(self.generate_report(), encoding="utf-8")
+
+        return str(final_ass), str(report_path)
 
     def get_ass_content(self) -> str:
         """获取合并后的 ASS 文本内容（用于预览）"""
@@ -255,12 +268,6 @@ class MergePlan:
                 result.append(line)
 
         return result
-
-    def write(self, output_path: str):
-        """写出合并后的 ASS 文件"""
-        lines = self._repr_lines()
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines))
 
     def get_ass_content(self) -> str:
         """获取合并后的 ASS 文本内容（用于预览）"""
