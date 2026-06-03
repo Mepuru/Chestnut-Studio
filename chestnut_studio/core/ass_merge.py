@@ -33,6 +33,7 @@ class AssDialogue:
     style: str  # 样式名
     text: str  # 文本内容（初始为空）
     raw_before_text: str  # "Dialogue: ..." 最后一个逗号之前的部分
+    track: str = ""  # 轨道名（从 TXT 继承）
 
 
 @dataclass
@@ -77,7 +78,16 @@ class MergePlan:
         """生成 ASS 文件行"""
         new_lines = list(self._raw_ass_lines)
         for d in self.dialogues:
-            new_lines[d.line_index] = d.raw_before_text + "," + d.text
+            prefix = d.raw_before_text
+            if d.track:
+                # 在 Name 字段（第5字段，索引4）插入轨道名
+                # raw_before_text: "Dialogue: L,Start,End,Style,,ML,MR,MV,E"  (Name字段在索引4, 空着)
+                parts = prefix.split(",", 8)
+                # parts[4] 是 Name 字段（当前为空）
+                if len(parts) > 4 and not parts[4]:
+                    parts[4] = d.track
+                    prefix = ",".join(parts)
+            new_lines[d.line_index] = prefix + "," + d.text
         return new_lines
 
     def write(self, output_path: str):
@@ -233,9 +243,10 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
     unmatched_notes = []
     auto_matched = 0
 
-    # 为每个 ASS 记录独占区匹配到的文本
+    # 为每个 ASS 记录独占区匹配到的文本和轨道
     for d in dialogues:
         d._exclusive_text = ""  # type: ignore[attr-defined]
+        d._exclusive_track = ""  # type: ignore[attr-defined]
 
     for note in notes:
         assigned = False
@@ -246,6 +257,7 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
                     d._exclusive_text += chr(92) + "N" + note.text  # type: ignore[attr-defined]
                 else:
                     d._exclusive_text = note.text  # type: ignore[attr-defined]
+                    d._exclusive_track = note.track  # type: ignore[attr-defined]  # 取首条轨道
                 auto_matched += 1
                 assigned = True
                 break
@@ -296,8 +308,10 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
             b_excl = getattr(b, "_exclusive_text", "")
             if not a_excl:
                 a._exclusive_text = note.text  # type: ignore[attr-defined]
+                a._exclusive_track = note.track  # type: ignore[attr-defined]
             else:
                 b._exclusive_text = note.text  # type: ignore[attr-defined]
+                b._exclusive_track = note.track  # type: ignore[attr-defined]
             auto_matched += 1
 
     # ── 第三轮：剩余未匹配的（基本不会发生，但以防万一） ──
@@ -315,12 +329,14 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
             d._exclusive_text = excl_text + chr(92) + "N" + note.text  # type: ignore[attr-defined]
         else:
             d._exclusive_text = note.text  # type: ignore[attr-defined]
+            d._exclusive_track = note.track  # type: ignore[attr-defined]
 
-    # ── 将 _exclusive_text 写入 dialogues ──
+    # ── 将 _exclusive_text / _exclusive_track 写入 dialogues ──
     for d in dialogues:
         d.text = getattr(d, "_exclusive_text", "")
+        d.track = getattr(d, "_exclusive_track", "")
         # 清理临时属性
-        for attr in ("_exclusive_end", "_exclusive_text"):
+        for attr in ("_exclusive_end", "_exclusive_text", "_exclusive_track"):
             if hasattr(d, attr):
                 delattr(d, attr)
 
@@ -353,6 +369,7 @@ def apply_conflict_resolution(plan: MergePlan, conflict_idx: int, a_note_idx: in
     if 0 <= a_note_idx < len(c.notes):
         a = plan.dialogues[c.a_idx]
         a.text = c.a_text_before
+        a.track = c.notes[a_note_idx].track
         if a.text:
             a.text += chr(92) + "N" + c.notes[a_note_idx].text
         else:
@@ -362,6 +379,7 @@ def apply_conflict_resolution(plan: MergePlan, conflict_idx: int, a_note_idx: in
     if 0 <= b_note_idx < len(c.notes):
         b = plan.dialogues[c.b_idx]
         b.text = c.b_text_before
+        b.track = c.notes[b_note_idx].track
         if b.text:
             b.text += chr(92) + "N" + c.notes[b_note_idx].text
         else:
