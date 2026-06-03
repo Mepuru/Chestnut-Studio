@@ -34,7 +34,11 @@ class Note:
     """单条笔记"""
 
     def __lt__(self, other):
-        return self.timestamp_ms < other.timestamp_ms
+        return (self.timestamp_ms, self.text, self.type) < (
+            other.timestamp_ms,
+            other.text,
+            other.type,
+        )
 
     def __hash__(self):
         return hash((self.timestamp_ms, self.text, self.type))
