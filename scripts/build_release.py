@@ -158,11 +158,14 @@ def main():
     print()
 
     # 清理 dist 下旧 exe（保留 build/ 目录给增量）
-    for f in (PROJECT_ROOT / "dist").glob("ChestnutStudio-*"):
-        if f.is_file():
-            f.unlink()
-        elif f.is_dir():
-            shutil.rmtree(f, ignore_errors=True)
+    for f in list((PROJECT_ROOT / "dist").glob("ChestnutStudio-*")):
+        try:
+            if f.is_file():
+                f.unlink(missing_ok=True)
+            elif f.is_dir():
+                shutil.rmtree(f, ignore_errors=True)
+        except PermissionError:
+            print(f"  跳过（被占用）: {f.name}")
 
     results = []
 
