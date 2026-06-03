@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMenu,
+    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -289,7 +290,16 @@ class NotePanel(QWidget):
             self.refresh()
 
     def _clear_all(self):
-        """清空所有笔记和术语"""
+        """清空所有笔记和术语（需确认）"""
+        reply = QMessageBox.question(
+            self,
+            "清空所有笔记",
+            "将清空所有笔记和术语，此操作不可撤销。\n确定继续？",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
         self._note_manager.clear_terms()
         self._note_manager.clear()
         self.refresh()
