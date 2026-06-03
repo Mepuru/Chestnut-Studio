@@ -97,13 +97,34 @@ class MergePlan:
         Args:
             max_success_show: 成功匹配最多显示条数（0 表示全部）
         """
+        from datetime import datetime
+
+        total_ass = len(self.dialogues)
+        filled = sum(1 for d in self.dialogues if d.text)
+        empty = total_ass - filled
+        pct = 100.0 * self.auto_matched / self.total_notes if self.total_notes else 0
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        # 轨道颜色摘要
+        color_summary = (
+            ", ".join("%s=%s" % (k, v) for k, v in sorted(self.track_colors.items())) if self.track_colors else "（无）"
+        )
+
         lines = []
         lines.append("# Chestnut Studio - ASS/TXT 合并报告")
+        lines.append("# 导出时间: " + now)
+        lines.append("# ---")
         lines.append("# 源 ASS: " + Path(self.ass_path).name)
         lines.append("# 源 TXT: " + Path(self.txt_path).name)
-        lines.append("# 笔记总数: " + str(self.total_notes))
-        lines.append("# 自动匹配: %d / %d" % (self.auto_matched, self.total_notes))
+        lines.append("#")
+        lines.append("# ASS 总行数: %d" % total_ass)
+        lines.append("# 笔记总数: %d" % self.total_notes)
+        lines.append("# ---")
+        lines.append("# 自动匹配: %d / %d（%.1f%%）" % (self.auto_matched, self.total_notes, pct))
         lines.append("# 待处理: %d 项" % len(self.uncertain))
+        lines.append("# 空行: %d / %d" % (empty, total_ass))
+        lines.append("#")
+        lines.append("# 轨道颜色: " + color_summary)
         lines.append("# ---")
 
         # Section 1: 待处理
