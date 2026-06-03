@@ -34,6 +34,7 @@ class AssDialogue:
     text: str  # 文本内容（初始为空）
     raw_before_text: str  # "Dialogue: ..." 最后一个逗号之前的部分
     track: str = ""  # 轨道名（从 TXT 继承）
+    src_note_idx: int = 0  # 源 TXT 序号（0=无来源）
 
 
 @dataclass
@@ -163,15 +164,20 @@ class MergePlan:
         lines.append("")
 
         safe_indices = set(r.ass_idx for r in self.risky)
-        safe_items = [d for d in self.dialogues if d.text and d.line_index not in safe_indices]
+        safe_items = [d for i, d in enumerate(self.dialogues) if d.text and i not in safe_indices]
         lines.append("# ---")
         lines.append("")
         lines.append("# 第 3 节 — 已自动匹配（%d 条）" % len(safe_items))
         lines.append("")
 
         for i, d in enumerate(safe_items, 1):
-            tag = "[%s] " % d.track if d.track else ""
+            src_info = ""
+            if d.src_note_idx:
+                src_info = "   | 源 TXT #%d  [%s]" % (d.src_note_idx, d.track)
             lines.append("%d. ASS #%d  %s → %s" % (i, d.line_index + 1, d.start_str, d.end_str))
+            if src_info:
+                lines.append(src_info)
+            tag = "[%s] " % d.track if d.track else ""
             lines.append("   · %s%s" % (tag, d.text[:80]))
             lines.append("")
 
@@ -481,6 +487,7 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
             note = zone_notes[0]
             d._exclusive_text = note.text  # type: ignore[attr-defined]
             d._exclusive_track = note.track  # type: ignore[attr-defined]
+            d._exclusive_note_idx = note.index  # type: ignore[attr-defined]
             auto_matched += 1
         else:
             # ⚠️ 不确定：独占区内多条 TXT
@@ -551,9 +558,11 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
                 if abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s):
                     a._exclusive_text = note.text  # type: ignore[attr-defined]
                     a._exclusive_track = note.track  # type: ignore[attr-defined]
+                    a._exclusive_note_idx = note.index  # type: ignore[attr-defined]
                 else:
                     b._exclusive_text = note.text  # type: ignore[attr-defined]
                     b._exclusive_track = note.track  # type: ignore[attr-defined]
+                    b._exclusive_note_idx = note.index  # type: ignore[attr-defined]
                 auto_matched += 1
                 # 记录为潜在风险
                 risky.append(
@@ -591,7 +600,14 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
     for d in dialogues:
         d.text = getattr(d, "_exclusive_text", "")
         d.track = getattr(d, "_exclusive_track", "")
-        for attr in ("_exclusive_end", "_exclusive_text", "_exclusive_track", "_exclusive_notes"):
+        d.src_note_idx = getattr(d, "_exclusive_note_idx", 0)
+        for attr in (
+            "_exclusive_end",
+            "_exclusive_text",
+            "_exclusive_track",
+            "_exclusive_notes",
+            "_exclusive_note_idx",
+        ):
             if hasattr(d, attr):
                 delattr(d, attr)
 
