@@ -89,7 +89,7 @@ class MergePlan:
             f"&H00000000,&HFF000000,-1,0,0,0,100,100,0,0,1,5,5,2,10,10,10,1"
         )
 
-    def generate_report(self, max_success_show: int = 20) -> str:
+    def generate_report(self, max_success_show: int = 0) -> str:
         """生成合并报告——头信息 + 待处理区 + 成功区
 
         格式与 Chestnut Studio 导出的 TXT 一致：`#` 注释头、等宽排版。
