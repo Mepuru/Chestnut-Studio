@@ -92,49 +92,46 @@ class MergePlan:
     def generate_report(self, max_success_show: int = 20) -> str:
         """生成合并报告——头信息 + 待处理区 + 成功区
 
+        格式与 Chestnut Studio 导出的 TXT 一致：`#` 注释头、等宽排版。
+
         Args:
             max_success_show: 成功匹配最多显示条数（0 表示全部）
         """
-        sep = "=" * 60
-        sub = "-" * 60
+        lines = []
+        lines.append("# Chestnut Studio - ASS/TXT 合并报告")
+        lines.append("# 源 ASS: " + Path(self.ass_path).name)
+        lines.append("# 源 TXT: " + Path(self.txt_path).name)
+        lines.append("# 笔记总数: " + str(self.total_notes))
+        lines.append("# 自动匹配: %d / %d" % (self.auto_matched, self.total_notes))
+        lines.append("# 待处理: %d 项" % len(self.uncertain))
+        lines.append("# ---")
 
-        lines = [sep]
-        lines.append("  ASS+TXT Merge Report")
-        lines.append(sep)
-        lines.append(f"  Source ASS:       {Path(self.ass_path).name}")
-        lines.append(f"  Source TXT:       {Path(self.txt_path).name}")
-        lines.append(f"  Total TXT notes:  {self.total_notes}")
-        lines.append(f"  Auto-matched:     {self.auto_matched} / {self.total_notes}")
-        lines.append(f"  Manual needed:    {len(self.uncertain)}")
+        # Section 1: 待处理
         lines.append("")
-
-        # Section 1: Manual items
-        lines.append(sub)
-        lines.append("  Section 1 -- Manual (%d items)" % len(self.uncertain))
-        lines.append(sub)
+        lines.append("# 第 1 节 — 待处理（%d 项）" % len(self.uncertain))
         lines.append("")
 
         if not self.uncertain:
-            lines.append("  No manual items -- all matches are certain.")
+            lines.append("# 全部匹配确定无误，无需手动处理。")
             lines.append("")
         else:
             for i, u in enumerate(self.uncertain, 1):
-                lines.append("  %d. ASS #%d  %s --> %s" % (i, u.ass_idx + 1, u.ass_start, u.ass_end))
-                lines.append("     Reason: %s" % u.reason)
+                lines.append("%d. ASS 第 %d 行  %s → %s" % (i, u.ass_idx + 1, u.ass_start, u.ass_end))
+                lines.append("   原因: %s" % u.reason)
                 for n in u.notes:
-                    lines.append("     |  TXT #%d  [%s]  %s" % (n.index, n.track, n.text))
+                    lines.append("   · TXT 第 %d 条  [%s]  %s" % (n.index, n.track, n.text))
                 lines.append("")
 
-            lines.append("  How to fix:")
-            lines.append("  1. Open the output ASS in Aegisub")
-            lines.append("  2. Navigate to the timecodes listed above")
-            lines.append("  3. Copy text from TXT and paste into the matching ASS line")
+            lines.append("# 操作建议:")
+            lines.append("# 1. 用 Aegisub 打开输出的 ASS 文件")
+            lines.append("# 2. 跳转到以上时间点")
+            lines.append("# 3. 从 TXT 中复制文本填入 ASS 对应行")
             lines.append("")
 
-        # Section 2: Auto-matched
-        lines.append(sub)
-        lines.append("  Section 2 -- Auto-matched (%d items)" % self.auto_matched)
-        lines.append(sub)
+        # Section 2: 自动匹配
+        lines.append("# ---")
+        lines.append("")
+        lines.append("# 第 2 节 — 已自动匹配（%d 条）" % self.auto_matched)
         lines.append("")
 
         success_items = [d for d in self.dialogues if d.text]
@@ -142,18 +139,17 @@ class MergePlan:
         show_count = min(show_count, len(success_items))
 
         for i, d in enumerate(success_items[:show_count], 1):
-            track_tag = "[%s] " % d.track if d.track else ""
-            lines.append("  %d. ASS #%d  %s --> %s" % (i, d.line_index + 1, d.start_str, d.end_str))
-            lines.append("     |  %s%s" % (track_tag, d.text[:80]))
+            tag = "[%s] " % d.track if d.track else ""
+            lines.append("%d. ASS 第 %d 行  %s → %s" % (i, d.line_index + 1, d.start_str, d.end_str))
+            lines.append("   · %s%s" % (tag, d.text[:80]))
             lines.append("")
 
         if show_count < len(success_items):
             lines.append(
-                "  ... %d more auto-matched items (total %d)" % (len(success_items) - show_count, len(success_items))
+                "# ... 还有 %d 条已匹配未显示（共 %d 条）" % (len(success_items) - show_count, len(success_items))
             )
             lines.append("")
 
-        lines.append(sep)
         return "\n".join(lines)
 
     def write(self, output_path: str):
