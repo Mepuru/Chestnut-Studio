@@ -166,7 +166,7 @@ class MergePlan:
         safe_items = [d for d in self.dialogues if d.text and d.line_index not in safe_indices]
         lines.append("# ---")
         lines.append("")
-        lines.append("# 第 3 节 — 已自动匹配（%d 条，独占区 100%% 确定）" % len(safe_items))
+        lines.append("# 第 3 节 — 已自动匹配（%d 条）" % len(safe_items))
         lines.append("")
 
         for i, d in enumerate(safe_items, 1):
