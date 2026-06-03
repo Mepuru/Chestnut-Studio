@@ -32,6 +32,10 @@ config
 # pytest
 .pytest_cache/
 
+# Nuitka build artifacts
+nuitka-crash-report.xml
+*.onefile-build/
+
 # ruff
 .ruff_cache/
 .reasonix/

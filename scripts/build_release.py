@@ -1,19 +1,22 @@
 """Chestnut Studio 构建脚本
 
-打包为 PyInstaller 单目录发行包。
-每次构建是确定性的——同一源码 + 同依赖版本 → 字节相同的输出。
+支持 PyInstaller 和 Nuitka 两种后端，均输出 single-file exe。
 
 用法:
-    uv run python scripts/build_release.py
+    uv run python scripts/build_release.py                  # 构建全部
+    uv run python scripts/build_release.py pyinstaller      # 仅 PyInstaller
+    uv run python scripts/build_release.py nuitka           # 仅 Nuitka
 
 输出:
-    dist/ChestnutStudio-{version}/   (可运行目录)
+    dist/ChestnutStudio-{version}-PyInstaller.exe   (≈45 MB)
+    dist/ChestnutStudio-{version}-Nuitka.exe        (≈18 MB)
 """
 
 import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -21,7 +24,6 @@ SEP = ";" if sys.platform == "win32" else ":"
 
 
 def get_version() -> str:
-    """从 pyproject.toml 读取版本号"""
     text = (PROJECT_ROOT / "pyproject.toml").read_text("utf-8")
     m = re.search(r'^version\s*=\s*"([^"]+)"', text, re.MULTILINE)
     if not m:
@@ -31,7 +33,6 @@ def get_version() -> str:
 
 
 def find_python() -> Path:
-    """找到项目虚拟环境中的 Python"""
     candidates = [
         PROJECT_ROOT / ".venv" / "Scripts" / "python.exe",
         PROJECT_ROOT / ".venv" / "bin" / "python",
@@ -43,40 +44,27 @@ def find_python() -> Path:
     sys.exit(1)
 
 
-def clean_build_artifacts():
-    """清理上次构建产物"""
-    for d in ["build", "dist"]:
-        shutil.rmtree(PROJECT_ROOT / d, ignore_errors=True)
+def human_size(kb: float) -> str:
+    if kb > 1024:
+        return f"{kb / 1024:.1f} MB"
+    return f"{kb:.0f} KB"
 
 
-def build():
-    version = get_version()
-    name = f"ChestnutStudio-{version}"
-    python = find_python()
+# ── PyInstaller 后端 ──
 
-    print(f"=== 构建 Chestnut Studio v{version} ===")
-    print(f"  Python: {python}")
-    print(f"  输出:   {PROJECT_ROOT / 'dist' / name}")
 
-    # ── 清理 ──
-    clean_build_artifacts()
-
-    # ── 资源路径 ──
+def build_pyinstaller(version: str, python: Path) -> Path:
+    """用 PyInstaller --onefile 构建"""
+    name = f"ChestnutStudio-{version}-PyInstaller"
     resources_src = PROJECT_ROOT / "chestnut_studio" / "resources"
-    if not resources_src.exists():
-        print(f"错误: 未找到资源目录 {resources_src}")
-        sys.exit(1)
 
-    # ── PyInstaller ──
-    # 使用 --onedir 而非 --onefile：
-    #   - 构建确定性的（没有 UPX/zip 时间戳差异）
-    #   - 方便调试（可以直接看目录内容）
-    #   - 后续可用 NSIS / Inno Setup 打包为安装包
+    print(f"\n── PyInstaller --onefile ──")
+
     cmd = [
         str(python),
         "-m",
         "PyInstaller",
-        "--onedir",
+        "--onefile",
         "--windowed",
         "--noconfirm",
         "--clean",
@@ -89,29 +77,109 @@ def build():
         str(PROJECT_ROOT / "main.py"),
     ]
 
-    print(f"\n运行: pyinstaller {' '.join(cmd[2:])}")
+    t0 = time.time()
     result = subprocess.run(cmd, cwd=PROJECT_ROOT)
+    elapsed = time.time() - t0
+
     if result.returncode != 0:
-        print(f"\n✗ PyInstaller 退出码 {result.returncode}")
+        print(f"  ✗ PyInstaller 退出码 {result.returncode}")
         sys.exit(result.returncode)
 
-    # ── 确认输出 ──
-    out_dir = PROJECT_ROOT / "dist" / name
-    exe_path = out_dir / f"{name}.exe"
-
+    exe_path = PROJECT_ROOT / "dist" / f"{name}.exe"
     if not exe_path.exists():
-        print(f"\n✗ 构建失败: {exe_path} 未生成")
+        print(f"  ✗ 输出未生成: {exe_path}")
         sys.exit(1)
 
-    total_kb = sum(f.stat().st_size for f in out_dir.rglob("*") if f.is_file()) / 1024
-    file_count = sum(1 for _ in out_dir.rglob("*") if _.is_file())
-    exe_kb = exe_path.stat().st_size / 1024
+    size_kb = exe_path.stat().st_size / 1024
+    print(f"  ✓ {exe_path.name}  ({human_size(size_kb)}, {elapsed:.0f}s)")
+    return exe_path
 
-    print(f"\n✓ 构建完成: {exe_path}")
-    print(f"  exe 大小: {exe_kb:.0f} KB")
-    print(f"  目录大小: {total_kb:.0f} KB（{file_count} 个文件）")
-    print(f"  dist 路径: {out_dir}")
+
+# ── Nuitka 后端 ──
+
+
+def build_nuitka(version: str, python: Path) -> Path:
+    """用 Nuitka --onefile --zig 构建"""
+    name = f"ChestnutStudio-{version}-Nuitka"
+    resources_src = PROJECT_ROOT / "chestnut_studio" / "resources"
+    main_py = PROJECT_ROOT / "main.py"
+
+    print(f"\n── Nuitka --onefile --zig ──")
+
+    # Nuitka 的 --output-dir 行为：产物放在 {output_dir}/{name}.exe
+    cmd = [
+        str(python),
+        "-m",
+        "nuitka",
+        "--onefile",
+        "--standalone",
+        "--zig",
+        "--assume-yes-for-downloads",
+        "--enable-plugin=pyside6",
+        f"--windows-icon-from-ico={resources_src / 'icon.png'}",
+        f"--output-filename={name}",
+        f"--output-dir={PROJECT_ROOT / 'dist'}",
+        f"--include-data-dir={resources_src}=chestnut_studio/resources",
+        str(main_py),
+    ]
+
+    t0 = time.time()
+    result = subprocess.run(cmd, cwd=PROJECT_ROOT)
+    elapsed = time.time() - t0
+
+    if result.returncode != 0:
+        print(f"  ✗ Nuitka 退出码 {result.returncode}")
+        sys.exit(result.returncode)
+
+    # Nuitka 把 exe 放在 dist/ 根目录
+    exe_path = PROJECT_ROOT / "dist" / f"{name}.exe"
+    if not exe_path.exists():
+        print(f"  ✗ 输出未生成: {exe_path}")
+        sys.exit(1)
+
+    size_kb = exe_path.stat().st_size / 1024
+    print(f"  ✓ {exe_path.name}  ({human_size(size_kb)}, {elapsed:.0f}s)")
+    return exe_path
+
+
+# ── 主流程 ──
+
+
+def main():
+    version = get_version()
+    python = find_python()
+
+    # 解析目标
+    targets = [a.lower() for a in sys.argv[1:]] if len(sys.argv) > 1 else ["pyinstaller", "nuitka"]
+
+    print(f"╔══ Chestnut Studio v{version} 构建 ═══╗")
+    print(f"  Python: {python}")
+    print(f"  目标:   {', '.join(targets)}")
+    print()
+
+    # 清理 dist 下旧 exe（保留 build/ 目录给增量）
+    for f in (PROJECT_ROOT / "dist").glob("ChestnutStudio-*"):
+        if f.is_file():
+            f.unlink()
+        elif f.is_dir():
+            shutil.rmtree(f, ignore_errors=True)
+
+    results = []
+
+    if "pyinstaller" in targets:
+        results.append(build_pyinstaller(version, python))
+
+    if "nuitka" in targets:
+        results.append(build_nuitka(version, python))
+
+    # ── 汇总 ──
+    print()
+    print("╔══ 构建汇总 ═══════════════════════════╗")
+    for p in results:
+        kb = p.stat().st_size / 1024
+        print(f"  ✓ {p.name}  ({human_size(kb)})")
+    print(f"  📁 {PROJECT_ROOT / 'dist'}")
 
 
 if __name__ == "__main__":
-    build()
+    main()
