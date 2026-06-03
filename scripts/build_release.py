@@ -98,30 +98,7 @@ def build_pyinstaller(version: str, python: Path) -> Path:
 # ── Nuitka 后端 ──
 
 
-def _find_pyside6_plugins() -> list[tuple[Path, str]]:
-    """找到 PySide6 插件目录中需要额外包含的项
 
-    Nuitka --enable-plugin=pyside6 默认包含部分插件（iconengines 等），
-    但 multimedia 不在其中，需要手动添加。
-
-    Returns:
-        [(source_path, target_name), ...]
-    """
-    import PySide6
-
-    pyside6_root = Path(PySide6.__file__).parent
-    plugins_root = pyside6_root / "plugins"
-    extras = []
-
-    multimedia_dir = plugins_root / "multimedia"
-    if multimedia_dir.exists():
-        # 使用 include-data-files 而非 include-data-dir：
-        # multimedia 插件是 .dll 文件，Nuitka 的 --include-data-dir 默认不包含 DLL
-        dlls = list(multimedia_dir.glob("*.dll"))
-        if dlls:
-            extras.append((multimedia_dir, "PySide6/qt-plugins/multimedia", "*.dll"))
-
-    return extras
 
 
 def build_nuitka(version: str, python: Path) -> Path:
@@ -145,20 +122,15 @@ def build_nuitka(version: str, python: Path) -> Path:
         "--zig",
         "--assume-yes-for-downloads",
         "--enable-plugin=pyside6",
+        "--include-qt-plugins=multimedia",
         "--windows-console-mode=disable",
         f"--jobs={cpu_count}",
         f"--windows-icon-from-ico={resources_src / 'icon.png'}",
         f"--output-filename={name}",
         f"--output-dir={PROJECT_ROOT / 'dist'}",
         f"--include-data-dir={resources_src}=chestnut_studio/resources",
+        str(main_py),
     ]
-
-    # 添加额外的 Qt 插件 DLL（如 multimedia）
-    for src, target, pattern in _find_pyside6_plugins():
-        cmd.append(f"--include-data-files={src}/{pattern}={target}/")
-        print(f"  包含插件: {src.name}/*.dll → {target}/")
-
-    cmd.append(str(main_py))
 
     t0 = time.time()
     result = subprocess.run(cmd, cwd=PROJECT_ROOT)
@@ -176,6 +148,11 @@ def build_nuitka(version: str, python: Path) -> Path:
 
     size_kb = exe_path.stat().st_size / 1024
     print(f"  ✓ {exe_path.name}  ({human_size(size_kb)}, {elapsed:.0f}s)")
+
+    # 清理 Nuitka 遗留的临时构建目录
+    for d in ("main.build", "main.dist", "main.onefile-build"):
+        shutil.rmtree(PROJECT_ROOT / "dist" / d, ignore_errors=True)
+
     return exe_path
 
 
@@ -193,16 +170,6 @@ def main():
     print(f"  Python: {python}")
     print(f"  目标:   {', '.join(targets)}")
     print()
-
-    # 清理 dist 下旧 exe（保留 build/ 目录给增量）
-    for f in list((PROJECT_ROOT / "dist").glob("ChestnutStudio-*")):
-        try:
-            if f.is_file():
-                f.unlink(missing_ok=True)
-            elif f.is_dir():
-                shutil.rmtree(f, ignore_errors=True)
-        except PermissionError:
-            print(f"  跳过（被占用）: {f.name}")
 
     results = []
 
