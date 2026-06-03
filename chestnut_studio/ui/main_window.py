@@ -117,6 +117,10 @@ class MainWindow(QMainWindow):
         self._term_view_action.triggered.connect(self._show_terms)
         menu_bar.addAction(self._term_view_action)
 
+        self._about_action = QAction("关于", self)
+        self._about_action.triggered.connect(self._show_about)
+        menu_bar.addAction(self._about_action)
+
     def _setup_central_widget(self):
         """创建中央区域布局"""
         central = QWidget()
@@ -187,6 +191,23 @@ class MainWindow(QMainWindow):
         self.setAcceptDrops(True)
 
     # ── 术语查看 ──
+
+    def _show_about(self):
+        """显示关于对话框"""
+        from PySide6.QtWidgets import QMessageBox
+        from chestnut_studio.utils.version import get_version
+
+        QMessageBox.about(
+            self,
+            "关于 Chestnut Studio",
+            "<h3>Chestnut Studio v%s</h3>"
+            "<p>一个简洁的视频笔记工具</p>"
+            "<hr>"
+            "<p>作者: <b>KuriKana</b></p>"
+            "<p>边看视频边添加带时间戳的笔记，"
+            "支持 10 条彩色轨道、术语库、"
+            "ASS+TXT 字幕合并。</p>" % get_version(),
+        )
 
     def _show_terms(self):
         """显示术语列表"""

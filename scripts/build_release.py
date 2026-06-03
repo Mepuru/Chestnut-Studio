@@ -52,13 +52,18 @@ def build():
     # ── PyInstaller ──
     cmd = [
         sys.executable or "python",
-        "-m", "PyInstaller",
+        "-m",
+        "PyInstaller",
         "--onefile",
         "--windowed",
         "--noconfirm",
         "--clean",
-        "--name", name,
-        "--add-data", resources_arg,
+        "--name",
+        name,
+        "--icon",
+        str(resources_src / "icon.png"),
+        "--add-data",
+        resources_arg,
         str(PROJECT_ROOT / "main.py"),
     ]
 
