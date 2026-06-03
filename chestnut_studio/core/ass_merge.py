@@ -143,12 +143,6 @@ class MergePlan:
                     lines.append("   · TXT 第 %d 条  [%s]  %s" % (n.index, n.track, n.text))
                 lines.append("")
 
-            lines.append("# 操作建议:")
-            lines.append("# 1. 用 Aegisub 打开输出的 ASS 文件")
-            lines.append("# 2. 跳转到以上时间点")
-            lines.append("# 3. 从 TXT 中复制文本填入 ASS 对应行")
-            lines.append("")
-
         # Section 2: 自动匹配
         lines.append("# ---")
         lines.append("")
