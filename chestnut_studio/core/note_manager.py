@@ -364,7 +364,7 @@ class NoteManager:
                     if block:
                         t = Term.from_block(block)
                         if t:
-                            self._terms.append(t)
+                            self.add_term(t.source, t.translation, t.origin, t.note)
                             count += 1
                     block = s + "\n"
                 else:
@@ -372,6 +372,6 @@ class NoteManager:
             if block:
                 t = Term.from_block(block)
                 if t:
-                    self._terms.append(t)
+                    self.add_term(t.source, t.translation, t.origin, t.note)
                     count += 1
         return count
