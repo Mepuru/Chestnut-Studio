@@ -11,7 +11,7 @@ MAX_TRACK_COUNT = 10
 
 # 轨道前景色（十六进制），按轨道号索引
 # 轨道号从 1 开始，使用时需 -1 作为索引
-TRACK_COLORS_HEX: list[str] = [
+TRACK_COLORS_HEX: tuple[str, ...] = (
     "#3b82f6",  # 轨道1: 蓝色
     "#10b981",  # 轨道2: 绿色
     "#f59e0b",  # 轨道3: 橙色
@@ -22,7 +22,7 @@ TRACK_COLORS_HEX: list[str] = [
     "#84cc16",  # 轨道8: 黄绿色
     "#ef4444",  # 轨道9: 红色
     "#a855f7",  # 轨道10: 紫罗兰
-]
+)
 
 
 def get_track_color(track: int) -> str:
@@ -55,6 +55,6 @@ def get_track_bg_color_hex(track: int, alpha: int = 30) -> str:
 
 
 # 笔记类型列表，从 DEFAULT_TRACK_COUNT 自动生成
-NOTE_TYPES: list[str] = [f"轨道{i}" for i in range(1, DEFAULT_TRACK_COUNT + 1)]
+NOTE_TYPES: tuple[str, ...] = tuple(f"轨道{i}" for i in range(1, DEFAULT_TRACK_COUNT + 1))
 
 
