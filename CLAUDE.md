@@ -7,7 +7,7 @@
 ## 项目概述
 
 Chestnut Studio 是一款视频笔记工具——边看视频边添加带时间戳的笔记。
-基于 PySide6 开发，当前版本 v2.1.0。
+基于 PySide6 开发，当前版本 v2.2.3。
 
 **核心特性**:
 - 视频播放 + 10 条彩色轨道
@@ -95,6 +95,23 @@ uv run ruff format chestnut_studio/
 # 运行测试
 uv run pytest tests/ -v
 ```
+
+---
+
+## 构建
+
+```bash
+# 全部构建（PyInstaller + Nuitka）
+uv run python scripts/build_release.py
+
+# 仅构建 PyInstaller 版
+uv run python scripts/build_release.py pyinstaller
+
+# 仅构建 Nuitka 版
+uv run python scripts/build_release.py nuitka
+```
+
+输出到 `dist/ChestnutStudio-{version}-{Backend}.exe`。
 
 ---
 

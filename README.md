@@ -1,6 +1,6 @@
 # Chestnut Studio
 
-一个简洁的视频笔记工具——边看视频边添加带时间戳的笔记。v2.2.0
+一个简洁的视频笔记工具——边看视频边添加带时间戳的笔记。v2.2.3
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -61,11 +61,30 @@ uv run python main.py
 
 ## 构建
 
+提供两种打包后端，输出单文件 exe：
+
 ```bash
+# 构建全部（PyInstaller + Nuitka）
 uv run python scripts/build_release.py
+
+# 仅构建 PyInstaller 版（≈55 MB，构建快）
+uv run python scripts/build_release.py pyinstaller
+
+# 仅构建 Nuitka 版（≈33 MB，编译耗时稍长）
+uv run python scripts/build_release.py nuitka
 ```
 
-输出: `dist/ChestnutStudio-{version}.exe`
+输出:
+```
+dist/
+├── ChestnutStudio-{version}-PyInstaller.exe   (≈55 MB)
+└── ChestnutStudio-{version}-Nuitka.exe        (≈33 MB)
+```
+
+| 后端 | 大小 | 原理 | 适用场景 |
+|------|------|------|----------|
+| PyInstaller | ≈55 MB | 捆绑 Python + DLL | 兼容性优先 |
+| Nuitka | ≈33 MB | 编译 Python → 原生 exe | 体积/启动速度优先 |
 
 ## 项目结构
 
