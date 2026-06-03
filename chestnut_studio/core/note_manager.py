@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
-from chestnut_studio.core.track_config import NOTE_TYPES
+from chestnut_studio.core.track_config import NOTE_TYPES, TRACK_COLORS_HEX
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
 # 导出文本格式说明（文件头）
@@ -22,6 +22,7 @@ EXPORT_HEADER = """# Chestnut Studio Notes
 # 帧率: {fps}
 # 码率: {bitrate}
 # 导出时间: {time}
+# 轨道颜色: {track_colors}
 # 格式: 轨道名  时间	| 内容
 # 批量删除前缀: 用正则替换  ^.+?\\d{{2}}:\\d{{2}}\\.\\d{{2}}\t\\|  为空
 # ---"""
@@ -213,6 +214,16 @@ class NoteManager:
 
     # ── 文本格式导出/导入 ──
 
+    @staticmethod
+    def _build_track_colors_line(types: list[str] | None = None) -> str:
+        """生成轨道颜色行，例如 '轨道1=#3b82f6, 轨道2=#10b981'"""
+        used_types = types or NOTE_TYPES
+        pairs = []
+        for i, name in enumerate(used_types):
+            if i < len(TRACK_COLORS_HEX):
+                pairs.append(f"{name}={TRACK_COLORS_HEX[i]}")
+        return ", ".join(pairs)
+
     def export_text(
         self,
         path: str | Path,
@@ -225,6 +236,7 @@ class NoteManager:
     ) -> int:
         notes = self._notes if types is None else [n for n in self._notes if n.type in types]
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        track_colors = self._build_track_colors_line(types)
         with open(path, "w", encoding="utf-8") as f:
             f.write(
                 EXPORT_HEADER.format(
@@ -235,6 +247,7 @@ class NoteManager:
                     bitrate=video_bitrate,
                     time=now,
                     terms=len(self._terms),
+                    track_colors=track_colors,
                 )
                 + "\n"
             )

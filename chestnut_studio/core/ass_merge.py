@@ -73,21 +73,107 @@ class MergePlan:
     auto_matched: int  # 独占区自动匹配的条数
     conflicts: list[MergeConflict]  # 待解决的冲突
     _raw_ass_lines: list[str] = field(repr=False)  # 原始 ASS 行
+    track_colors: dict[str, str] = field(default_factory=dict)  # 轨道名→颜色
+
+    @staticmethod
+    def _hex_to_ass_color(hex_str: str) -> str:
+        """#RRGGBB → &H00BBGGRR"""
+        h = hex_str.lstrip("#")
+        if len(h) != 6:
+            return "&H00FFFFFF"
+        r, g, b = h[0:2], h[2:4], h[4:6]
+        return f"&H00{b}{g}{r}"
+
+    @staticmethod
+    def _build_style_line(name: str, color_hex: str) -> str:
+        """生成 ASS Style 行"""
+        primary = MergePlan._hex_to_ass_color(color_hex)
+        return (
+            f"Style: {name},思源黑体 CN,70,{primary},&H000000FF,"
+            f"&H00000000,&HFF000000,-1,0,0,0,100,100,0,0,1,5,5,2,10,10,10,1"
+        )
+
+    def _collect_used_tracks(self) -> list[str]:
+        """收集用到的轨道名（去重，保持出现顺序）"""
+        used: list[str] = []
+        seen: set[str] = set()
+        for d in self.dialogues:
+            t = d.track
+            if t and t not in seen:
+                seen.add(t)
+                used.append(t)
+        return used
 
     def _repr_lines(self) -> list[str]:
-        """生成 ASS 文件行"""
-        new_lines = list(self._raw_ass_lines)
-        for d in self.dialogues:
-            prefix = d.raw_before_text
-            if d.track:
-                # 在 Style 字段（第4字段，索引3）替换为轨道名
-                # raw_before_text: "Dialogue: L,Start,End,Style,,ML,MR,MV,E"
-                parts = prefix.split(",", 8)
-                if len(parts) > 3:
-                    parts[3] = d.track
-                    prefix = ",".join(parts)
-            new_lines[d.line_index] = prefix + "," + d.text
-        return new_lines
+        """按 ASS 节段重组输出行
+
+        结构:
+        [Script Info] / [Aegisub ...] 等头部 → 保留
+        [V4+ Styles]                     → 只保留 Format + 轨道样式
+        [Events]                         → 保留 Format + 替换 Dialogue
+        """
+        raw = self._raw_ass_lines
+
+        # 找到各节的起止
+        sections: list[tuple[int, str]] = []  # (行号, 节名)
+        for i, line in enumerate(raw):
+            s = line.strip()
+            if s.startswith("[") and s.endswith("]"):
+                sections.append((i, s))
+
+        # 提取 [V4+ Styles] 和 [Events] 的位置
+        styles_sec = next((s for s in sections if s[1] == "[V4+ Styles]"), None)
+        events_sec = next((s for s in sections if s[1] == "[Events]"), None)
+
+        if not styles_sec or not events_sec:
+            # 缺节则 fallback: 只替换 dialogue 行
+            new_lines = list(raw)
+            for d in self.dialogues:
+                prefix = d.raw_before_text
+                if d.track:
+                    parts = prefix.split(",", 8)
+                    if len(parts) > 3:
+                        parts[3] = d.track
+                        prefix = ",".join(parts)
+                new_lines[d.line_index] = prefix + "," + d.text
+            return new_lines
+
+        # 1. 头部：保留到 styles 节之前的所有内容
+        result = list(raw[: styles_sec[0] + 1])
+
+        # 2. 样式表：替换所有 Style 行
+        fmt = (
+            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, "
+            "OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, "
+            "ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, "
+            "MarginL, MarginR, MarginV, Encoding"
+        )
+        result.append(fmt)
+        for t in self._collect_used_tracks():
+            color = self.track_colors.get(t, "#FFFFFF")
+            result.append(self._build_style_line(t, color))
+
+        # 3. Events 节
+        result.append("[Events]")
+        for i in range(events_sec[0] + 1, len(raw)):
+            line = raw[i]
+            if line.startswith("Dialogue:"):
+                # 找到对应 dialogue 并替换
+                di = next((d for d in self.dialogues if d.line_index == i), None)
+                if di:
+                    prefix = di.raw_before_text
+                    if di.track:
+                        parts = prefix.split(",", 8)
+                        if len(parts) > 3:
+                            parts[3] = di.track
+                            prefix = ",".join(parts)
+                    result.append(prefix + "," + di.text)
+                else:
+                    result.append(line)
+            else:
+                result.append(line)
+
+        return result
 
     def write(self, output_path: str):
         """写出合并后的 ASS 文件"""
@@ -157,10 +243,34 @@ def _nth_comma(s: str, n: int) -> int:
     return idx
 
 
-def parse_txt(filepath: str) -> list[TxtNote]:
-    """解析 TXT 笔记文件，返回笔记列表"""
+def _parse_track_colors(raw: str) -> dict[str, str]:
+    """从 TXT 头部解析轨道颜色定义
+
+    格式: # 轨道颜色: 轨道1=#3b82f6, 轨道2=#10b981, ...
+    """
+    colors: dict[str, str] = {}
+    for line in raw.split("\n"):
+        line = line.strip()
+        if line.startswith("# 轨道颜色:"):
+            color_part = line[len("# 轨道颜色:") :].strip()
+            for pair in color_part.split(","):
+                pair = pair.strip()
+                if "=" in pair:
+                    name, color = pair.split("=", 1)
+                    name = name.strip()
+                    color = color.strip()
+                    if color.startswith("#") and len(color) == 7:
+                        colors[name] = color
+            break
+    return colors
+
+
+def parse_txt(filepath: str) -> tuple[list[TxtNote], dict[str, str]]:
+    """解析 TXT 笔记文件，返回 (notes, track_colors)"""
     with open(filepath, encoding="utf-8") as f:
         raw = f.read()
+
+    track_colors = _parse_track_colors(raw)
 
     notes = []
     for line in raw.split("\n"):
@@ -195,7 +305,7 @@ def parse_txt(filepath: str) -> list[TxtNote]:
 
         notes.append(TxtNote(index=note_idx, time_s=t, track=track, text=text))
 
-    return notes
+    return notes, track_colors
 
 
 # ── 合并引擎 ──
@@ -212,7 +322,7 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
     5. 单条重叠区自动按 A→B 分配
     """
     dialogues, raw_lines = parse_ass(ass_path)
-    notes = parse_txt(txt_path)
+    notes, track_colors = parse_txt(txt_path)
 
     # ── 检测重叠对 ──
     overlap_pairs = []
@@ -347,6 +457,7 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
         total_notes=len(notes),
         auto_matched=auto_matched,
         conflicts=conflicts,
+        track_colors=track_colors,
         _raw_ass_lines=raw_lines,
     )
 
