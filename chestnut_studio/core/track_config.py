@@ -58,15 +58,3 @@ def get_track_bg_color_hex(track: int, alpha: int = 30) -> str:
 NOTE_TYPES: list[str] = [f"轨道{i}" for i in range(1, DEFAULT_TRACK_COUNT + 1)]
 
 
-def get_effective_track_count(current_max: int) -> int:
-    """获取有效的轨道显示数量
-
-    保证至少显示 DEFAULT_TRACK_COUNT 个轨道，不超过 MAX_TRACK_COUNT。
-
-    Args:
-        current_max: 当前数据中的最大轨道号
-
-    Returns:
-        应显示的轨道数量
-    """
-    return max(DEFAULT_TRACK_COUNT, min(current_max, MAX_TRACK_COUNT))

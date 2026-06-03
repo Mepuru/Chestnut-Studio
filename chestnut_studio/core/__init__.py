@@ -12,7 +12,6 @@ from chestnut_studio.core.track_config import (
     MAX_TRACK_COUNT,
     NOTE_TYPES,
     TRACK_COLORS_HEX,
-    get_effective_track_count,
     get_track_bg_color_hex,
     get_track_color,
 )
@@ -29,7 +28,6 @@ __all__ = [
     "TRACK_COLORS_HEX",
     "get_track_color",
     "get_track_bg_color_hex",
-    "get_effective_track_count",
     "UncertainMatch",
     "MergePlan",
     "build_merge_plan",
