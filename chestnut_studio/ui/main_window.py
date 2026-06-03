@@ -96,6 +96,12 @@ class MainWindow(QMainWindow):
 
         file_menu.addSeparator()
 
+        merge_action = QAction("导入字幕合并 (ASS+TXT)...", self)
+        merge_action.triggered.connect(self._on_merge_ass_txt)
+        file_menu.addAction(merge_action)
+
+        file_menu.addSeparator()
+
         quit_action = QAction("退出(&Q)", self)
         quit_action.setShortcut(QKeySequence("Ctrl+Q"))
         quit_action.triggered.connect(self.close)
@@ -440,6 +446,13 @@ class MainWindow(QMainWindow):
                     msg += f"，{term_count} 条术语"
                 self.statusBar().showMessage(msg, 3000)
             self.note_panel.refresh()
+
+    def _on_merge_ass_txt(self):
+        """打开 ASS+TXT 字幕合并对话框"""
+        from chestnut_studio.ui.merge_dialog import MergeDialog
+
+        dialog = MergeDialog(self)
+        dialog.exec()
 
     # ── 快捷键 ──
 
