@@ -58,11 +58,18 @@ class TermEditDialog(QDialog):
     """单个术语的编辑/新建对话框"""
 
     def __init__(
-        self, parent: QWidget | None = None, term: Term | None = None, note_manager: NoteManager | None = None
+        self,
+        parent: QWidget | None = None,
+        term: Term | None = None,
+        note_manager: NoteManager | None = None,
+        context: str = "",
+        origin: str = "",
     ):
         super().__init__(parent)
         self._note_manager = note_manager
         self._original_source = term.source if term else ""
+        self._context = context
+        self._origin = origin
         self._setup_ui(term)
 
     def _setup_ui(self, term: Term | None):
@@ -72,8 +79,11 @@ class TermEditDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setSpacing(6)
 
-        # 从 term 提取各字段
-        ctx, ref, rest_note = _parse_note(term.note) if term else ("", "", "")
+        # 从 term 提取各字段，新建时使用传入的上下文
+        if term:
+            ctx, ref, rest_note = _parse_note(term.note)
+        else:
+            ctx, ref, rest_note = self._context, "", ""
 
         # 原文上下文
         layout.addWidget(QLabel("原文（上下文）:"))
@@ -92,7 +102,7 @@ class TermEditDialog(QDialog):
 
         # 出处
         layout.addWidget(QLabel("出处:"))
-        self._origin_edit = QLineEdit(term.origin if term else "")
+        self._origin_edit = QLineEdit(term.origin if term else self._origin)
         layout.addWidget(self._origin_edit)
 
         # 参考资料

@@ -297,70 +297,20 @@ class MainWindow(QMainWindow):
 
     def _on_term_requested(self, note_text: str, origin: str):
         """从笔记打开术语录入"""
-        from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QTextEdit, QVBoxLayout
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle("术语")
-        dialog.setMinimumSize(450, 400)
-        layout = QVBoxLayout(dialog)
-        layout.setSpacing(6)
+        from chestnut_studio.ui.term_dialog import TermEditDialog
 
         origin_text = Path(self.player_card.get_video_path()).name if self.player_card.get_video_path() else ""
         origin_text = f"{origin_text} {origin}" if origin_text else origin
 
-        layout.addWidget(QLabel("原文（上下文）:"))
-        context_edit = QLineEdit(note_text)
-        context_edit.selectAll()
-        layout.addWidget(context_edit)
-
-        layout.addWidget(QLabel("术语（关键词）:"))
-        source_edit = QLineEdit()
-        source_edit.setPlaceholderText("从原文复制要查询的词...")
-        layout.addWidget(source_edit)
-
-        layout.addWidget(QLabel("译文（中文）:"))
-        trans_edit = QLineEdit()
-        trans_edit.setPlaceholderText("对应的中文翻译...")
-        layout.addWidget(trans_edit)
-
-        layout.addWidget(QLabel("出处:"))
-        origin_edit = QLineEdit(origin_text)
-        layout.addWidget(origin_edit)
-
-        layout.addWidget(QLabel("参考资料:"))
-        ref_edit = QLineEdit()
-        ref_edit.setPlaceholderText("词典/网站/工具书名称或链接...")
-        layout.addWidget(ref_edit)
-
-        layout.addWidget(QLabel("备注:"))
-        note_edit = QTextEdit()
-        note_edit.setPlaceholderText("语法说明、用法注意...")
-        note_edit.setAcceptRichText(False)
-        note_edit.setMinimumHeight(80)
-        layout.addWidget(note_edit)
-
-        btn_layout = QHBoxLayout()
-        save_btn = QPushButton("保存")
-        save_btn.clicked.connect(dialog.accept)
-        cancel_btn = QPushButton("取消")
-        cancel_btn.clicked.connect(dialog.reject)
-        btn_layout.addWidget(save_btn)
-        btn_layout.addWidget(cancel_btn)
-        layout.addLayout(btn_layout)
-
+        dialog = TermEditDialog(
+            self,
+            context=note_text,
+            origin=origin_text,
+        )
         if dialog.exec() == QDialog.Accepted:
-            source = source_edit.text().strip()
-            trans = trans_edit.text().strip()
-            o = origin_edit.text().strip()
-            ctx = context_edit.text().strip()
-            ref = ref_edit.text().strip()
-            n = note_edit.toPlainText().strip()
-            if ref:
-                n = ("参考: " + ref) + ("\n" + n if n else "")
-            if ctx:
-                n = "原文: " + ctx + ("\n" + n if n else "")
-            if source and trans:
-                self._on_term_added(source, trans, o, n)
+            result = dialog.get_result()
+            if result:
+                self._on_term_added(*result)
 
     def _on_term_added(self, source: str, translation: str, origin: str, note: str):
         """添加术语"""
