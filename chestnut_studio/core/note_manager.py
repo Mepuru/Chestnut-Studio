@@ -33,14 +33,14 @@ EXPORT_HEADER = """# Chestnut Studio Notes v{version}
 class Note:
     """单条笔记"""
 
-    def __lt__(self, other):
+    def __lt__(self, other) -> bool:
         return (self.timestamp_ms, self.text, self.type) < (
             other.timestamp_ms,
             other.text,
             other.type,
         )
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.timestamp_ms, self.text, self.type))
 
     timestamp_ms: int = 0
