@@ -530,20 +530,34 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
                 )
             )
         elif len(involved) >= 2:
-            # 多条 ASS 竞争
-            # 逐个 ASS 报告
-            for ai in involved:
-                ass_notes = [n for n in zone_notes if dialogues[ai].start_s <= n.time_s <= dialogues[ai].end_s]
-                if ass_notes:
-                    uncertain.append(
-                        UncertainMatch(
-                            ass_idx=ai,
-                            ass_start=dialogues[ai].start_str,
-                            ass_end=dialogues[ai].end_str,
-                            notes=ass_notes,
-                            reason="时间重叠——多条 ASS 竞争该时间段",
+            # 多条 ASS 竞争同一重叠区间
+            # 如果只有 1 条 TXT，按时间就近分配
+            if len(zone_notes) == 1:
+                note = zone_notes[0]
+                a = dialogues[op["a_idx"]]
+                b = dialogues[op["b_idx"]]
+                # 选离 start 更近的那条 ASS
+                if abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s):
+                    a._exclusive_text = note.text  # type: ignore[attr-defined]
+                    a._exclusive_track = note.track  # type: ignore[attr-defined]
+                else:
+                    b._exclusive_text = note.text  # type: ignore[attr-defined]
+                    b._exclusive_track = note.track  # type: ignore[attr-defined]
+                auto_matched += 1
+            else:
+                # 多条 TXT 争重叠区，无法自动判断
+                for ai in involved:
+                    ass_notes = [n for n in zone_notes if dialogues[ai].start_s <= n.time_s <= dialogues[ai].end_s]
+                    if ass_notes:
+                        uncertain.append(
+                            UncertainMatch(
+                                ass_idx=ai,
+                                ass_start=dialogues[ai].start_str,
+                                ass_end=dialogues[ai].end_str,
+                                notes=ass_notes,
+                                reason="时间重叠——多条 ASS 竞争该时间段",
+                            )
                         )
-                    )
 
     # ── 将 _exclusive_text / _exclusive_track 写入 dialogues ──
     for d in dialogues:
