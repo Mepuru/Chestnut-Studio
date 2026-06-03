@@ -37,6 +37,12 @@ class AssDialogue:
     raw_before_text: str  # "Dialogue: ..." 最后一个逗号之前的部分
     track: str = ""  # 轨道名（从 TXT 继承）
     src_note_idx: int = 0  # 源 TXT 序号（0=无来源）
+    # ── 以下为 build_merge_plan 内部临时字段 ──
+    _exclusive_end: float = 0.0
+    _exclusive_notes: list = field(default_factory=list)
+    _exclusive_text: str = ""
+    _exclusive_track: str = ""
+    _exclusive_note_idx: int = 0
 
 
 @dataclass
@@ -445,26 +451,20 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
 
     # ── 标记独占区结束点 ──
     for d in dialogues:
-        d._exclusive_end = d.end_s  # type: ignore[attr-defined]
+        d._exclusive_end = d.end_s
 
     for op in overlap_pairs:
         a = dialogues[op["a_idx"]]
         b = dialogues[op["b_idx"]]
-        a._exclusive_end = op["zone_start"]  # type: ignore[attr-defined]
-        b._exclusive_end = b.start_s  # type: ignore[attr-defined]
-
-    # ── 初始化临时字段 ──
-    for d in dialogues:
-        d._exclusive_text = ""  # type: ignore[attr-defined]
-        d._exclusive_track = ""  # type: ignore[attr-defined]
-        d._exclusive_notes: list[TxtNote] = []  # type: ignore[attr-defined]
+        a._exclusive_end = op["zone_start"]
+        b._exclusive_end = b.start_s
 
     # ── 第一轮：独占区收集 ──
     for note in notes:
         for d in dialogues:
-            excl_end = getattr(d, "_exclusive_end", d.end_s)
+            excl_end = d._exclusive_end
             if d.start_s <= note.time_s < excl_end:
-                d._exclusive_notes.append(note)  # type: ignore[attr-defined]
+                d._exclusive_notes.append(note)
                 break
 
     # ── 第二轮：确定匹配 / 入不确定列表 ──
@@ -473,16 +473,16 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
     auto_matched = 0
 
     for di, d in enumerate(dialogues):
-        zone_notes: list[TxtNote] = getattr(d, "_exclusive_notes", [])
+        zone_notes = d._exclusive_notes
         if not zone_notes:
             continue
 
         if len(zone_notes) == 1:
             # ✅ 100% 确定：独占区内恰好 1 条 TXT
             note = zone_notes[0]
-            d._exclusive_text = note.text  # type: ignore[attr-defined]
-            d._exclusive_track = note.track  # type: ignore[attr-defined]
-            d._exclusive_note_idx = note.index  # type: ignore[attr-defined]
+            d._exclusive_text = note.text
+            d._exclusive_track = note.track
+            d._exclusive_note_idx = note.index
             auto_matched += 1
         else:
             # ⚠️ 不确定：独占区内多条 TXT
@@ -499,7 +499,7 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
     # ── 收集重叠区 TXT（排除已在独占区匹配掉的） ──
     matched_note_indices: set[int] = set()
     for d in dialogues:
-        for n in getattr(d, "_exclusive_notes", []):
+        for n in d._exclusive_notes:
             matched_note_indices.add(n.index)
 
     overlap_notes = [n for n in notes if n.index not in matched_note_indices]
@@ -551,13 +551,13 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
                 b = dialogues[op["b_idx"]]
                 # 选离 start 更近的那条 ASS
                 if abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s):
-                    a._exclusive_text = note.text  # type: ignore[attr-defined]
-                    a._exclusive_track = note.track  # type: ignore[attr-defined]
-                    a._exclusive_note_idx = note.index  # type: ignore[attr-defined]
+                    a._exclusive_text = note.text
+                    a._exclusive_track = note.track
+                    a._exclusive_note_idx = note.index
                 else:
-                    b._exclusive_text = note.text  # type: ignore[attr-defined]
-                    b._exclusive_track = note.track  # type: ignore[attr-defined]
-                    b._exclusive_note_idx = note.index  # type: ignore[attr-defined]
+                    b._exclusive_text = note.text
+                    b._exclusive_track = note.track
+                    b._exclusive_note_idx = note.index
                 auto_matched += 1
                 # 记录为潜在风险
                 risky.append(
@@ -593,18 +593,9 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
 
     # ── 将 _exclusive_text / _exclusive_track 写入 dialogues ──
     for d in dialogues:
-        d.text = getattr(d, "_exclusive_text", "")
-        d.track = getattr(d, "_exclusive_track", "")
-        d.src_note_idx = getattr(d, "_exclusive_note_idx", 0)
-        for attr in (
-            "_exclusive_end",
-            "_exclusive_text",
-            "_exclusive_track",
-            "_exclusive_notes",
-            "_exclusive_note_idx",
-        ):
-            if hasattr(d, attr):
-                delattr(d, attr)
+        d.text = d._exclusive_text
+        d.track = d._exclusive_track
+        d.src_note_idx = d._exclusive_note_idx
 
     return MergePlan(
         ass_path=ass_path,
