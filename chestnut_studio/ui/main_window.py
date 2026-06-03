@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 
 from chestnut_studio.core.ffmpeg import FFmpeg
 from chestnut_studio.core.note_manager import NoteManager
-from chestnut_studio.core.track_config import NOTE_TYPES, load_track_colors, save_track_colors, set_config_path
+from chestnut_studio.core.track_config import NOTE_TYPES
 from chestnut_studio.resources import get_icon_path
 from chestnut_studio.ui.cards.player_card import PlayerCard
 from chestnut_studio.ui.input_bar import InputBar
@@ -59,13 +59,6 @@ class MainWindow(QMainWindow):
         # 数据模型
         self._note_manager = NoteManager()
         self._ffmpeg = FFmpeg()
-
-        # 加载轨道颜色配置
-        config_dir = Path.home() / ".chestnut_studio"
-        config_dir.mkdir(parents=True, exist_ok=True)
-        colors_path = config_dir / "track_colors.json"
-        set_config_path(colors_path)
-        load_track_colors()
 
         # 创建 UI
         self._setup_menu_bar()
@@ -460,11 +453,6 @@ class MainWindow(QMainWindow):
 
         dialog = MergeDialog(self)
         dialog.exec()
-
-    def closeEvent(self, event):
-        """关闭窗口时保存轨道颜色"""
-        save_track_colors()
-        super().closeEvent(event)
 
     # ── 快捷键 ──
 

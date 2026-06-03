@@ -4,9 +4,7 @@
 """
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor, QMouseEvent
 from PySide6.QtWidgets import (
-    QColorDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -14,7 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from chestnut_studio.core.track_config import NOTE_TYPES, get_track_color, set_track_color
+from chestnut_studio.core.track_config import NOTE_TYPES, get_track_color
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
 
@@ -35,13 +33,10 @@ class InputBar(QWidget):
         layout.setContentsMargins(12, 8, 12, 8)
         layout.setSpacing(8)
 
-        # ── 轨道指示器（色块 + 轨道名，点击色块取色） ──
-        self._color_dot = QPushButton()
-        self._color_dot.setFixedSize(14, 14)
+        # ── 轨道指示器（色块 + 轨道名） ──
+        self._color_dot = QLabel()
+        self._color_dot.setFixedSize(10, 10)
         self._color_dot.setObjectName("colorDot")
-        self._color_dot.setCursor(Qt.PointingHandCursor)
-        self._color_dot.setToolTip("点击更换轨道颜色")
-        self._color_dot.clicked.connect(self._pick_track_color)
         layout.addWidget(self._color_dot)
 
         self._track_label = QLabel("轨道1")
@@ -69,20 +64,11 @@ class InputBar(QWidget):
 
         self._update_badge()
 
-    def _pick_track_color(self):
-        """打开取色器让用户选择轨道颜色"""
-        track_num = self._current_track_idx + 1
-        current = get_track_color(track_num)
-        color = QColorDialog.getColor(QColor(current), self, f"选择 {NOTE_TYPES[self._current_track_idx]} 颜色")
-        if color.isValid():
-            set_track_color(track_num, color.name())
-            self._update_badge()
-
     def _update_badge(self):
         """更新轨道色块和名称"""
         track_num = self._current_track_idx + 1
         color = get_track_color(track_num)
-        self._color_dot.setStyleSheet(f"background: {color}; border-radius: 7px; border: none;")
+        self._color_dot.setStyleSheet(f"background: {color}; border-radius: 5px;")
         self._track_label.setText(NOTE_TYPES[self._current_track_idx])
         self._track_label.setStyleSheet(f"color: {color};")
 
