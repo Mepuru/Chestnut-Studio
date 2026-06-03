@@ -3,10 +3,9 @@
 from chestnut_studio.core.ffmpeg import FFmpeg, FFmpegError, VideoInfo
 from chestnut_studio.core.note_manager import Note, NoteManager
 from chestnut_studio.core.ass_merge import (
-    MergeConflict,
+    UncertainMatch,
     MergePlan,
     build_merge_plan,
-    apply_conflict_resolution,
 )
 from chestnut_studio.core.track_config import (
     DEFAULT_TRACK_COUNT,
@@ -31,8 +30,7 @@ __all__ = [
     "get_track_color",
     "get_track_bg_color_hex",
     "get_effective_track_count",
-    "MergeConflict",
+    "UncertainMatch",
     "MergePlan",
     "build_merge_plan",
-    "apply_conflict_resolution",
 ]

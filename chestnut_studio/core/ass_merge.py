@@ -1,22 +1,22 @@
 """ASS+TXT 字幕合并逻辑
 
 将 Chestnut Studio 导出的 TXT 笔记文本合并到 ASS 字幕时间轴中。
-支持冲突检测——在重叠区域内无法自动分配时，让用户手动决定。
+**原则**: 只有 100% 确定的匹配才自动填入——即恰好 1 条 TXT 落在某条 ASS 的独占时间区内。
+其他情况（多条 TXT 抢同一 ASS、时间重叠等）均放入报告中，让用户手动处理。
 
 用法:
-    from chestnut_studio.core.ass_merge import build_merge_plan, apply_plan
+    from chestnut_studio.core.ass_merge import build_merge_plan
 
     plan = build_merge_plan("input.ass", "notes.txt")
-    for c in plan.conflicts:
-        print(c)  # 让用户选择
-    plan.apply_user_choice(conflict_idx, {a_idx: note_idx, b_idx: note_idx})
-    plan.write("output.ass")
+    print(plan.generate_report())  # 查看不确定项
+    plan.write("output.ass")       # 写出 ASS + 报告
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 
 # ── 数据结构 ──
 
@@ -47,18 +47,14 @@ class TxtNote:
 
 
 @dataclass
-class MergeConflict:
-    """需要用户决策的冲突——重叠区内多条 TXT 需要分摊"""
+class UncertainMatch:
+    """不能 100% 确定的匹配项——需要手动处理"""
 
-    a_idx: int  # ASS 中的索引（较早出现的轴）
-    b_idx: int  # ASS 中的索引（较晚出现的轴）
-    a_start: str  # A 开始时间
-    a_end: str  # A 结束时间
-    b_start: str  # B 开始时间
-    b_end: str  # B 结束时间
-    notes: list[TxtNote]  # 落在重叠区的 TXT 笔记
-    a_text_before: str = ""  # A 独占区已有的文本
-    b_text_before: str = ""  # B 独占区已有的文本
+    ass_idx: int  # ASS 行索引
+    ass_start: str  # ASS 开始时间
+    ass_end: str  # ASS 结束时间
+    notes: list[TxtNote]  # 候选 TXT 笔记
+    reason: str  # 原因
 
 
 @dataclass
@@ -70,8 +66,8 @@ class MergePlan:
     dialogues: list[AssDialogue]
     notes: list[TxtNote]
     total_notes: int  # TXT 总条数
-    auto_matched: int  # 独占区自动匹配的条数
-    conflicts: list[MergeConflict]  # 待解决的冲突
+    auto_matched: int  # 100% 确定自动匹配的条数
+    uncertain: list[UncertainMatch]  # 不确定的匹配项
     _raw_ass_lines: list[str] = field(repr=False)  # 原始 ASS 行
     track_colors: dict[str, str] = field(default_factory=dict)  # 轨道名→颜色
 
@@ -92,6 +88,56 @@ class MergePlan:
             f"Style: {name},思源黑体 CN,70,{primary},&H000000FF,"
             f"&H00000000,&HFF000000,-1,0,0,0,100,100,0,0,1,5,5,2,10,10,10,1"
         )
+
+    def generate_report(self) -> str:
+        """生成合并报告——列出所有不确定项"""
+        lines = []
+        lines.append("=" * 60)
+        lines.append("  ASS+TXT 字幕合并报告")
+        lines.append("=" * 60)
+        lines.append(f"  源 ASS: {Path(self.ass_path).name}")
+        lines.append(f"  源 TXT: {Path(self.txt_path).name}")
+        lines.append(f"  TXT 总条数: {self.total_notes}")
+        lines.append(f"  自动匹配: {self.auto_matched} (100% 确定)")
+        lines.append(f"  待处理: {len(self.uncertain)}")
+        lines.append("")
+
+        if not self.uncertain:
+            lines.append("  🎉 全部匹配确定无误，无需手动处理！")
+            lines.append("")
+            return "\n".join(lines)
+
+        lines.append("  ⚠️  以下项目需要手动处理：")
+        lines.append("")
+
+        for i, u in enumerate(self.uncertain, 1):
+            lines.append(f"  [{i}] ASS 行 #{u.ass_idx + 1}")
+            lines.append(f"      时间: {u.ass_start} → {u.ass_end}")
+            lines.append(f"      原因: {u.reason}")
+            for j, n in enumerate(u.notes, 1):
+                lines.append(f"      候选 TXT#{n.index}: [{n.track}] {n.text}")
+            lines.append("")
+
+        lines.append("─" * 60)
+        lines.append("  处理建议：")
+        lines.append("  1. 在 Aegisub 中打开生成的 ASS 文件")
+        lines.append("  2. 对照上述时间点，找到对应的空白/可疑行")
+        lines.append("  3. 从 TXT 文件中复制文本填入，或手动调整时间")
+        lines.append("=" * 60)
+        return "\n".join(lines)
+
+    def write(self, output_path: str):
+        """写出合并后的 ASS 文件 + 同目录下的报告"""
+        lines = self._repr_lines()
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+        # 同时写出报告
+        report_path = Path(output_path).with_suffix(".report.txt")
+        report_path.write_text(self.generate_report(), encoding="utf-8")
+
+    def get_ass_content(self) -> str:
+        """获取合并后的 ASS 文本内容（用于预览）"""
+        return "\n".join(self._repr_lines())
 
     def _collect_used_tracks(self) -> list[str]:
         """收集用到的轨道名（去重，保持出现顺序）"""
@@ -312,14 +358,14 @@ def parse_txt(filepath: str) -> tuple[list[TxtNote], dict[str, str]]:
 
 
 def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
-    """构建合并计划——自动匹配 + 检测冲突
+    """构建合并计划——仅 100% 确定的才自动匹配
 
     流程:
     1. 解析 ASS 和 TXT
-    2. 检测重叠对
-    3. 独占区匹配（TXT 落在某条 ASS 独享的时间区间内）
-    4. 检测冲突（重叠区内有 >= 2 条 TXT）
-    5. 单条重叠区自动按 A→B 分配
+    2. 检测重叠对，标记每条 ASS 的独占区
+    3. 独占区匹配：恰好 1 条 TXT → 自动填入；多条 TXT → 入不确定列表
+    4. 所有落在重叠区的 TXT → 入不确定列表（不做自动分配）
+    5. 生成报告
     """
     dialogues, raw_lines = parse_ass(ass_path)
     notes, track_colors = parse_txt(txt_path)
@@ -346,106 +392,116 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
         a = dialogues[op["a_idx"]]
         b = dialogues[op["b_idx"]]
         a._exclusive_end = op["zone_start"]  # type: ignore[attr-defined]
-        b._exclusive_end = b.start_s  # type: ignore[attr-defined]  # B的空独占区
+        b._exclusive_end = b.start_s  # type: ignore[attr-defined]
 
-    # ── 第一轮：独占区匹配 ──
-    unmatched_notes = []
-    auto_matched = 0
-
-    # 为每个 ASS 记录独占区匹配到的文本和轨道
+    # ── 初始化临时字段 ──
     for d in dialogues:
         d._exclusive_text = ""  # type: ignore[attr-defined]
         d._exclusive_track = ""  # type: ignore[attr-defined]
+        d._exclusive_notes: list[TxtNote] = []  # type: ignore[attr-defined]
 
+    # ── 第一轮：独占区收集 ──
     for note in notes:
-        assigned = False
-        for di, d in enumerate(dialogues):
+        for d in dialogues:
             excl_end = getattr(d, "_exclusive_end", d.end_s)
             if d.start_s <= note.time_s < excl_end:
-                if getattr(d, "_exclusive_text", ""):
-                    d._exclusive_text += chr(92) + "N" + note.text  # type: ignore[attr-defined]
-                else:
-                    d._exclusive_text = note.text  # type: ignore[attr-defined]
-                    d._exclusive_track = note.track  # type: ignore[attr-defined]  # 取首条轨道
-                auto_matched += 1
-                assigned = True
+                d._exclusive_notes.append(note)  # type: ignore[attr-defined]
                 break
-        if not assigned:
-            unmatched_notes.append(note)
 
-    # ── 第二轮：检测冲突 + 处理重叠区 ──
-    conflicts: list[MergeConflict] = []
+    # ── 第二轮：确定匹配 / 入不确定列表 ──
+    uncertain: list[UncertainMatch] = []
+    auto_matched = 0
 
-    # 对每个重叠对，收集落在其重叠区的未匹配 TXT
+    for di, d in enumerate(dialogues):
+        zone_notes: list[TxtNote] = getattr(d, "_exclusive_notes", [])
+        if not zone_notes:
+            continue
+
+        if len(zone_notes) == 1:
+            # ✅ 100% 确定：独占区内恰好 1 条 TXT
+            note = zone_notes[0]
+            d._exclusive_text = note.text  # type: ignore[attr-defined]
+            d._exclusive_track = note.track  # type: ignore[attr-defined]
+            auto_matched += 1
+        else:
+            # ⚠️ 不确定：独占区内多条 TXT
+            uncertain.append(
+                UncertainMatch(
+                    ass_idx=di,
+                    ass_start=d.start_str,
+                    ass_end=d.end_str,
+                    notes=zone_notes,
+                    reason=f"同一条 ASS 时间窗口内有 {len(zone_notes)} 条 TXT 笔记",
+                )
+            )
+
+    # ── 收集重叠区 TXT（排除已在独占区匹配掉的） ──
+    matched_note_indices: set[int] = set()
+    for d in dialogues:
+        for n in getattr(d, "_exclusive_notes", []):
+            matched_note_indices.add(n.index)
+
+    overlap_notes = [n for n in notes if n.index not in matched_note_indices]
+
+    # 将重叠区未匹配的 TXT 按所属重叠对分组
+    # 先找每个重叠 TXT 属于哪个重叠对
     for op in overlap_pairs:
-        a = dialogues[op["a_idx"]]
-        b = dialogues[op["b_idx"]]
-
         zone_notes = []
         remaining = []
-        for note in unmatched_notes:
+        for note in overlap_notes:
             if op["zone_start"] <= note.time_s <= op["zone_end"]:
                 zone_notes.append(note)
             else:
                 remaining.append(note)
-        unmatched_notes = remaining
+        overlap_notes = remaining
 
         if not zone_notes:
             continue
 
-        if len(zone_notes) >= 2:
-            # ⚠️ 冲突——多条 TXT 需要用户决定
-            a_excl = getattr(a, "_exclusive_text", "")
-            b_excl = getattr(b, "_exclusive_text", "")
-            conflicts.append(
-                MergeConflict(
-                    a_idx=op["a_idx"],
-                    b_idx=op["b_idx"],
-                    a_start=a.start_str,
-                    a_end=a.end_str,
-                    b_start=b.start_str,
-                    b_end=b.end_str,
+        a = dialogues[op["a_idx"]]
+        b = dialogues[op["b_idx"]]
+
+        # 收集哪些 ASS 行可能被这些 TXT 匹配
+        involved: list[int] = []
+        seen: set[int] = set()
+        for note in zone_notes:
+            for di, d in enumerate(dialogues):
+                if d.start_s <= note.time_s <= d.end_s and di not in seen:
+                    seen.add(di)
+                    involved.append(di)
+
+        if len(involved) == 1:
+            # 虽然涉及重叠区，但 TXT 都在同一条 ASS 的时间窗口内
+            uncertain.append(
+                UncertainMatch(
+                    ass_idx=involved[0],
+                    ass_start=dialogues[involved[0]].start_str,
+                    ass_end=dialogues[involved[0]].end_str,
                     notes=zone_notes,
-                    a_text_before=a_excl,
-                    b_text_before=b_excl,
+                    reason=f"重叠区内 {len(zone_notes)} 条 TXT 落在同一条 ASS 窗口",
                 )
             )
-        else:
-            # 单条 TXT：A 先拿（如果A独占区没拿到），否则给B
-            note = zone_notes[0]
-            a_excl = getattr(a, "_exclusive_text", "")
-            b_excl = getattr(b, "_exclusive_text", "")
-            if not a_excl:
-                a._exclusive_text = note.text  # type: ignore[attr-defined]
-                a._exclusive_track = note.track  # type: ignore[attr-defined]
-            else:
-                b._exclusive_text = note.text  # type: ignore[attr-defined]
-                b._exclusive_track = note.track  # type: ignore[attr-defined]
-            auto_matched += 1
-
-    # ── 第三轮：剩余未匹配的（基本不会发生，但以防万一） ──
-    for note in unmatched_notes:
-        best_di = 0
-        best_dist = float("inf")
-        for di, d in enumerate(dialogues):
-            dist = min(abs(note.time_s - d.start_s), abs(note.time_s - d.end_s))
-            if dist < best_dist:
-                best_dist = dist
-                best_di = di
-        d = dialogues[best_di]
-        excl_text = getattr(d, "_exclusive_text", "")
-        if excl_text:
-            d._exclusive_text = excl_text + chr(92) + "N" + note.text  # type: ignore[attr-defined]
-        else:
-            d._exclusive_text = note.text  # type: ignore[attr-defined]
-            d._exclusive_track = note.track  # type: ignore[attr-defined]
+        elif len(involved) >= 2:
+            # 多条 ASS 竞争
+            # 逐个 ASS 报告
+            for ai in involved:
+                ass_notes = [n for n in zone_notes if dialogues[ai].start_s <= n.time_s <= dialogues[ai].end_s]
+                if ass_notes:
+                    uncertain.append(
+                        UncertainMatch(
+                            ass_idx=ai,
+                            ass_start=dialogues[ai].start_str,
+                            ass_end=dialogues[ai].end_str,
+                            notes=ass_notes,
+                            reason="时间重叠——多条 ASS 竞争该时间段",
+                        )
+                    )
 
     # ── 将 _exclusive_text / _exclusive_track 写入 dialogues ──
     for d in dialogues:
         d.text = getattr(d, "_exclusive_text", "")
         d.track = getattr(d, "_exclusive_track", "")
-        # 清理临时属性
-        for attr in ("_exclusive_end", "_exclusive_text", "_exclusive_track"):
+        for attr in ("_exclusive_end", "_exclusive_text", "_exclusive_track", "_exclusive_notes"):
             if hasattr(d, attr):
                 delattr(d, attr)
 
@@ -456,44 +512,7 @@ def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
         notes=notes,
         total_notes=len(notes),
         auto_matched=auto_matched,
-        conflicts=conflicts,
+        uncertain=uncertain,
         track_colors=track_colors,
         _raw_ass_lines=raw_lines,
     )
-
-
-def apply_conflict_resolution(plan: MergePlan, conflict_idx: int, a_note_idx: int, b_note_idx: int):
-    """应用用户对某个冲突的决议
-
-    Args:
-        plan: 合并计划
-        conflict_idx: 冲突索引
-        a_note_idx: 分配给 A 的 TXT note 在冲突.notes 中的索引
-        b_note_idx: 分配给 B 的 TXT note 在冲突.notes 中的索引
-    """
-    if conflict_idx >= len(plan.conflicts):
-        return
-    c = plan.conflicts[conflict_idx]
-
-    # 分配给 A
-    if 0 <= a_note_idx < len(c.notes):
-        a = plan.dialogues[c.a_idx]
-        a.text = c.a_text_before
-        a.track = c.notes[a_note_idx].track
-        if a.text:
-            a.text += chr(92) + "N" + c.notes[a_note_idx].text
-        else:
-            a.text = c.notes[a_note_idx].text
-
-    # 分配给 B
-    if 0 <= b_note_idx < len(c.notes):
-        b = plan.dialogues[c.b_idx]
-        b.text = c.b_text_before
-        b.track = c.notes[b_note_idx].track
-        if b.text:
-            b.text += chr(92) + "N" + c.notes[b_note_idx].text
-        else:
-            b.text = c.notes[b_note_idx].text
-
-    # 已处理，从 conflicts 中移除
-    plan.conflicts.pop(conflict_idx)
