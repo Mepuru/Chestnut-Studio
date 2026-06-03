@@ -222,13 +222,12 @@ class NoteManager:
     # ── 文本格式导出/导入 ──
 
     @staticmethod
-    def _build_track_colors_line(types: list[str] | None = None) -> str:
+    def _build_track_colors_line(types: tuple[str, ...] | None = None) -> str:
         """生成轨道颜色行，例如 '轨道1=#3b82f6, 轨道2=#10b981'"""
         used_types = types or NOTE_TYPES
         pairs = []
         for i, name in enumerate(used_types):
-            if i < len(TRACK_COLORS_HEX):
-                pairs.append(f"{name}={TRACK_COLORS_HEX[i]}")
+            pairs.append(f"{name}={TRACK_COLORS_HEX[i % len(TRACK_COLORS_HEX)]}")
         return ", ".join(pairs)
 
     def export_text(
