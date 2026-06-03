@@ -12,9 +12,10 @@ from pathlib import Path
 
 from chestnut_studio.core.track_config import NOTE_TYPES, TRACK_COLORS_HEX
 from chestnut_studio.utils.time_utils import ms_to_time_str
+from chestnut_studio.utils.version import get_version
 
 # 导出文本格式说明（文件头）
-EXPORT_HEADER = """# Chestnut Studio Notes
+EXPORT_HEADER = """# Chestnut Studio Notes v{version}
 # 术语数: {terms}
 # 视频: {video}
 # 时长: {duration}
@@ -240,6 +241,7 @@ class NoteManager:
         with open(path, "w", encoding="utf-8") as f:
             f.write(
                 EXPORT_HEADER.format(
+                    version=get_version(),
                     video=video_name,
                     duration=video_duration,
                     resolution=video_resolution,

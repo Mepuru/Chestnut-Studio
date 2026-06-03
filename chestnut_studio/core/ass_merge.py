@@ -18,6 +18,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from chestnut_studio.utils.version import get_version
+
 # ── 数据结构 ──
 
 
@@ -109,7 +111,7 @@ class MergePlan:
         )
 
         lines = []
-        lines.append("# Chestnut Studio - ASS/TXT 合并报告")
+        lines.append("# Chestnut Studio - ASS/TXT 合并报告 v" + get_version())
         lines.append("# 导出时间: " + now)
         lines.append("# ---")
         lines.append("# 源 ASS: " + Path(self.ass_path).name)
