@@ -13,7 +13,7 @@ wheels = [
 
 [[package]]
 name = "chestnut-studio"
-version = "2.2.1"
+version = "2.2.2"
 source = { editable = "." }
 dependencies = [
     { name = "pyside6" },
@@ -33,7 +33,7 @@ requires-dist = [{ name = "pyside6", specifier = ">=6.11.0" }]
 [package.metadata.requires-dev]
 dev = [
     { name = "pillow", specifier = ">=12.2.0" },
-    { name = "pyinstaller", specifier = ">=6.20.0" },
+    { name = "pyinstaller", specifier = ">=6.20,<7.0" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "ruff", specifier = ">=0.15.12" },
 ]

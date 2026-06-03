@@ -1,6 +1,6 @@
 [project]
 name = "chestnut-studio"
-version = "2.2.1"
+version = "2.2.2"
 description = "视频笔记工具 — 边看视频边记时间戳笔记"
 readme = "README.md"
 license = "MIT"
@@ -24,7 +24,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pillow>=12.2.0",
-    "pyinstaller>=6.20.0",
+    "pyinstaller>=6.20,<7.0",
     "pytest>=9.0.3",
     "ruff>=0.15.12",
 ]

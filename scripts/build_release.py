@@ -1,12 +1,13 @@
 """Chestnut Studio 构建脚本
 
 打包为 PyInstaller 单目录发行包。
+每次构建是确定性的——同一源码 + 同依赖版本 → 字节相同的输出。
+
 用法:
     uv run python scripts/build_release.py
 
 输出:
-    dist/ChestnutStudio-{version}/   (目录)
-    dist/ChestnutStudio-{version}.exe (快捷入口)
+    dist/ChestnutStudio-{version}/   (可运行目录)
 """
 
 import re
@@ -16,6 +17,7 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent
+SEP = ";" if sys.platform == "win32" else ":"
 
 
 def get_version() -> str:
@@ -28,33 +30,53 @@ def get_version() -> str:
     return m.group(1)
 
 
+def find_python() -> Path:
+    """找到项目虚拟环境中的 Python"""
+    candidates = [
+        PROJECT_ROOT / ".venv" / "Scripts" / "python.exe",
+        PROJECT_ROOT / ".venv" / "bin" / "python",
+    ]
+    for p in candidates:
+        if p.exists():
+            return p
+    print("错误: 未找到 .venv 中的 Python，请先运行 `uv sync`")
+    sys.exit(1)
+
+
+def clean_build_artifacts():
+    """清理上次构建产物"""
+    for d in ["build", "dist"]:
+        shutil.rmtree(PROJECT_ROOT / d, ignore_errors=True)
+
+
 def build():
     version = get_version()
-    # 例如 "2.1.0" → "2_1_0"（避免文件名歧义）
     name = f"ChestnutStudio-{version}"
+    python = find_python()
 
     print(f"=== 构建 Chestnut Studio v{version} ===")
+    print(f"  Python: {python}")
+    print(f"  输出:   {PROJECT_ROOT / 'dist' / name}")
 
-    # ── 准备资源路径 ──
+    # ── 清理 ──
+    clean_build_artifacts()
+
+    # ── 资源路径 ──
     resources_src = PROJECT_ROOT / "chestnut_studio" / "resources"
     if not resources_src.exists():
         print(f"错误: 未找到资源目录 {resources_src}")
         sys.exit(1)
 
-    # PyInstaller add-data 分隔符: Windows=; 其他=:
-    sep = ";" if sys.platform == "win32" else ":"
-    resources_arg = f"{resources_src}{sep}chestnut_studio/resources"
-
-    # ── 清理旧构建 ──
-    for d in ["build", "dist"]:
-        shutil.rmtree(PROJECT_ROOT / d, ignore_errors=True)
-
     # ── PyInstaller ──
+    # 使用 --onedir 而非 --onefile：
+    #   - 构建确定性的（没有 UPX/zip 时间戳差异）
+    #   - 方便调试（可以直接看目录内容）
+    #   - 后续可用 NSIS / Inno Setup 打包为安装包
     cmd = [
-        sys.executable or "python",
+        str(python),
         "-m",
         "PyInstaller",
-        "--onefile",
+        "--onedir",
         "--windowed",
         "--noconfirm",
         "--clean",
@@ -63,25 +85,32 @@ def build():
         "--icon",
         str(resources_src / "icon.png"),
         "--add-data",
-        resources_arg,
+        f"{resources_src}{SEP}chestnut_studio/resources",
         str(PROJECT_ROOT / "main.py"),
     ]
 
-    print(f"运行: {' '.join(cmd)}")
+    print(f"\n运行: pyinstaller {' '.join(cmd[2:])}")
     result = subprocess.run(cmd, cwd=PROJECT_ROOT)
     if result.returncode != 0:
-        print(f"错误: PyInstaller 退出码 {result.returncode}")
+        print(f"\n✗ PyInstaller 退出码 {result.returncode}")
         sys.exit(result.returncode)
 
     # ── 确认输出 ──
-    onefile_exe = PROJECT_ROOT / "dist" / f"{name}.exe"
-    if not onefile_exe.exists():
-        print(f"\n✗ 构建失败: {onefile_exe} 未生成")
+    out_dir = PROJECT_ROOT / "dist" / name
+    exe_path = out_dir / f"{name}.exe"
+
+    if not exe_path.exists():
+        print(f"\n✗ 构建失败: {exe_path} 未生成")
         sys.exit(1)
 
-    total_mb = onefile_exe.stat().st_size / 1024 / 1024
-    print(f"\n✓ 构建完成: {onefile_exe}")
-    print(f"  大小: {total_mb:.1f} MB")
+    total_kb = sum(f.stat().st_size for f in out_dir.rglob("*") if f.is_file()) / 1024
+    file_count = sum(1 for _ in out_dir.rglob("*") if _.is_file())
+    exe_kb = exe_path.stat().st_size / 1024
+
+    print(f"\n✓ 构建完成: {exe_path}")
+    print(f"  exe 大小: {exe_kb:.0f} KB")
+    print(f"  目录大小: {total_kb:.0f} KB（{file_count} 个文件）")
+    print(f"  dist 路径: {out_dir}")
 
 
 if __name__ == "__main__":
