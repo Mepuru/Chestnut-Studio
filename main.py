@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication
 
 from chestnut_studio.resources import get_icon_path, get_stylesheet_path
 from chestnut_studio.ui.main_window import MainWindow
+from chestnut_studio.utils.log_manager import LogManager
 from chestnut_studio.utils.version import get_version
 
 
@@ -37,6 +38,11 @@ def main():
     if style_path.exists():
         with open(style_path, "r", encoding="utf-8") as f:
             app.setStyleSheet(f.read())
+
+    # 日志输出（stderr，控制台启动时可见）
+    LogManager.instance().add_handler(
+        lambda r: print(f"[{r.source}] {r.message}", file=sys.stderr)
+    )
 
     # 主窗口
     window = MainWindow()
