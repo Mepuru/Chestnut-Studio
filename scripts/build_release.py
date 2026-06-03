@@ -123,6 +123,7 @@ def build_nuitka(version: str, python: Path) -> Path:
         "--assume-yes-for-downloads",
         "--enable-plugin=pyside6",
         "--include-qt-plugins=multimedia",
+        "--onefile-as-archive",
         "--windows-console-mode=disable",
         f"--jobs={cpu_count}",
         f"--windows-icon-from-ico={resources_src / 'icon.png'}",
