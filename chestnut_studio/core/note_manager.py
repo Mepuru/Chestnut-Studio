@@ -96,7 +96,9 @@ class Note:
                 return None
             m, r = time_str.split(":", 1)
             s, cs = r.split(".")
-            ms = int(m) * 60000 + int(s) * 1000 + int(cs) * 10
+            # 统一处理 2 位（厘秒）和 3 位（毫秒）小数
+            cs = cs.ljust(3, "0")[:3]
+            ms = int(m) * 60000 + int(s) * 1000 + int(cs)
             return cls(timestamp_ms=ms, text=text, type=track_name)
         except (ValueError, IndexError, KeyError):
             return None
