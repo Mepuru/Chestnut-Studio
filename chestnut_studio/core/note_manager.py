@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
-from chestnut_studio.core.track_config import NOTE_TYPES, TRACK_COLORS_HEX
+from chestnut_studio.core.track_config import NOTE_TYPES, get_track_color
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
 # 导出文本格式说明（文件头）
@@ -220,8 +220,8 @@ class NoteManager:
         used_types = types or NOTE_TYPES
         pairs = []
         for i, name in enumerate(used_types):
-            if i < len(TRACK_COLORS_HEX):
-                pairs.append(f"{name}={TRACK_COLORS_HEX[i]}")
+            track_num = i + 1
+            pairs.append(f"{name}={get_track_color(track_num)}")
         return ", ".join(pairs)
 
     def export_text(

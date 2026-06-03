@@ -3,6 +3,11 @@
 集中管理轨道颜色、数量等配置，供 UI 层各组件统一使用。
 """
 
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
 # 默认初始显示的轨道数
 DEFAULT_TRACK_COUNT = 10
 
@@ -24,9 +29,21 @@ TRACK_COLORS_HEX: list[str] = [
     "#a855f7",  # 轨道10: 紫罗兰
 ]
 
+# 用户自定义轨道颜色覆盖（轨道号 → 十六进制）
+_user_track_colors: dict[int, str] = {}
+_config_path: Path | None = None
+
+
+def set_config_path(path: str | Path):
+    """设置轨道颜色配置文件的保存路径"""
+    global _config_path
+    _config_path = Path(path)
+
 
 def get_track_color(track: int) -> str:
     """获取指定轨道的前景色（十六进制）
+
+    优先返回用户自定义颜色，无自定义时使用默认颜色。
 
     Args:
         track: 轨道号（从 1 开始）
@@ -34,8 +51,27 @@ def get_track_color(track: int) -> str:
     Returns:
         十六进制颜色字符串，超出范围时循环使用
     """
+    if track in _user_track_colors:
+        return _user_track_colors[track]
     idx = max(0, track - 1) % len(TRACK_COLORS_HEX)
     return TRACK_COLORS_HEX[idx]
+
+
+def set_track_color(track: int, hex_color: str):
+    """设置用户自定义轨道颜色"""
+    if not hex_color.startswith("#"):
+        hex_color = "#" + hex_color
+    _user_track_colors[track] = hex_color
+
+
+def reset_track_color(track: int):
+    """恢复指定轨道的默认颜色"""
+    _user_track_colors.pop(track, None)
+
+
+def get_all_track_colors() -> dict[int, str]:
+    """获取所有轨道的当前颜色（自定义优先，默认兜底）"""
+    return {i + 1: get_track_color(i + 1) for i in range(MAX_TRACK_COUNT)}
 
 
 def get_track_bg_color_hex(track: int, alpha: int = 30) -> str:
@@ -49,9 +85,35 @@ def get_track_bg_color_hex(track: int, alpha: int = 30) -> str:
         带 Alpha 的十六进制颜色字符串 (AARRGGBB 格式)
     """
     hex_color = get_track_color(track)
-    # #RRGGBB → #AARRGGBB
     r, g, b = hex_color[1:3], hex_color[3:5], hex_color[5:7]
     return f"#{alpha:02x}{r}{g}{b}"
+
+
+def save_track_colors(path: str | Path | None = None):
+    """将用户自定义轨道颜色保存到 JSON 文件"""
+    save_path = Path(path) if path else _config_path
+    if not save_path:
+        return
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    data = {str(k): v for k, v in _user_track_colors.items()}
+    save_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def load_track_colors(path: str | Path | None = None):
+    """从 JSON 文件加载用户自定义轨道颜色"""
+    load_path = Path(path) if path else _config_path
+    if not load_path or not load_path.exists():
+        return
+    try:
+        data = json.loads(load_path.read_text(encoding="utf-8"))
+        _user_track_colors.clear()
+        for k, v in data.items():
+            try:
+                _user_track_colors[int(k)] = v
+            except (ValueError, TypeError):
+                pass
+    except (json.JSONDecodeError, OSError):
+        pass
 
 
 # 笔记类型列表，从 DEFAULT_TRACK_COUNT 自动生成
