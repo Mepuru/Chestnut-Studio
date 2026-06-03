@@ -184,7 +184,6 @@ class MainWindow(QMainWindow):
         self.note_panel.jump_to_position.connect(self.player_card.set_position)
         self.note_panel.edit_requested.connect(self.input_bar.load_for_edit)
         self.note_panel.term_requested.connect(self._on_term_requested)
-        self.input_bar.term_added.connect(self._on_term_added)
 
     def _setup_drop(self):
         """设置拖放支持"""
