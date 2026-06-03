@@ -283,7 +283,9 @@ class MainWindow(QMainWindow):
             res_text = f"{info.width}×{info.height} " if info.width else ""
             status = f"已打开: {filename}  |  {res_text}{fps_text}"
             self.statusBar().showMessage(status, 5000)
-        except Exception:  # ffmpeg 调用可能因缺少可执行文件/格式不支持失败
+        except FileNotFoundError:
+            self.statusBar().showMessage(f"已打开: {filename}  | 提示: 安装 ffmpeg 可查看视频信息", 8000)
+        except Exception:  # 其他 ffmpeg 调用失败不阻塞播放
             self.statusBar().showMessage(f"已打开: {filename}", 5000)
 
     # ── 笔记操作 ──
