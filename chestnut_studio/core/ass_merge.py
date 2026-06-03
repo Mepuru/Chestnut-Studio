@@ -80,12 +80,11 @@ class MergePlan:
         for d in self.dialogues:
             prefix = d.raw_before_text
             if d.track:
-                # 在 Name 字段（第5字段，索引4）插入轨道名
-                # raw_before_text: "Dialogue: L,Start,End,Style,,ML,MR,MV,E"  (Name字段在索引4, 空着)
+                # 在 Style 字段（第4字段，索引3）替换为轨道名
+                # raw_before_text: "Dialogue: L,Start,End,Style,,ML,MR,MV,E"
                 parts = prefix.split(",", 8)
-                # parts[4] 是 Name 字段（当前为空）
-                if len(parts) > 4 and not parts[4]:
-                    parts[4] = d.track
+                if len(parts) > 3:
+                    parts[3] = d.track
                     prefix = ",".join(parts)
             new_lines[d.line_index] = prefix + "," + d.text
         return new_lines

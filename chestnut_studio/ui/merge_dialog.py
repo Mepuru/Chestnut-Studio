@@ -150,7 +150,8 @@ class MergeDialog(QDialog):
         """根据 ASS 路径自动生成输出路径"""
         ass = self._ass_path.text()
         if ass and ass != "未选择":
-            out = ass.replace(".ass", "_merged.ass")
+            name = Path(ass)
+            out = str(name.parent / ("merged_" + name.name))
             self._out_path.setText(out)
             self._out_path.setStyleSheet("")
 
