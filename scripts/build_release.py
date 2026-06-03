@@ -53,7 +53,7 @@ def build():
     cmd = [
         sys.executable or "python",
         "-m", "PyInstaller",
-        "--onedir",
+        "--onefile",
         "--windowed",
         "--noconfirm",
         "--clean",
@@ -69,19 +69,14 @@ def build():
         sys.exit(result.returncode)
 
     # ── 确认输出 ──
-    dist_dir = PROJECT_ROOT / "dist" / name
-    if dist_dir.exists():
-        exe = dist_dir / f"{name}.exe"
-        exe2 = dist_dir / "main.exe"
-        # 重命名 main.exe → ChestnutStudio-{version}.exe
-        if exe2.exists() and not exe.exists():
-            exe2.rename(exe)
-        print(f"\n✓ 构建完成: {dist_dir}")
-        print(f"  入口: {exe}")
-        print(f"  大小: {sum(f.stat().st_size for f in dist_dir.rglob('*')) / 1024 / 1024:.1f} MB")
-    else:
-        print(f"\n✗ 构建失败: {dist_dir} 未生成")
+    onefile_exe = PROJECT_ROOT / "dist" / f"{name}.exe"
+    if not onefile_exe.exists():
+        print(f"\n✗ 构建失败: {onefile_exe} 未生成")
         sys.exit(1)
+
+    total_mb = onefile_exe.stat().st_size / 1024 / 1024
+    print(f"\n✓ 构建完成: {onefile_exe}")
+    print(f"  大小: {total_mb:.1f} MB")
 
 
 if __name__ == "__main__":

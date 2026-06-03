@@ -201,8 +201,12 @@ class MergeDialog(QDialog):
     def _auto_output(self):
         ass = self._ass_path.text()
         if ass and ass != "（未选择）":
+            from datetime import datetime
+
+            date_tag = datetime.now().strftime("%y%m%d")
             name = Path(ass)
-            self._out_path.setText(str(name.parent / name.name))
+            out_name = f"{date_tag}M_{name.name}"
+            self._out_path.setText(str(name.parent / out_name))
 
     # ── 分析 ──
 
