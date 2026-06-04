@@ -44,7 +44,7 @@ def _setup_logging() -> Path:
 
     def file_handler(record: LogRecord) -> None:
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        line = f"[{ts}] [{record.source:8s}] {record.level.name:7s}  {record.message}\n"
+        line = f"[{ts}] [{record.source}] {record.level.name:7s}  {record.message}\n"
         log_file.write(line)
         log_file.flush()
 
