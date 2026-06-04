@@ -1,6 +1,6 @@
 [project]
 name = "chestnut-studio"
-version = "2.3.1"
+version = "2.4.0"
 description = "视频笔记工具 — 边看视频边记时间戳笔记"
 readme = "README.md"
 license = "MIT"
