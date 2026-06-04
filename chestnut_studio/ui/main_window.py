@@ -220,7 +220,7 @@ class MainWindow(QMainWindow):
 
     def _show_shortcuts(self):
         """显示快捷键列表"""
-        from PySide6.QtWidgets import QDialog, QTableWidget, QTableWidgetItem, QVBoxLayout
+        from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout
 
         dialog = QDialog(self)
         dialog.setWindowTitle("快捷键")
@@ -326,7 +326,7 @@ class MainWindow(QMainWindow):
         if not used_types:
             return
 
-        from PySide6.QtWidgets import QCheckBox, QDialog, QDialogButtonBox, QLabel, QVBoxLayout
+        from PySide6.QtWidgets import QCheckBox, QDialogButtonBox, QLabel, QVBoxLayout
 
         dialog = QDialog(self)
         dialog.setWindowTitle("导出笔记")
