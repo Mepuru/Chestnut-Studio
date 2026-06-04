@@ -66,12 +66,20 @@ class MainWindow(QMainWindow):
         self._note_manager = NoteManager()
         self._ffmpeg = FFmpeg()
 
+        # 初始状态栏消息（showEvent 时才会真正显示）
+        self._initial_status = "拖入视频文件 或 Ctrl+O 打开"
+
         # 创建 UI
         self._setup_menu_bar()
         self._setup_central_widget()
         self._setup_statusbar()
         self._connect_signals()
         self._setup_drop()
+
+    def showEvent(self, event):
+        """窗口首次显示时设置状态栏消息（避免初始化时消息被清空）"""
+        super().showEvent(event)
+        self._show_status(self._initial_status)
 
     # ── UI 构建 ──
 
@@ -176,7 +184,6 @@ class MainWindow(QMainWindow):
 
     def _setup_statusbar(self):
         """配置状态栏：左侧信息提示，右侧版本号"""
-        self._show_status("拖入视频文件 或 Ctrl+O 打开")
         ver_label = QLabel(f"v{get_version()}")
         ver_label.setObjectName("versionLabel")
         self.statusBar().addPermanentWidget(ver_label)
