@@ -87,57 +87,6 @@ class InputBar(QWidget):
     def get_current_track_type(self) -> str:
         return NOTE_TYPES[self._current_track_idx]
 
-    term_added = Signal(str, str, str, str)  # (source, translation, origin, note)
-
-    def _add_term(self):
-        """打开术语对话框"""
-        from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QLineEdit, QPushButton, QTextEdit, QVBoxLayout
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle("积累")
-        dialog.setMinimumSize(450, 400)
-        layout = QVBoxLayout(dialog)
-        layout.setSpacing(6)
-
-        layout.addWidget(QLabel("原文（日语）:"))
-        source_edit = QLineEdit()
-        source_edit.setPlaceholderText("遇到不会的日语词/句...")
-        layout.addWidget(source_edit)
-
-        layout.addWidget(QLabel("译文（中文）:"))
-        trans_edit = QLineEdit()
-        trans_edit.setPlaceholderText("对应的中文翻译...")
-        layout.addWidget(trans_edit)
-
-        layout.addWidget(QLabel("出处:"))
-        origin_edit = QLineEdit()
-        origin_edit.setPlaceholderText("出自哪部作品/哪一集/时间...")
-        layout.addWidget(origin_edit)
-
-        layout.addWidget(QLabel("备注:"))
-        note_edit = QTextEdit()
-        note_edit.setPlaceholderText("语法说明、用法注意、相关词汇...")
-        note_edit.setMinimumHeight(100)
-        layout.addWidget(note_edit)
-
-        btn_layout = QHBoxLayout()
-        save_btn = QPushButton("保存")
-        save_btn.clicked.connect(dialog.accept)
-        cancel_btn = QPushButton("取消")
-        cancel_btn.clicked.connect(dialog.reject)
-        btn_layout.addWidget(save_btn)
-        btn_layout.addWidget(cancel_btn)
-        layout.addLayout(btn_layout)
-
-        source_edit.setFocus()
-        if dialog.exec() == QDialog.Accepted:
-            source = source_edit.text().strip()
-            trans = trans_edit.text().strip()
-            origin = origin_edit.text().strip()
-            note = note_edit.text().strip()
-            if source and trans:
-                self.term_added.emit(source, trans, origin, note)
-
     def load_for_edit(self, note_type: str, text: str):
         """载入笔记到输入框方便修改"""
         if note_type in NOTE_TYPES:
