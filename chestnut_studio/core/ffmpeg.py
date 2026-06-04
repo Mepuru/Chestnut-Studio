@@ -1,5 +1,6 @@
 """FFmpeg 封装"""
 
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -138,8 +139,9 @@ class FFmpeg:
                 if "x" in part and part[0].isdigit():
                     w, h = part.split("x")[:2]
                     width, height = int(w), int(h.split()[0])
-                if "fps" in part:
-                    fps = float(part.split("fps")[0].strip())
+                m = re.search(r"([\d.]+)\s*fps", part)
+                if m:
+                    fps = float(m.group(1))
         except (ValueError, IndexError):
             pass
         return width, height, fps
