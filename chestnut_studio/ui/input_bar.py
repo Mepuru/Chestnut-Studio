@@ -68,7 +68,7 @@ class InputBar(QWidget):
         """更新轨道色块和名称"""
         track_num = self._current_track_idx + 1
         color = get_track_color(track_num)
-        self._color_dot.setStyleSheet(f"background: {color}; border-radius: 5px;")
+        self._color_dot.setStyleSheet(f"background: {color};")
         self._track_label.setText(NOTE_TYPES[self._current_track_idx])
         self._track_label.setStyleSheet(f"color: {color};")
 

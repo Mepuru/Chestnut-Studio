@@ -29,6 +29,7 @@ from chestnut_studio.ui.cards.player_card import PlayerCard
 from chestnut_studio.ui.input_bar import InputBar
 from chestnut_studio.ui.note_panel import NotePanel
 from chestnut_studio.utils import get_logger
+from chestnut_studio.utils.theme import get_theme
 from chestnut_studio.utils.time_utils import ms_to_time_str
 from chestnut_studio.utils.update_checker import API_URL, parse_release_data
 from chestnut_studio.utils.version import get_version
@@ -494,7 +495,7 @@ class MainWindow(QMainWindow):
         self._ver_label.setStyleSheet("")
         self._ver_label.setToolTip("")
         self._ver_label.setText(f"v{ver}  ⟳")
-        self._ver_label.setStyleSheet("color: #d4b85c;")  # 黄色 = 检查中
+        self._ver_label.setStyleSheet(f"color: {get_theme()['status_checking']};")
         self._ver_label.setToolTip("检查更新中…")
 
         req = QNetworkRequest(QUrl(API_URL))
@@ -528,7 +529,7 @@ class MainWindow(QMainWindow):
             logger.info(f"更新检查失败 (HTTP {status}): {msg}")
             tip = "更新检查过于频繁，稍后再试" if (status == 403 and "rate limit" in msg.lower()) else "更新检查失败"
             self._ver_label.setText(f"v{ver}  ⚠")
-            self._ver_label.setStyleSheet("color: #c06060;")
+            self._ver_label.setStyleSheet(f"color: {get_theme()['status_error']};")
             self._ver_label.setToolTip(tip)
             reply.deleteLater()
             return
@@ -541,7 +542,7 @@ class MainWindow(QMainWindow):
         except (json.JSONDecodeError, UnicodeDecodeError):
             logger.info("更新检查失败: 响应解析异常")
             self._ver_label.setText(f"v{ver}  ⚠")
-            self._ver_label.setStyleSheet("color: #c06060;")
+            self._ver_label.setStyleSheet(f"color: {get_theme()['status_error']};")
             self._ver_label.setToolTip("更新检查失败")
             reply.deleteLater()
             return
@@ -556,7 +557,7 @@ class MainWindow(QMainWindow):
             return
 
         self._ver_label.setText(f"⬆ v{info.latest_version}")
-        self._ver_label.setStyleSheet("color: #4ecdc4; font-weight: bold;")  # 青色 = 可更新
+        self._ver_label.setStyleSheet(f"color: {get_theme()['status_update']}; font-weight: bold;")
         self._ver_label.setToolTip(f"新版本 v{info.latest_version} 可用")
         logger.info(f"发现新版本: v{info.latest_version}")
 

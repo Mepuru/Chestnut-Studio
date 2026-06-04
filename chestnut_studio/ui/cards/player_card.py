@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from chestnut_studio.ui.player_controls import PlayerControls
 from chestnut_studio.utils import get_logger
+from chestnut_studio.utils.theme import get_theme
 
 logger = get_logger("UI")
 
@@ -49,7 +50,7 @@ class PlayerCard(QWidget):
         # ── 视频画面 ──
         self._video_widget = QVideoWidget()
         self._video_widget.setObjectName("videoWidget")
-        self._video_widget.setStyleSheet("background-color: #000000;")
+        self._video_widget.setStyleSheet(f"background-color: {get_theme()['bg_video']};")
         layout.addWidget(self._video_widget, 1)
 
         # ── 空状态提示 ──

@@ -65,7 +65,7 @@ class NoteItemWidget(QWidget):
         time_label.setObjectName("noteTime")
         time_label.setFixedWidth(52)
         color = get_track_color(NOTE_TYPES.index(self.note.type) + 1)
-        time_label.setStyleSheet(f"color: {color}; font-weight: 600; background: transparent;")
+        time_label.setStyleSheet(f"color: {color};")
         layout.addWidget(time_label)
 
         # 笔记文本（可换行）
