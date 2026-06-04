@@ -8,9 +8,6 @@ from chestnut_studio.utils.log_manager import (
     LogManager,
     LogRecord,
 )
-from chestnut_studio.utils.version import get_version
-
-_LOG_PREFIX = f"ChestnutStudio v{get_version()}: "
 
 
 @pytest.fixture(autouse=True)
@@ -73,7 +70,7 @@ class TestLogger:
 
         assert len(received) == 1
         assert received[0].level == LogLevel.DEBUG
-        assert received[0].message.endswith("debug message")
+        assert received[0].message == "debug message"
 
     def test_info(self):
         """测试 info 方法"""
@@ -141,7 +138,7 @@ class TestLogManager:
         logger.info("test")
 
         assert len(received) == 1
-        assert received[0].message.endswith("test")
+        assert received[0].message == "test"
 
     def test_remove_handler(self):
         """测试移除处理器"""
@@ -255,9 +252,9 @@ class TestIntegration:
         ffmpeg_logger.error("处理失败")
 
         assert len(logs) == 3
-        assert logs[0] == f"[FFmpeg] {_LOG_PREFIX}开始处理视频"
-        assert logs[1] == f"[波形] {_LOG_PREFIX}加载波形"
-        assert logs[2] == f"[FFmpeg] {_LOG_PREFIX}处理失败"
+        assert logs[0] == "[FFmpeg] 开始处理视频"
+        assert logs[1] == "[波形] 加载波形"
+        assert logs[2] == "[FFmpeg] 处理失败"
 
     def test_level_filtering_with_multiple_loggers(self):
         """测试多日志器的级别过滤"""
@@ -273,8 +270,8 @@ class TestIntegration:
         debug_logger.warning("should also pass")
 
         assert len(logs) == 2
-        assert logs[0].message == f"{_LOG_PREFIX}should pass"
-        assert logs[1].message == f"{_LOG_PREFIX}should also pass"
+        assert logs[0].message == "should pass"
+        assert logs[1].message == "should also pass"
 
 
 if __name__ == "__main__":
