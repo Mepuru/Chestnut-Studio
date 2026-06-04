@@ -12,7 +12,6 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from chestnut_studio.resources import get_icon_path, get_resource_path
-from chestnut_studio.ui.main_window import MainWindow
 from chestnut_studio.utils.log_manager import LogLevel, LogManager, LogRecord
 from chestnut_studio.utils.theme import render_stylesheet
 from chestnut_studio.utils.version import get_version
@@ -112,6 +111,8 @@ def _setup_crash_hook(log_path: Path) -> None:
 
 def main():
     """应用入口"""
+    import time as _time
+
     # 高 DPI 支持
     QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 
@@ -123,10 +124,12 @@ def main():
     app.setApplicationName("Chestnut Studio")
     app.setApplicationVersion(get_version())
 
-    # 启动页面（窗口渲染前弹出，感知提速）
-    from PySide6.QtGui import QIcon, QPixmap
+    # ── 启动页：最快速度弹出 ──
+    from PySide6.QtCore import QTimer
+    from PySide6.QtGui import QColor, QIcon, QPixmap
     from PySide6.QtWidgets import QSplashScreen
 
+    splash_t0 = _time.time()
     splash = None
     splash_path = get_resource_path("splash.png")
     if splash_path.exists():
@@ -134,24 +137,43 @@ def main():
         splash.show()
         app.processEvents()
 
-    # 设置窗口图标
+    # ── 分阶段加载（splash 上实时显示进度） ──
+
+    def _msg(text: str) -> None:
+        """更新启动页底部提示文字"""
+        if splash:
+            splash.showMessage(text, Qt.AlignBottom | Qt.AlignCenter, QColor("#8080b0"))
+            app.processEvents()
+
+    # 阶段 1：窗口图标 + 字体（极轻量）
     icon_path = get_icon_path()
     if icon_path.exists():
         app.setWindowIcon(QIcon(str(icon_path)))
-
-    # 全局字体
     font = QFont("Microsoft YaHei", 10)
     app.setFont(font)
 
-    # 加载样式表（通过主题引擎渲染模板）
+    # 阶段 2：主题（读 QSS 文件 + 正则替换）
+    _msg("正在加载主题…")
     app.setStyleSheet(render_stylesheet())
 
-    # 主窗口
+    # 阶段 3：主窗口（含 QMediaPlayer 等重型组件）
+    _msg("正在创建主窗口…")
+    from chestnut_studio.ui.main_window import MainWindow
+
     window = MainWindow()
+    _msg("正在启动…")
     window.show()
 
+    # 阶段 4：确保至少 1.5s 的展示时间，再过渡到主窗口
     if splash:
-        splash.finish(window)
+        elapsed = (_time.time() - splash_t0) * 1000
+        remain = max(0, 1500 - elapsed)
+        if remain > 0:
+            splash.showMessage("正在启动…", Qt.AlignBottom | Qt.AlignCenter, QColor("#8080b0"))
+            app.processEvents()
+            QTimer.singleShot(int(remain), lambda: splash.finish(window))
+        else:
+            splash.finish(window)
 
     sys.exit(app.exec())
 
