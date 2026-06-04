@@ -11,8 +11,9 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication, QMessageBox
 
-from chestnut_studio.resources import get_icon_path, get_stylesheet_path
+from chestnut_studio.resources import get_icon_path
 from chestnut_studio.ui.main_window import MainWindow
+from chestnut_studio.utils.theme import render_stylesheet
 from chestnut_studio.utils.log_manager import LogLevel, LogManager, LogRecord
 from chestnut_studio.utils.version import get_version
 
@@ -135,11 +136,8 @@ def main():
     font = QFont("Microsoft YaHei", 10)
     app.setFont(font)
 
-    # 加载样式表
-    style_path = get_stylesheet_path()
-    if style_path.exists():
-        with open(style_path, encoding="utf-8") as f:
-            app.setStyleSheet(f.read())
+    # 加载样式表（通过主题引擎渲染模板）
+    app.setStyleSheet(render_stylesheet())
 
     # 主窗口
     window = MainWindow()
