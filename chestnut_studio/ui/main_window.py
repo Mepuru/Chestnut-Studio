@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QUrl
-from PySide6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence
+from PySide6.QtGui import QAction, QIcon, QKeySequence
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest
 from PySide6.QtWidgets import (
     QDialog,
@@ -493,7 +493,7 @@ class MainWindow(QMainWindow):
         """拦截版本标签点击事件"""
         if obj is self._ver_label and event.type() == event.Type.MouseButtonPress:
             if self._update_info:
-                QDesktopServices.openUrl(QUrl(self._update_info.release_url))
+                self._show_update_dialog()
             return True
         return super().eventFilter(obj, event)
 
@@ -528,8 +528,48 @@ class MainWindow(QMainWindow):
         self._ver_label.setText(f"⬆ v{info.latest_version}")
         self._ver_label.setStyleSheet("color: #4ecdc4; font-weight: bold;")
         self._ver_label.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._ver_label.setToolTip(f"新版本 v{info.latest_version} 可用 — 点击查看")
+        self._ver_label.setToolTip(f"新版本 v{info.latest_version} 可用 — 点击查看更新日志")
         logger.info(f"发现新版本: v{info.latest_version}")
+
+    def _show_update_dialog(self):
+        """弹出更新日志对话框"""
+        info = self._update_info
+        if info is None:
+            return
+
+        from PySide6.QtGui import QDesktopServices
+        from PySide6.QtWidgets import (
+            QDialogButtonBox,
+            QTextEdit,
+            QVBoxLayout,
+        )
+
+        current = get_version()
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"更新可用 — v{current} → v{info.latest_version}")
+        dialog.setMinimumSize(480, 360)
+        dialog.setObjectName("updateDialog")
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(12)
+
+        notes = QTextEdit(dialog)
+        notes.setReadOnly(True)
+        notes.setObjectName("updateNotes")
+        notes.setText(info.release_notes)
+        layout.addWidget(notes)
+
+        buttons = QDialogButtonBox(dialog)
+        dl_btn = buttons.addButton("下载", QDialogButtonBox.ButtonRole.ActionRole)
+        detail_btn = buttons.addButton("查看详情", QDialogButtonBox.ButtonRole.ActionRole)
+        buttons.addButton(QDialogButtonBox.StandardButton.Close)
+        layout.addWidget(buttons)
+
+        dl_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(info.download_url)) if info.download_url else None)
+        detail_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(info.release_url)))
+
+        dialog.exec()
 
     # ── 快捷键 ──
 

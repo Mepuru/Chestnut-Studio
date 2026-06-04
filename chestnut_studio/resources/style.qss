@@ -88,6 +88,17 @@ QStatusBar::item {
     color: #6e7ed4;
 }
 
+/* ── 更新日志弹窗 ── */
+#updateNotes {
+    background: #1e1e38;
+    color: #c8c8e0;
+    border: 1px solid #2e2e50;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 8.5pt;
+    selection-background-color: #7c5cfc;
+}
+
 /* ── 分割条 ── */
 QSplitter::handle {
     background: #25254a;
