@@ -116,22 +116,18 @@ def main():
     # 高 DPI 支持
     QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 
-    # 日志初始化（放在最前面，确保后续所有日志都能捕获）
-    log_path = _setup_logging()
-    _setup_crash_hook(log_path)
-
     app = QApplication(sys.argv)
     app.setApplicationName("Chestnut Studio")
     app.setApplicationVersion(get_version())
 
-    # ── 启动页：最快速度弹出 ──
+    # ── 启动页：最快速度弹出（日志初始化等操作放到 splash 之后） ──
     from PySide6.QtCore import QTimer
     from PySide6.QtGui import QColor, QIcon, QPixmap
     from PySide6.QtWidgets import QSplashScreen
 
     splash_t0 = _time.time()
     splash = None
-    splash_path = get_resource_path("splash.png")
+    splash_path = get_resource_path("splash.jpg")
     if splash_path.exists():
         splash = QSplashScreen(QPixmap(str(splash_path)))
         splash.show()
@@ -144,6 +140,11 @@ def main():
         if splash:
             splash.showMessage(text, Qt.AlignBottom | Qt.AlignCenter, QColor("#8080b0"))
             app.processEvents()
+
+    # 阶段 0：日志初始化（放在 splash 后，不影响启动页弹出速度）
+    _msg("正在初始化日志…")
+    log_path = _setup_logging()
+    _setup_crash_hook(log_path)
 
     # 阶段 1：窗口图标 + 字体（极轻量）
     icon_path = get_icon_path()
