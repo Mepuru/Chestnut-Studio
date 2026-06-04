@@ -19,8 +19,10 @@ from PySide6.QtWidgets import (
 
 from chestnut_studio.core.note_manager import Note, NoteManager
 from chestnut_studio.core.track_config import NOTE_TYPES, get_track_color
-from chestnut_studio.utils.log_manager import LogLevel, LogManager, LogRecord
+from chestnut_studio.utils import get_logger
 from chestnut_studio.utils.time_utils import ms_to_time_str
+
+logger = get_logger("UI")
 
 
 class _NoteListWidget(QListWidget):
@@ -302,4 +304,4 @@ class NotePanel(QWidget):
         self._note_manager.clear_terms()
         self._note_manager.clear()
         self.refresh()
-        LogManager.instance().emit(LogRecord("UI", LogLevel.INFO, f"用户操作: 清空笔记 ({count} 条)"))
+        logger.info(f"用户操作: 清空笔记 ({count} 条)")
