@@ -105,7 +105,9 @@ class DebugBox(QDialog):
     def _add_bulk_notes(self, count: int):
         for i in range(count):
             track = NOTE_TYPES[i % len(NOTE_TYPES)]
-            self._note_manager.add(timestamp_ms=i * 100, text=f"性能测试笔记 #{i + 1} — 这是一条用于压力测试的示例文本", note_type=track)
+            self._note_manager.add(
+                timestamp_ms=i * 100, text=f"性能测试笔记 #{i + 1} — 这是一条用于压力测试的示例文本", note_type=track
+            )
         logger.info(f"性能测试: 批量添加完毕，共 {count} 条（分布到 {len(NOTE_TYPES)} 个轨道）")
         # 通知父窗口刷新列表
         parent = self.parent()

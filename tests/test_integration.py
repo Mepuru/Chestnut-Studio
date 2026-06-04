@@ -112,7 +112,7 @@ class TestPlayerCard:
         player = main_window.player_card
         player.set_playback_rate(1.5)
         player.set_playback_rate(0.05)  # should clamp
-        player.set_playback_rate(3.0)   # should clamp
+        player.set_playback_rate(3.0)  # should clamp
         # should not crash
 
 

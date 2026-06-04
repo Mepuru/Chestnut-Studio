@@ -139,7 +139,7 @@ class TestParseAss:
             Path(path).unlink(missing_ok=True)
 
     def test_parse_ass_malformed_line_skipped(self):
-        malformed = SAMPLE_ASS + 'Dialogue: 0,0:00:13.00,0:00:15.00\n'
+        malformed = SAMPLE_ASS + "Dialogue: 0,0:00:13.00,0:00:15.00\n"
         with tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as f:
             f.write(malformed)
             path = f.name
@@ -208,10 +208,50 @@ class TestMergePlanHelpers:
 
     def test_collect_used_tracks(self):
         dialogues = [
-            AssDialogue(line_index=0, start_s=0, end_s=1, start_str="", end_str="", style="", text="", raw_before_text="", track="轨道1"),
-            AssDialogue(line_index=1, start_s=1, end_s=2, start_str="", end_str="", style="", text="", raw_before_text="", track=""),
-            AssDialogue(line_index=2, start_s=2, end_s=3, start_str="", end_str="", style="", text="", raw_before_text="", track="轨道2"),
-            AssDialogue(line_index=3, start_s=3, end_s=4, start_str="", end_str="", style="", text="", raw_before_text="", track="轨道1"),
+            AssDialogue(
+                line_index=0,
+                start_s=0,
+                end_s=1,
+                start_str="",
+                end_str="",
+                style="",
+                text="",
+                raw_before_text="",
+                track="轨道1",
+            ),
+            AssDialogue(
+                line_index=1,
+                start_s=1,
+                end_s=2,
+                start_str="",
+                end_str="",
+                style="",
+                text="",
+                raw_before_text="",
+                track="",
+            ),
+            AssDialogue(
+                line_index=2,
+                start_s=2,
+                end_s=3,
+                start_str="",
+                end_str="",
+                style="",
+                text="",
+                raw_before_text="",
+                track="轨道2",
+            ),
+            AssDialogue(
+                line_index=3,
+                start_s=3,
+                end_s=4,
+                start_str="",
+                end_str="",
+                style="",
+                text="",
+                raw_before_text="",
+                track="轨道1",
+            ),
         ]
         plan = MergePlan("", "", dialogues, [], 0, 0, [], [], [], {})
         used = plan._collect_used_tracks()
@@ -248,16 +288,22 @@ def _make_txt_with_notes(notes: list[tuple[str, str, str]]) -> str:
 
 class TestBuildMergePlan:
     def test_simple_non_overlap(self):
-        ass = _make_ass_with_dialogues([
-            ("0:00:01.00", "0:00:04.00"),
-            ("0:00:05.00", "0:00:08.00"),
-        ])
-        txt = _make_txt_with_notes([
-            ("轨道1", "00:02.00", "笔记A"),
-            ("轨道1", "00:06.00", "笔记B"),
-        ])
-        with (tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as fa,
-              tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as ft):
+        ass = _make_ass_with_dialogues(
+            [
+                ("0:00:01.00", "0:00:04.00"),
+                ("0:00:05.00", "0:00:08.00"),
+            ]
+        )
+        txt = _make_txt_with_notes(
+            [
+                ("轨道1", "00:02.00", "笔记A"),
+                ("轨道1", "00:06.00", "笔记B"),
+            ]
+        )
+        with (
+            tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as fa,
+            tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as ft,
+        ):
             fa.write(ass)
             ft.write(txt)
             ass_path, txt_path = fa.name, ft.name
@@ -274,15 +320,21 @@ class TestBuildMergePlan:
             Path(txt_path).unlink(missing_ok=True)
 
     def test_single_txt_in_overlap(self):
-        ass = _make_ass_with_dialogues([
-            ("0:00:01.00", "0:00:06.00"),
-            ("0:00:04.00", "0:00:09.00"),
-        ])
-        txt = _make_txt_with_notes([
-            ("轨道1", "00:04.50", "中间笔记"),
-        ])
-        with (tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as fa,
-              tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as ft):
+        ass = _make_ass_with_dialogues(
+            [
+                ("0:00:01.00", "0:00:06.00"),
+                ("0:00:04.00", "0:00:09.00"),
+            ]
+        )
+        txt = _make_txt_with_notes(
+            [
+                ("轨道1", "00:04.50", "中间笔记"),
+            ]
+        )
+        with (
+            tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as fa,
+            tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as ft,
+        ):
             fa.write(ass)
             ft.write(txt)
             ass_path, txt_path = fa.name, ft.name
@@ -296,15 +348,21 @@ class TestBuildMergePlan:
             Path(txt_path).unlink(missing_ok=True)
 
     def test_multiple_txt_in_exclusive(self):
-        ass = _make_ass_with_dialogues([
-            ("0:00:01.00", "0:00:06.00"),
-        ])
-        txt = _make_txt_with_notes([
-            ("轨道1", "00:02.00", "笔记A"),
-            ("轨道1", "00:04.00", "笔记B"),
-        ])
-        with (tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as fa,
-              tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as ft):
+        ass = _make_ass_with_dialogues(
+            [
+                ("0:00:01.00", "0:00:06.00"),
+            ]
+        )
+        txt = _make_txt_with_notes(
+            [
+                ("轨道1", "00:02.00", "笔记A"),
+                ("轨道1", "00:04.00", "笔记B"),
+            ]
+        )
+        with (
+            tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as fa,
+            tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as ft,
+        ):
             fa.write(ass)
             ft.write(txt)
             ass_path, txt_path = fa.name, ft.name
@@ -318,14 +376,20 @@ class TestBuildMergePlan:
             Path(txt_path).unlink(missing_ok=True)
 
     def test_report_structure(self):
-        ass = _make_ass_with_dialogues([
-            ("0:00:01.00", "0:00:04.00"),
-        ])
-        txt = _make_txt_with_notes([
-            ("轨道1", "00:02.00", "笔记A"),
-        ])
-        with (tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as fa,
-              tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as ft):
+        ass = _make_ass_with_dialogues(
+            [
+                ("0:00:01.00", "0:00:04.00"),
+            ]
+        )
+        txt = _make_txt_with_notes(
+            [
+                ("轨道1", "00:02.00", "笔记A"),
+            ]
+        )
+        with (
+            tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as fa,
+            tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as ft,
+        ):
             fa.write(ass)
             ft.write(txt)
             ass_path, txt_path = fa.name, ft.name
@@ -341,14 +405,20 @@ class TestBuildMergePlan:
             Path(txt_path).unlink(missing_ok=True)
 
     def test_merge_write_output(self):
-        ass = _make_ass_with_dialogues([
-            ("0:00:01.00", "0:00:04.00"),
-        ])
-        txt = _make_txt_with_notes([
-            ("轨道1", "00:02.00", "笔记A"),
-        ])
-        with (tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as fa,
-              tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as ft):
+        ass = _make_ass_with_dialogues(
+            [
+                ("0:00:01.00", "0:00:04.00"),
+            ]
+        )
+        txt = _make_txt_with_notes(
+            [
+                ("轨道1", "00:02.00", "笔记A"),
+            ]
+        )
+        with (
+            tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as fa,
+            tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as ft,
+        ):
             fa.write(ass)
             ft.write(txt)
             ass_path, txt_path = fa.name, ft.name

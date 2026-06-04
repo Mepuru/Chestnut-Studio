@@ -385,11 +385,7 @@ class TestNoteManagerTermMethods:
             Path(path).unlink(missing_ok=True)
 
     def test_import_terms_multiple(self):
-        content = (
-            "# --- 术语 ---\n"
-            "# ---\n# 词: AAA\n# 译: aaa\n"
-            "# ---\n# 词: BBB\n# 译: bbb\n"
-        )
+        content = "# --- 术语 ---\n# ---\n# 词: AAA\n# 译: aaa\n# ---\n# 词: BBB\n# 译: bbb\n"
         mgr = NoteManager()
         with tempfile.NamedTemporaryFile(suffix=".txt", mode="w", delete=False, encoding="utf-8") as f:
             f.write(content)
