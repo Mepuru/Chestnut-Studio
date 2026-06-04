@@ -42,7 +42,6 @@ self.input_bar.note_sent.connect(self._on_note_sent)
 self.note_panel.jump_to_position.connect(self.player_card.set_position)
 self.note_panel.edit_requested.connect(self.input_bar.load_for_edit)
 self.note_panel.term_requested.connect(self._on_term_requested)
-self.input_bar.term_added.connect(self._on_term_added)
 ```
 
 ---
