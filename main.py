@@ -11,10 +11,10 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication, QMessageBox
 
-from chestnut_studio.resources import get_icon_path
+from chestnut_studio.resources import get_icon_path, get_resource_path
 from chestnut_studio.ui.main_window import MainWindow
-from chestnut_studio.utils.theme import render_stylesheet
 from chestnut_studio.utils.log_manager import LogLevel, LogManager, LogRecord
+from chestnut_studio.utils.theme import render_stylesheet
 from chestnut_studio.utils.version import get_version
 
 _log_file = None  # 日志文件句柄，供 crash hook 快照用
@@ -52,9 +52,9 @@ def _setup_logging() -> Path:
 
     # 会话分隔线
     sep = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    _log_file.write(f"{'='*60}\n")
+    _log_file.write(f"{'=' * 60}\n")
     _log_file.write(f"  Chestnut Studio v{get_version()} — {sep}\n")
-    _log_file.write(f"{'='*60}\n")
+    _log_file.write(f"{'=' * 60}\n")
     _log_file.flush()
 
     def file_handler(record: LogRecord) -> None:
@@ -113,9 +113,7 @@ def _setup_crash_hook(log_path: Path) -> None:
 def main():
     """应用入口"""
     # 高 DPI 支持
-    QApplication.setHighDpiScaleFactorRoundingPolicy(
-        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
-    )
+    QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 
     # 日志初始化（放在最前面，确保后续所有日志都能捕获）
     log_path = _setup_logging()
@@ -125,9 +123,18 @@ def main():
     app.setApplicationName("Chestnut Studio")
     app.setApplicationVersion(get_version())
 
-    # 设置窗口图标
-    from PySide6.QtGui import QIcon
+    # 启动页面（窗口渲染前弹出，感知提速）
+    from PySide6.QtGui import QIcon, QPixmap
+    from PySide6.QtWidgets import QSplashScreen
 
+    splash = None
+    splash_path = get_resource_path("splash.png")
+    if splash_path.exists():
+        splash = QSplashScreen(QPixmap(str(splash_path)))
+        splash.show()
+        app.processEvents()
+
+    # 设置窗口图标
     icon_path = get_icon_path()
     if icon_path.exists():
         app.setWindowIcon(QIcon(str(icon_path)))
@@ -142,6 +149,9 @@ def main():
     # 主窗口
     window = MainWindow()
     window.show()
+
+    if splash:
+        splash.finish(window)
 
     sys.exit(app.exec())
 
