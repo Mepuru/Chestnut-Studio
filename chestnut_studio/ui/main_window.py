@@ -297,6 +297,7 @@ class MainWindow(QMainWindow):
         """打开视频文件对话框"""
         path, _ = QFileDialog.getOpenFileName(self, "打开视频文件", "", self.VIDEO_FILTER)
         if path:
+            LogManager.instance().emit(LogRecord("UI", LogLevel.INFO, f"用户操作: 打开视频 → {path}"))
             self.player_card.open_video(path)
 
     def _on_video_opened(self, path: str):
@@ -322,9 +323,11 @@ class MainWindow(QMainWindow):
         """收到新笔记"""
         self._note_manager.add(timestamp_ms=timestamp_ms, text=text, note_type=note_type)
         self.note_panel.refresh()
+        LogManager.instance().emit(LogRecord("UI", LogLevel.INFO, f"用户操作: 添加笔记 [{note_type}] {text[:50]}"))
 
     def _on_term_requested(self, note_text: str, origin: str):
         """从笔记打开术语录入"""
+        LogManager.instance().emit(LogRecord("UI", LogLevel.INFO, f"用户操作: 打开术语对话框 ← {origin}"))
         from chestnut_studio.ui.term_dialog import TermEditDialog
 
         origin_text = Path(self.player_card.get_video_path()).name if self.player_card.get_video_path() else ""
@@ -458,6 +461,7 @@ class MainWindow(QMainWindow):
 
     def _on_merge_ass_txt(self):
         """打开 ASS+TXT 字幕合并对话框"""
+        LogManager.instance().emit(LogRecord("UI", LogLevel.INFO, "用户操作: 打开字幕合并对话框"))
         from chestnut_studio.ui.merge_dialog import MergeDialog
 
         dialog = MergeDialog(self)
@@ -517,5 +521,6 @@ class MainWindow(QMainWindow):
         for url in event.mimeData().urls():
             path = url.toLocalFile()
             if Path(path).suffix.lower() in self.VIDEO_EXTENSIONS:
+                LogManager.instance().emit(LogRecord("UI", LogLevel.INFO, f"用户操作: 拖放打开视频 → {path}"))
                 self.player_card.open_video(path)
                 break
