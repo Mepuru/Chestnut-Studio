@@ -1,4 +1,4 @@
-"""Chestnut Studio 入口 — B站风格视频笔记工具"""
+"""Chestnut Studio 入口 — 视频笔记工具"""
 
 import os
 import shutil
@@ -47,20 +47,20 @@ def _setup_logging() -> Path:
             f.unlink()
 
     # 文件 handler — 行缓冲 + 即时 flush，崩溃不丢日志
-    log_file = open(log_path, "a", encoding="utf-8", buffering=1)
+    _log_file = open(log_path, "a", encoding="utf-8", buffering=1)
 
     # 会话分隔线
     sep = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_file.write(f"{'='*60}\n")
-    log_file.write(f"  Chestnut Studio v{get_version()} — {sep}\n")
-    log_file.write(f"{'='*60}\n")
-    log_file.flush()
+    _log_file.write(f"{'='*60}\n")
+    _log_file.write(f"  Chestnut Studio v{get_version()} — {sep}\n")
+    _log_file.write(f"{'='*60}\n")
+    _log_file.flush()
 
     def file_handler(record: LogRecord) -> None:
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         line = f"[{ts}] [{record.source}] {record.level.name:7s}  {record.message}\n"
-        log_file.write(line)
-        log_file.flush()
+        _log_file.write(line)
+        _log_file.flush()
 
     LogManager.instance().add_handler(file_handler)
 
