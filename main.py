@@ -82,12 +82,13 @@ def _setup_crash_hook(log_path: Path) -> None:
         msg = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
         LogManager.instance().emit(LogRecord("CRASH", LogLevel.ERROR, msg))
 
-        # 快照：将当前日志复制为 crash_20260604_143000.log
+        # 快照：将当前日志复制为 crash_20260604_143000.log 并清空 app.log
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         snap_path = log_path.with_stem(f"crash_{ts}")
         try:
             _log_file.flush()
             shutil.copy2(log_path, snap_path)
+            _log_file.truncate(0)
         except Exception:
             pass
 
