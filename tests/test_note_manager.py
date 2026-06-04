@@ -400,3 +400,46 @@ class TestNoteManagerTermMethods:
             assert mgr.term_count() == 2
         finally:
             Path(path).unlink(missing_ok=True)
+
+
+class TestNoteManagerFileErrors:
+    """NoteManager 文件 I/O 异常路径测试"""
+
+    @staticmethod
+    def _bad_path(suffix: str) -> str:
+        """返回一个深层不存在的路径，触发 OSError"""
+        parent = Path(tempfile.gettempdir()) / "_chestnut_test_deep_nonexistent_" / "sub"
+        return str(parent / f"test{suffix}")
+
+    def test_export_text_bad_path(self):
+        mgr = NoteManager()
+        mgr.add(1000, "测试")
+        with pytest.raises(OSError, match="导出笔记失败"):
+            mgr.export_text(self._bad_path(".txt"))
+
+    def test_export_json_bad_path(self):
+        mgr = NoteManager()
+        mgr.add(1000, "测试")
+        with pytest.raises(OSError, match="导出 JSON 失败"):
+            mgr.export_json(self._bad_path(".json"))
+
+    def test_export_terms_bad_path(self):
+        mgr = NoteManager()
+        mgr.add_term("test", "测试")
+        with pytest.raises(OSError, match="导出术语失败"):
+            mgr.export_terms(self._bad_path(".txt"))
+
+    def test_import_text_bad_path(self):
+        mgr = NoteManager()
+        with pytest.raises(OSError, match="导入笔记失败"):
+            mgr.import_text(self._bad_path(".txt"))
+
+    def test_import_json_bad_path(self):
+        mgr = NoteManager()
+        with pytest.raises(OSError, match="导入 JSON 失败"):
+            mgr.import_json(self._bad_path(".json"))
+
+    def test_import_terms_bad_path(self):
+        mgr = NoteManager()
+        with pytest.raises(OSError, match="导入术语失败"):
+            mgr.import_terms(self._bad_path(".txt"))
