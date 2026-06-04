@@ -206,10 +206,6 @@ class MergePlan:
 
         return str(ass_path), str(report_path)
 
-    def get_ass_content(self) -> str:
-        """获取合并后的 ASS 文本内容（用于预览）"""
-        return "\n".join(self._repr_lines())
-
     def _collect_used_tracks(self) -> list[str]:
         """收集用到的轨道名（去重，保持出现顺序）"""
         used: list[str] = []
