@@ -176,11 +176,12 @@ class MainWindow(QMainWindow):
 
     def _setup_statusbar(self):
         """配置状态栏：左侧信息提示（永不过期），右侧版本号"""
-        self._status_label = QLabel("拖入视频文件 或 Ctrl+O 打开")
+        self._status_label = QLabel()
         self.statusBar().addWidget(self._status_label, 1)
         ver_label = QLabel(f"v{get_version()}")
         ver_label.setObjectName("versionLabel")
         self.statusBar().addPermanentWidget(ver_label)
+        self._show_status("拖入视频文件 或 Ctrl+O 打开")
 
     def _show_status(self, msg: str):
         """统一状态出口：更新状态栏标签 + 写入日志
