@@ -1,6 +1,7 @@
 """Chestnut Studio 入口 — B站风格视频笔记工具"""
 
 import os
+import shutil
 import sys
 import traceback
 from datetime import datetime
@@ -14,6 +15,8 @@ from chestnut_studio.resources import get_icon_path, get_stylesheet_path
 from chestnut_studio.ui.main_window import MainWindow
 from chestnut_studio.utils.log_manager import LogLevel, LogManager, LogRecord
 from chestnut_studio.utils.version import get_version
+
+_log_file = None  # 日志文件句柄，供 crash hook 快照用
 
 
 def _get_log_dir() -> Path:
@@ -29,6 +32,7 @@ def _setup_logging() -> Path:
     Returns:
         日志文件路径
     """
+    global _log_file
     log_dir = _get_log_dir()
     log_path = log_dir / "app.log"
 
@@ -71,18 +75,28 @@ def _setup_logging() -> Path:
 
 
 def _setup_crash_hook(log_path: Path) -> None:
-    """全局未捕获异常兜底：落日志 + 弹窗提示用户"""
+    """全局未捕获异常兜底：落日志 + 时间戳快照 + 弹窗提示用户"""
     old_hook = sys.excepthook
 
     def crash_hook(exc_type, exc_value, exc_tb):
         msg = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
         LogManager.instance().emit(LogRecord("CRASH", LogLevel.ERROR, msg))
+
+        # 快照：将当前日志复制为 crash_20260604_143000.log
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        snap_path = log_path.with_stem(f"crash_{ts}")
+        try:
+            _log_file.flush()
+            shutil.copy2(log_path, snap_path)
+        except Exception:
+            pass
+
         # 弹窗告诉用户日志位置
         try:
             QMessageBox.critical(
                 None,
                 "程序出错",
-                f"发生未预期的错误，请将以下日志文件发送给开发者：\n\n{log_path}\n",
+                f"发生未预期的错误，请将以下日志文件发送给开发者：\n\n{snap_path}\n",
             )
         except Exception:
             pass
