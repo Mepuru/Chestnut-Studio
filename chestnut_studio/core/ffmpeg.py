@@ -5,6 +5,8 @@ import subprocess
 import sys
 from dataclasses import dataclass
 
+from chestnut_studio.utils import get_logger
+
 # Windows 下隐藏控制台窗口的标志
 CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 
@@ -39,6 +41,7 @@ class FFmpeg:
             ffmpeg_path: ffmpeg 可执行文件路径，默认从 PATH 中查找
         """
         self._path = ffmpeg_path
+        self._logger = get_logger("FFmpeg")
 
     def get_video_info(self, video_path: str) -> VideoInfo:
         """解析视频信息
@@ -50,6 +53,7 @@ class FFmpeg:
             VideoInfo 数据对象
         """
         cmd = [self._path, "-i", video_path]
+        self._logger.debug(f"解析视频: {video_path}")
         result = subprocess.run(
             cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", creationflags=CREATE_NO_WINDOW
         )
@@ -69,6 +73,7 @@ class FFmpeg:
                 info.width, info.height, info.fps = w, h, fps
                 found_main_video = True
 
+        self._logger.info(f"视频: {info.width}x{info.height}, {info.fps:.0f}fps, {info.duration}ms")
         return info
 
     def extract_audio(self, video_path: str, output_path: str, sample_rate: int = 1000) -> bool:
@@ -83,10 +88,16 @@ class FFmpeg:
             是否成功
         """
         cmd = [self._path, "-y", "-i", video_path, "-vn", "-ar", str(sample_rate), output_path]
+        self._logger.debug(f"提取音频: {video_path} → {output_path}, {sample_rate}Hz")
         result = subprocess.run(
             cmd, capture_output=True, encoding="utf-8", errors="replace", creationflags=CREATE_NO_WINDOW
         )
-        return result.returncode == 0
+        ok = result.returncode == 0
+        if ok:
+            self._logger.info(f"音频提取完成: {output_path}")
+        else:
+            self._logger.warning(f"音频提取失败: {result.stderr[:200]}")
+        return ok
 
     def _parse_duration(self, line: str) -> int:
         """解析时长行，返回毫秒

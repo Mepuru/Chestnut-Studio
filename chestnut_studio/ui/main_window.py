@@ -4,6 +4,8 @@
 纯 QWidget 布局，无 QDockWidget。
 """
 
+import os
+import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt
@@ -26,6 +28,7 @@ from chestnut_studio.resources import get_icon_path
 from chestnut_studio.ui.cards.player_card import PlayerCard
 from chestnut_studio.ui.input_bar import InputBar
 from chestnut_studio.ui.note_panel import NotePanel
+from chestnut_studio.utils.log_manager import LogLevel, LogManager, LogRecord
 from chestnut_studio.utils.time_utils import ms_to_time_str
 from chestnut_studio.utils.version import get_version
 
@@ -119,9 +122,15 @@ class MainWindow(QMainWindow):
         self._term_view_action.triggered.connect(self._show_terms)
         menu_bar.addAction(self._term_view_action)
 
-        self._about_action = QAction("关于", self)
+        # ── 帮助菜单 ──
+        help_menu = menu_bar.addMenu("帮助(&H)")
+        self._view_log_action = QAction("查看日志(&L)", self)
+        self._view_log_action.triggered.connect(self._open_log_file)
+        help_menu.addAction(self._view_log_action)
+        help_menu.addSeparator()
+        self._about_action = QAction("关于(&A)", self)
         self._about_action.triggered.connect(self._show_about)
-        menu_bar.addAction(self._about_action)
+        help_menu.addAction(self._about_action)
 
     def _setup_central_widget(self):
         """创建中央区域布局"""
@@ -163,10 +172,19 @@ class MainWindow(QMainWindow):
 
     def _setup_statusbar(self):
         """配置状态栏：左侧信息提示，右侧版本号"""
-        self.statusBar().showMessage("拖入视频文件 或 Ctrl+O 打开")
+        self._show_status("拖入视频文件 或 Ctrl+O 打开")
         ver_label = QLabel(f"v{get_version()}")
         ver_label.setObjectName("versionLabel")
         self.statusBar().addPermanentWidget(ver_label)
+
+    def _show_status(self, msg: str):
+        """统一状态出口：状态栏显示 + 写入日志
+
+        Args:
+            msg: 状态消息
+        """
+        self.statusBar().showMessage(msg)
+        LogManager.instance().emit(LogRecord("UI", LogLevel.INFO, msg))
 
     def _connect_signals(self):
         """连接信号"""
@@ -208,6 +226,18 @@ class MainWindow(QMainWindow):
             "支持 10 条彩色轨道、术语库、"
             "ASS+TXT 字幕合并。</p>",
         )
+
+    def _open_log_file(self):
+        """用系统默认编辑器打开日志文件"""
+        if getattr(sys, "frozen", False):
+            base = Path(os.environ["LOCALAPPDATA"]) / "ChestnutStudio"
+        else:
+            base = Path(__file__).resolve().parent.parent.parent / "logs"
+        log_path = base / "app.log"
+        if log_path.exists():
+            os.startfile(str(log_path))
+        else:
+            QMessageBox.information(self, "日志", "暂无日志记录。")
 
     def _show_terms(self):
         """显示术语列表"""
@@ -284,11 +314,11 @@ class MainWindow(QMainWindow):
             fps_text = f"{info.fps:.0f}fps " if info.fps else ""
             res_text = f"{info.width}×{info.height} " if info.width else ""
             status = f"已打开: {filename}  |  {res_text}{fps_text}"
-            self.statusBar().showMessage(status)
+            self._show_status(status)
         except FileNotFoundError:
-            self.statusBar().showMessage(f"已打开: {filename}  | 提示: 安装 ffmpeg 可查看视频信息")
+            self._show_status(f"已打开: {filename}  | 提示: 安装 ffmpeg 可查看视频信息")
         except Exception:  # 其他 ffmpeg 调用失败不阻塞播放
-            self.statusBar().showMessage(f"已打开: {filename}")
+            self._show_status(f"已打开: {filename}")
 
     # ── 笔记操作 ──
 
@@ -317,7 +347,7 @@ class MainWindow(QMainWindow):
     def _on_term_added(self, source: str, translation: str, origin: str, note: str):
         """添加术语"""
         self._note_manager.add_term(source, translation, origin, note)
-        self.statusBar().showMessage(f"术语: {source} → {translation}")
+        self._show_status(f"术语: {source} → {translation}")
 
     def _on_export_notes(self):
         """导出笔记 — 选轨道、选格式"""
@@ -358,7 +388,7 @@ class MainWindow(QMainWindow):
 
         selected_tracks = [t for t, cb in track_cbs.items() if cb.isChecked()]
         if not selected_tracks:
-            self.statusBar().showMessage("未选择任何轨道")
+            self._show_status("未选择任何轨道")
             return
 
         # 默认文件名 = 视频名（过长截断）
@@ -400,7 +430,7 @@ class MainWindow(QMainWindow):
         except OSError as e:
             QMessageBox.critical(self, "导出失败", str(e))
             return
-        self.statusBar().showMessage(f"已导出 {count} 条笔记")
+        self._show_status(f"已导出 {count} 条笔记")
 
     def _on_import_notes(self):
         """从 txt 文件导入笔记"""
@@ -427,7 +457,7 @@ class MainWindow(QMainWindow):
             msg = f"已导入 {count} 条笔记"
             if term_count:
                 msg += f"，{term_count} 条术语"
-            self.statusBar().showMessage(msg)
+            self._show_status(msg)
         self.note_panel.refresh()
 
     def _on_merge_ass_txt(self):

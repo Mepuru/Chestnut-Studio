@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 from chestnut_studio.core.track_config import NOTE_TYPES, TRACK_COLORS_HEX
+from chestnut_studio.utils import get_logger
 from chestnut_studio.utils.time_utils import ms_to_time_str
 from chestnut_studio.utils.version import get_version
 
@@ -183,6 +184,7 @@ class NoteManager:
     def __init__(self):
         self._notes: list[Note] = []
         self._terms: list[Term] = []
+        self._logger = get_logger("NoteManager")
 
     # ── 增 ──
 
@@ -190,6 +192,7 @@ class NoteManager:
         note = Note(timestamp_ms=timestamp_ms, text=text, type=note_type)
         self._notes.append(note)
         self._notes.sort(key=lambda n: n.timestamp_ms)
+        self._logger.debug(f"添加笔记: [{note_type}] {text[:50]}")
         return note
 
     # ── 删 ──
@@ -264,7 +267,9 @@ class NoteManager:
                 for n in notes:
                     f.write(n.to_line(id_map.get(n, 0)) + "\n")
         except OSError as e:
+            self._logger.error(f"导出文本失败: {path} — {e}")
             raise OSError(f"导出笔记失败: {e}") from e
+        self._logger.info(f"导出文本: {len(notes)} 条 → {path}")
         return len(notes)
 
     def assign_ids(self) -> dict[Note, int]:
@@ -291,8 +296,10 @@ class NoteManager:
                         self._notes.append(note)
                         count += 1
         except (OSError, UnicodeDecodeError) as e:
+            self._logger.error(f"导入文本失败: {path} — {e}")
             raise OSError(f"导入笔记失败: {e}") from e
         self._notes.sort()
+        self._logger.info(f"导入文本: {count} 条 ← {path}")
         return count
 
     def export_json(self, path: str | Path, types: list[str] | None = None) -> int:
@@ -302,7 +309,9 @@ class NoteManager:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except OSError as e:
+            self._logger.error(f"导出 JSON 失败: {path} — {e}")
             raise OSError(f"导出 JSON 失败: {e}") from e
+        self._logger.info(f"导出 JSON: {len(notes)} 条 → {path}")
         return len(notes)
 
     def import_json(self, path: str | Path) -> int:
@@ -310,12 +319,15 @@ class NoteManager:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
+            self._logger.error(f"导入 JSON 失败: {path} — {e}")
             raise OSError(f"导入 JSON 失败: {e}") from e
         for item in data.get("notes", []):
             note = Note.from_dict(item)
             self._notes.append(note)
         self._notes.sort()
-        return len(data.get("notes", []))
+        count = len(data.get("notes", []))
+        self._logger.info(f"导入 JSON: {count} 条 ← {path}")
+        return count
 
     # ── 术语库 ──
 
@@ -326,8 +338,10 @@ class NoteManager:
         for i, t in enumerate(self._terms):
             if t.source == source:
                 self._terms[i] = term
+                self._logger.debug(f"更新术语: {source} → {translation}")
                 return term
         self._terms.append(term)
+        self._logger.debug(f"添加术语: {source} → {translation}")
         return term
 
     def get_terms(self) -> list[Term]:
@@ -362,7 +376,9 @@ class NoteManager:
                 for term in self._terms:
                     f.write(term.to_line() + "\n")
         except OSError as e:
+            self._logger.error(f"导出术语失败: {path} — {e}")
             raise OSError(f"导出术语失败: {e}") from e
+        self._logger.info(f"导出术语: {len(self._terms)} 条")
         return len(self._terms)
 
     def import_terms(self, path: str | Path) -> int:
@@ -395,5 +411,7 @@ class NoteManager:
                         self.add_term(t.source, t.translation, t.origin, t.note)
                         count += 1
         except (OSError, UnicodeDecodeError) as e:
+            self._logger.error(f"导入术语失败: {path} — {e}")
             raise OSError(f"导入术语失败: {e}") from e
+        self._logger.info(f"导入术语: {count} 条")
         return count
