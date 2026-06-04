@@ -301,17 +301,23 @@ class MergePlan:
 
 
 def _parse_ass_time(s: str) -> float:
-    """h:mm:ss.xx → 秒"""
-    parts = s.split(":")
-    return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+    """h:mm:ss.xx → 秒，解析失败返回 0.0"""
+    try:
+        parts = s.split(":")
+        return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+    except (ValueError, IndexError):
+        return 0.0
 
 
 def _parse_txt_time(s: str) -> float:
-    """mm:ss.xx 或 h:mm:ss.xx → 秒"""
-    parts = s.split(":")
-    if len(parts) == 2:
-        return int(parts[0]) * 60 + float(parts[1])
-    return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+    """mm:ss.xx 或 h:mm:ss.xx → 秒，解析失败返回 0.0"""
+    try:
+        parts = s.split(":")
+        if len(parts) == 2:
+            return int(parts[0]) * 60 + float(parts[1])
+        return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+    except (ValueError, IndexError):
+        return 0.0
 
 
 def parse_ass(filepath: str) -> tuple[list[AssDialogue], list[str]]:
@@ -326,20 +332,25 @@ def parse_ass(filepath: str) -> tuple[list[AssDialogue], list[str]]:
             idx = _nth_comma(line, 8)
             if idx < 0:
                 continue
-            prefix = line[:idx]  # 前9个字段
-            parts = prefix.split(",")
-            # parts[1]=start, parts[2]=end, parts[3]=style
-            d = AssDialogue(
-                line_index=i,
-                start_s=_parse_ass_time(parts[1].strip()),
-                end_s=_parse_ass_time(parts[2].strip()),
-                start_str=parts[1].strip(),
-                end_str=parts[2].strip(),
-                style=parts[3].strip(),
-                text="",
-                raw_before_text=prefix,
-            )
-            dialogues.append(d)
+            try:
+                prefix = line[:idx]  # 前9个字段
+                parts = prefix.split(",")
+                # parts[1]=start, parts[2]=end, parts[3]=style
+                start_str = parts[1].strip()
+                end_str = parts[2].strip()
+                d = AssDialogue(
+                    line_index=i,
+                    start_s=_parse_ass_time(start_str),
+                    end_s=_parse_ass_time(end_str),
+                    start_str=start_str,
+                    end_str=end_str,
+                    style=parts[3].strip(),
+                    text="",
+                    raw_before_text=prefix,
+                )
+                dialogues.append(d)
+            except (ValueError, IndexError):
+                continue
 
     return dialogues, raw_lines
 
