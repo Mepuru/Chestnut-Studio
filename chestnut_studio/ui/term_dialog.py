@@ -78,6 +78,7 @@ class TermEditDialog(QDialog):
     def _setup_ui(self, term: Term | None):
         self.setWindowTitle(f"编辑术语: {term.source}" if term else "新建术语")
         self.setMinimumSize(450, 420)
+        self.setObjectName("termEditDialog")
 
         layout = QVBoxLayout(self)
         layout.setSpacing(6)

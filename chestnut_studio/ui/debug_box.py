@@ -28,6 +28,7 @@ class DebugBox(QDialog):
         self._note_manager = note_manager
         self.setWindowTitle("百宝箱")
         self.setMinimumSize(480, 400)
+        self.setObjectName("debugBox")
         self._setup_ui()
 
     def _setup_ui(self):

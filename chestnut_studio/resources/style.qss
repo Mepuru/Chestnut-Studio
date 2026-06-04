@@ -543,3 +543,93 @@ QTextEdit#reportView {
     border-radius: 8px;
     padding: 8px;
 }
+
+/* ── 术语编辑对话框 ── */
+#termEditDialog {
+    background: {{bg_base}};
+}
+
+#termEditDialog QLineEdit {
+    background: {{bg_surface}};
+    border: 1px solid {{border_default}};
+    border-radius: 6px;
+    padding: 5px 10px;
+    color: {{text_primary}};
+    min-height: 22px;
+}
+
+#termEditDialog QLineEdit:focus {
+    border-color: {{accent}};
+}
+
+#termEditDialog QTextEdit {
+    background: {{bg_surface}};
+    border: 1px solid {{border_default}};
+    border-radius: 6px;
+    padding: 5px 10px;
+    color: {{text_primary}};
+}
+
+#termEditDialog QTextEdit:focus {
+    border-color: {{accent}};
+}
+
+#termEditDialog QLabel {
+    color: {{text_secondary}};
+    font-size: 9pt;
+}
+
+/* ── 百宝箱对话框 ── */
+#debugBox {
+    background: {{bg_base}};
+}
+
+#debugBox QGroupBox {
+    color: {{text_primary}};
+    font-weight: 600;
+    border: 1px solid {{border_default}};
+    border-radius: 6px;
+    margin-top: 8px;
+    padding-top: 16px;
+}
+
+#debugBox QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 4px;
+}
+
+#debugBox QPushButton {
+    background: {{bg_surface}};
+    border: 1px solid {{border_default}};
+    border-radius: 6px;
+    padding: 5px 14px;
+    color: {{text_secondary}};
+    min-height: 22px;
+}
+
+#debugBox QPushButton:hover {
+    border-color: {{accent}};
+    color: {{text_on_accent}};
+}
+
+#debugBox QLabel {
+    color: {{text_muted}};
+    font-size: 9pt;
+}
+
+/* ── 排序/术语按钮 ── */
+#sortBtn, #termBtn {
+    background: transparent;
+    border: 1px solid {{border_default}};
+    border-radius: 6px;
+    color: {{text_muted}};
+    font-size: 8pt;
+    padding: 2px 8px;
+    min-height: 20px;
+}
+
+#sortBtn:hover, #termBtn:hover {
+    border-color: {{accent}};
+    color: {{text_on_accent}};
+}
