@@ -184,7 +184,7 @@ class MainWindow(QMainWindow):
         Args:
             msg: 状态消息
         """
-        self.statusBar().showMessage(msg)
+        self.statusBar().showMessage(msg, 0)
         logger.info(msg)
 
     def _connect_signals(self):
