@@ -192,7 +192,7 @@ class NoteManager:
         note = Note(timestamp_ms=timestamp_ms, text=text, type=note_type)
         self._notes.append(note)
         self._notes.sort(key=lambda n: n.timestamp_ms)
-        self._logger.debug(f"添加笔记: [{note_type}] {text[:50]}")
+        self._logger.info(f"添加笔记: [{note_type}] {ms_to_time_str(timestamp_ms)} {text[:50]}")
         return note
 
     # ── 删 ──
@@ -200,6 +200,7 @@ class NoteManager:
     def remove(self, note: Note) -> bool:
         try:
             self._notes.remove(note)
+            self._logger.info(f"删除笔记: [{note.type}] {ms_to_time_str(note.timestamp_ms)} {note.text[:50]}")
             return True
         except ValueError:
             return False

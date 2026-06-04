@@ -288,7 +288,6 @@ class NotePanel(QWidget):
         widget = self._list.itemWidget(item)
         if isinstance(widget, NoteItemWidget):
             self._note_manager.remove(widget.note)
-            logger.info(f"用户操作: 删除笔记 [{widget.note.type}] {ms_to_time_str(widget.note.timestamp_ms)} {widget.note.text[:50]}")
             self.refresh()
 
     def _clear_all(self):

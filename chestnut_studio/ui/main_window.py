@@ -335,7 +335,6 @@ class MainWindow(QMainWindow):
         """收到新笔记"""
         self._note_manager.add(timestamp_ms=timestamp_ms, text=text, note_type=note_type)
         self.note_panel.refresh()
-        logger.info(f"用户操作: 添加笔记 [{note_type}] {ms_to_time_str(timestamp_ms)} {text[:50]}")
 
     def _on_term_requested(self, note_text: str, origin: str):
         """从笔记打开术语录入"""
