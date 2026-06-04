@@ -56,5 +56,3 @@ def get_track_bg_color_hex(track: int, alpha: int = 30) -> str:
 
 # 笔记类型列表，从 DEFAULT_TRACK_COUNT 自动生成
 NOTE_TYPES: tuple[str, ...] = tuple(f"轨道{i}" for i in range(1, DEFAULT_TRACK_COUNT + 1))
-
-
