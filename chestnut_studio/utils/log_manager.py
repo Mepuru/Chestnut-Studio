@@ -8,6 +8,8 @@
 - Logger: 日志器实例（按模块划分）
 - LogManager: 日志管理器（单例，可插拔 handler）
 
+每条日志自动添加 "ChestnutStudio vX.X: " 前缀。
+
 使用示例：
     from chestnut_studio.utils.log_manager import LogManager
 
@@ -21,6 +23,11 @@ import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
+
+from chestnut_studio.utils.version import get_version
+
+# 日志前缀（运行时确定一次）
+_LOG_PREFIX = f"ChestnutStudio v{get_version()}: "
 
 
 class LogLevel(Enum):
@@ -63,11 +70,13 @@ class Logger:
     def log(self, level: LogLevel, message: str) -> None:
         """输出指定级别的日志
 
+        自动在消息前添加 "ChestnutStudio vX.X: " 前缀。
+
         Args:
             level: 日志级别
             message: 日志消息
         """
-        LogManager.instance().emit(LogRecord(self.source, level, message))
+        LogManager.instance().emit(LogRecord(self.source, level, f"{_LOG_PREFIX}{message}"))
 
     def debug(self, message: str) -> None:
         """输出 DEBUG 级别日志"""
