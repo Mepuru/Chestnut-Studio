@@ -227,13 +227,17 @@ class MainWindow(QMainWindow):
         ver = get_version()
         msg = QMessageBox(self)
         msg.setWindowTitle("关于 Chestnut Studio")
+        # 图标
+        icon = self.windowIcon()
+        if not icon.isNull():
+            msg.setIconPixmap(icon.pixmap(48, 48))
         msg.setTextFormat(Qt.RichText)
         msg.setText(
             f"<h3>Chestnut Studio v{ver}</h3>"
             "<p>一个简洁的视频笔记工具</p>"
             "<hr>"
             "<p>作者: <b>KuriKana</b></p>"
-            '<p><a href="https://github.com/Mepuru/Chestnut-Studio">GitHub</a></p>'
+            '<p>https://github.com/Mepuru/Chestnut-Studio</p>'
             "<p>边看视频边添加带时间戳的笔记，"
             "支持 10 条彩色轨道、术语库、"
             "ASS+TXT 字幕合并。</p>"
