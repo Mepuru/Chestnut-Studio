@@ -467,3 +467,79 @@ QToolTip {
     color: {{text_primary}};
     font-size: 9pt;
 }
+
+/* ── 合并对话框 ── */
+MergeDialog {
+    background: {{bg_base}};
+}
+
+QLabel#pathLabel {
+    color: {{text_secondary}};
+    padding: 6px 10px;
+    background: {{bg_surface}};
+    border: 1px solid {{border_default}};
+    border-radius: 8px;
+    min-height: 20px;
+}
+
+QLabel#fileLabel {
+    color: {{text_muted}};
+    font-size: 9pt;
+}
+
+QPushButton#browseBtn {
+    background: transparent;
+    border: 1px solid {{border_default}};
+    border-radius: 8px;
+    padding: 6px 14px;
+    color: {{text_secondary}};
+    font-size: 9pt;
+    min-height: 20px;
+}
+
+QPushButton#browseBtn:hover {
+    border-color: {{accent}};
+    color: {{text_on_accent}};
+}
+
+QPushButton#primaryBtn {
+    background: {{accent}};
+    border: none;
+    border-radius: 8px;
+    padding: 8px 28px;
+    color: {{text_on_accent}};
+    font-size: 10pt;
+    font-weight: 600;
+    min-height: 26px;
+}
+
+QPushButton#primaryBtn:hover {
+    background: {{accent_hover}};
+}
+
+QPushButton#primaryBtn:pressed {
+    background: {{accent_pressed}};
+}
+
+QPushButton#primaryBtn:disabled {
+    background: {{border_default}};
+    color: {{text_dim}};
+}
+
+QLabel#statsLabel {
+    color: {{text_secondary}};
+    padding: 6px 10px;
+    background: {{bg_surface}};
+    border: 1px solid {{border_default}};
+    border-radius: 8px;
+}
+
+QTextEdit#reportView {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 9pt;
+    color: {{text_secondary}};
+    background: {{bg_dark}};
+    border: 1px solid {{border_default}};
+    border-radius: 8px;
+    padding: 8px;
+}
