@@ -72,9 +72,6 @@ class NoteItemWidget(QWidget):
         text_label.setMinimumHeight(16)
         layout.addWidget(text_label, 1)
 
-    def update_text(self, text: str):
-        self.note.text = text
-
 
 class NotePanel(QWidget):
     """笔记列表面板
