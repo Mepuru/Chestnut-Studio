@@ -1,17 +1,13 @@
-"""Chestnut Studio 构建脚本
-
-支持 PyInstaller 和 Nuitka 两种后端，均输出 single-file exe。
+"""Chestnut Studio 构建脚本 — Nuitka --onefile
 
 用法:
-    uv run python scripts/build_release.py                  # 构建全部
-    uv run python scripts/build_release.py pyinstaller      # 仅 PyInstaller
-    uv run python scripts/build_release.py nuitka           # 仅 Nuitka
+    uv run python scripts/build_release.py
 
 输出:
-    dist/ChestnutStudio-{version}-PyInstaller.exe   (≈45 MB)
-    dist/ChestnutStudio-{version}-Nuitka.exe        (≈18 MB)
+    dist/ChestnutStudio-{version}-Nuitka.exe
 """
 
+import os
 import re
 import shutil
 import subprocess
@@ -20,7 +16,6 @@ import time
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent
-SEP = ";" if sys.platform == "win32" else ":"
 CHECK = "v"  # 避免 GBK 终端下 Unicode 字符报错
 
 
@@ -51,51 +46,6 @@ def human_size(kb: float) -> str:
     return f"{kb:.0f} KB"
 
 
-# ── PyInstaller 后端 ──
-
-
-def build_pyinstaller(version: str, python: Path) -> Path:
-    """用 PyInstaller --onefile 构建"""
-    name = f"ChestnutStudio-{version}-PyInstaller"
-    resources_src = PROJECT_ROOT / "chestnut_studio" / "resources"
-
-    print("\n── PyInstaller --onefile ──")
-
-    cmd = [
-        str(python),
-        "-m",
-        "PyInstaller",
-        "--onefile",
-        "--windowed",
-        "--noconfirm",
-        "--clean",
-        "--name",
-        name,
-        "--icon",
-        str(resources_src / "icon.png"),
-        "--add-data",
-        f"{resources_src}{SEP}chestnut_studio/resources",
-        str(PROJECT_ROOT / "main.py"),
-    ]
-
-    t0 = time.time()
-    result = subprocess.run(cmd, cwd=PROJECT_ROOT)
-    elapsed = time.time() - t0
-
-    if result.returncode != 0:
-        print(f"  ✗ PyInstaller 退出码 {result.returncode}")
-        sys.exit(result.returncode)
-
-    exe_path = PROJECT_ROOT / "dist" / f"{name}.exe"
-    if not exe_path.exists():
-        print(f"  ✗ 输出未生成: {exe_path}")
-        sys.exit(1)
-
-    size_kb = exe_path.stat().st_size / 1024
-    print(f"  {CHECK} {exe_path.name}  ({human_size(size_kb)}, {elapsed:.0f}s)")
-    return exe_path
-
-
 # ── Nuitka 后端 ──
 
 
@@ -109,7 +59,6 @@ def build_nuitka(version: str, python: Path) -> Path:
     main_py = PROJECT_ROOT / "main.py"
 
     # 自动检测 CPU 核心数，用于并行编译
-    import os
     cpu_count = os.cpu_count() or 4
 
     print(f"\n── Nuitka --onefile --zig (--jobs={cpu_count}) ──")
@@ -165,28 +114,17 @@ def main():
     version = get_version()
     python = find_python()
 
-    # 解析目标
-    targets = [a.lower() for a in sys.argv[1:]] if len(sys.argv) > 1 else ["nuitka"]
-
-    print(f"╔══ Chestnut Studio v{version} 构建 ═══╗")
+    print(f"╔══ Chestnut Studio v{version} Nuitka 构建 ═══╗")
     print(f"  Python: {python}")
-    print(f"  目标:   {', '.join(targets)}")
     print()
 
-    results = []
-
-    if "pyinstaller" in targets:
-        results.append(build_pyinstaller(version, python))
-
-    if "nuitka" in targets:
-        results.append(build_nuitka(version, python))
+    exe_path = build_nuitka(version, python)
 
     # ── 汇总 ──
     print()
-    print("╔══ 构建汇总 ═══════════════════════════╗")
-    for p in results:
-        kb = p.stat().st_size / 1024
-        print(f"  {CHECK} {p.name}  ({human_size(kb)})")
+    print("╔══ 构建完成 ═══════════════════════════╗")
+    kb = exe_path.stat().st_size / 1024
+    print(f"  {CHECK} {exe_path.name}  ({human_size(kb)})")
     print(f"  📁 {PROJECT_ROOT / 'dist'}")
 
 

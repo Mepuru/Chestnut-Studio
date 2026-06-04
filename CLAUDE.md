@@ -100,17 +100,10 @@ uv run pytest tests/ -v
 ## 构建
 
 ```bash
-# 全部构建（PyInstaller + Nuitka）
 uv run python scripts/build_release.py
-
-# 仅构建 PyInstaller 版
-uv run python scripts/build_release.py pyinstaller
-
-# 仅构建 Nuitka 版
-uv run python scripts/build_release.py nuitka
 ```
 
-输出到 `dist/ChestnutStudio-{version}-{Backend}.exe`。
+输出到 `dist/ChestnutStudio-{version}-Nuitka.exe`。
 
 ---
 
