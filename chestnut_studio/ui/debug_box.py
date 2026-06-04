@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from chestnut_studio.core.track_config import NOTE_TYPES
 from chestnut_studio.utils import get_logger
 
 logger = get_logger("DEBUG")
@@ -102,12 +103,13 @@ class DebugBox(QDialog):
 
     def _add_bulk_notes(self, count: int):
         for i in range(count):
+            track = NOTE_TYPES[i % len(NOTE_TYPES)]
             self._note_manager.add(
                 timestamp_ms=i * 100,
                 text=f"性能测试笔记 #{i + 1} — 这是一条用于压力测试的示例文本",
-                note_type="轨道1",
+                note_type=track,
             )
-        logger.info(f"性能测试: 批量添加 {count} 条笔记")
+        logger.info(f"性能测试: 批量添加 {count} 条笔记（分布到 {len(NOTE_TYPES)} 个轨道）")
         # 通知父窗口刷新列表
         parent = self.parent()
         if hasattr(parent, "note_panel"):
