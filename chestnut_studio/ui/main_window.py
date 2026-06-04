@@ -227,17 +227,20 @@ class MainWindow(QMainWindow):
         from chestnut_studio.utils.version import get_version
 
         ver = get_version()
-        QMessageBox.about(
-            self,
-            "关于 Chestnut Studio",
+        msg = QMessageBox(self)
+        msg.setWindowTitle("关于 Chestnut Studio")
+        msg.setTextFormat(Qt.RichText)
+        msg.setText(
             f"<h3>Chestnut Studio v{ver}</h3>"
             "<p>一个简洁的视频笔记工具</p>"
             "<hr>"
             "<p>作者: <b>KuriKana</b></p>"
+            '<p><a href="https://github.com/Mepuru/Chestnut-Studio">GitHub</a></p>'
             "<p>边看视频边添加带时间戳的笔记，"
             "支持 10 条彩色轨道、术语库、"
-            "ASS+TXT 字幕合并。</p>",
+            "ASS+TXT 字幕合并。</p>"
         )
+        msg.exec()
 
     def _open_log_file(self):
         """在文件资源管理器中打开日志目录"""
