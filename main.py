@@ -32,14 +32,15 @@ def _setup_logging() -> Path:
     log_dir = _get_log_dir()
     log_path = log_dir / "app.log"
 
-    # 轮转：超过 1MB 则重命名 app.log → app.1.log，保留最近 3 个
+    # 轮转：超过 1MB 则重命名 app.log → app.20260604_143000.log，保留最近 10 个
     max_log_size = 1 * 1024 * 1024
     if log_path.exists() and log_path.stat().st_size > max_log_size:
-        for i in range(3, 1, -1):
-            old = log_path.with_suffix(f".{i-1}.log")
-            if old.exists():
-                old.replace(log_path.with_suffix(f".{i}.log"))
-        log_path.replace(log_path.with_suffix(".1.log"))
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_path.replace(log_path.with_suffix(f".{ts}.log"))
+        # 清理旧日志，留最近 10 个
+        old_logs = sorted(log_dir.glob("app.*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+        for f in old_logs[10:]:
+            f.unlink()
 
     # 文件 handler — 行缓冲 + 即时 flush，崩溃不丢日志
     log_file = open(log_path, "a", encoding="utf-8", buffering=1)
