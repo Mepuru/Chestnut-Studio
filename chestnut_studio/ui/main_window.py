@@ -7,8 +7,9 @@
 import os
 from pathlib import Path
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QIcon, QKeySequence
+from PySide6.QtCore import Qt, QTimer, QUrl
+from PySide6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence
+from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest
 from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
@@ -29,6 +30,7 @@ from chestnut_studio.ui.input_bar import InputBar
 from chestnut_studio.ui.note_panel import NotePanel
 from chestnut_studio.utils import get_logger
 from chestnut_studio.utils.time_utils import ms_to_time_str
+from chestnut_studio.utils.update_checker import API_URL, UpdateInfo, parse_release_data
 from chestnut_studio.utils.version import get_version
 
 logger = get_logger("UI")
@@ -65,6 +67,7 @@ class MainWindow(QMainWindow):
         # 数据模型
         self._note_manager = NoteManager()
         self._ffmpeg = FFmpeg()
+        self._update_info: UpdateInfo | None = None
 
         # 创建 UI
         self._setup_menu_bar()
@@ -72,6 +75,9 @@ class MainWindow(QMainWindow):
         self._setup_statusbar()
         self._connect_signals()
         self._setup_drop()
+
+        # 延迟启动更新检查（不阻塞窗口显示）
+        QTimer.singleShot(2000, self._check_update)
 
     # ── UI 构建 ──
 
@@ -178,9 +184,10 @@ class MainWindow(QMainWindow):
         """配置状态栏：左侧信息提示（永不过期），右侧版本号"""
         self._status_label = QLabel()
         self.statusBar().addWidget(self._status_label, 1)
-        ver_label = QLabel(f"v{get_version()}")
-        ver_label.setObjectName("versionLabel")
-        self.statusBar().addPermanentWidget(ver_label)
+        self._ver_label = QLabel(f"v{get_version()}")
+        self._ver_label.setObjectName("versionLabel")
+        self.statusBar().addPermanentWidget(self._ver_label)
+        self._ver_label.installEventFilter(self)
         self._show_status("拖入视频文件 或 Ctrl+O 打开")
 
     def _show_status(self, msg: str):
@@ -479,6 +486,50 @@ class MainWindow(QMainWindow):
 
         dialog = MergeDialog(self)
         dialog.exec()
+
+    # ── 更新检查 ──
+
+    def eventFilter(self, obj, event):
+        """拦截版本标签点击事件"""
+        if obj is self._ver_label and event.type() == event.Type.MouseButtonPress:
+            if self._update_info:
+                QDesktopServices.openUrl(QUrl(self._update_info.release_url))
+            return True
+        return super().eventFilter(obj, event)
+
+    def _check_update(self):
+        """后台检查 GitHub 新版本（通过 QNetworkAccessManager 异步请求）"""
+        nam = QNetworkAccessManager(self)
+        nam.finished.connect(self._on_update_reply)
+        nam.get(QNetworkRequest(QUrl(API_URL)))
+        self._update_nam = nam  # 防止被回收
+
+    def _on_update_reply(self, reply):
+        """处理 GitHub API 返回结果"""
+        if reply.error():
+            logger.info(f"更新检查失败: {reply.errorString()}")
+            reply.deleteLater()
+            return
+
+        import json
+
+        try:
+            data = json.loads(bytes(reply.readAll()).decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            reply.deleteLater()
+            return
+        reply.deleteLater()
+
+        info = parse_release_data(data, get_version())
+        if info is None:
+            return
+
+        self._update_info = info
+        self._ver_label.setText(f"⬆ v{info.latest_version}")
+        self._ver_label.setStyleSheet("color: #4ecdc4; font-weight: bold;")
+        self._ver_label.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._ver_label.setToolTip(f"新版本 v{info.latest_version} 可用 — 点击查看")
+        logger.info(f"发现新版本: v{info.latest_version}")
 
     # ── 快捷键 ──
 
