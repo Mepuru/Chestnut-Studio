@@ -11,7 +11,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication, QMessageBox
 
-from chestnut_studio.resources import get_icon_path
+from chestnut_studio.resources import get_icon_path, get_resource_path
 from chestnut_studio.utils.log_manager import LogLevel, LogManager, LogRecord
 from chestnut_studio.utils.theme import render_stylesheet
 from chestnut_studio.utils.version import get_version
@@ -120,35 +120,14 @@ def main():
     app.setApplicationName("Chestnut Studio")
     app.setApplicationVersion(get_version())
 
-    # ── 启动页：程序化绘制，无需外部图片文件 ──
-    from PySide6.QtCore import QRect, QTimer
-    from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
+    # ── 启动页：用 splash.png 加载 ──
+    from PySide6.QtCore import QTimer
+    from PySide6.QtGui import QColor, QIcon, QPixmap
     from PySide6.QtWidgets import QSplashScreen
 
-    px = QPixmap(680, 380)
-    px.fill(QColor("#1a1a2e"))
-    painter = QPainter(px)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    # 顶部装饰条
-    painter.fillRect(0, 0, 680, 4, QColor("#7c5cfc"))
-    # 图标
-    icon = QIcon(str(get_icon_path()))
-    if not icon.isNull():
-        painter.drawPixmap(316, 54, 48, 48, icon.pixmap(48, 48))
-    # 标题
-    painter.setPen(QColor("#e0e0f0"))
-    tf = QFont("Microsoft YaHei", 20)
-    tf.setBold(True)
-    painter.setFont(tf)
-    painter.drawText(QRect(0, 120, 680, 40), Qt.AlignCenter, "Chestnut Studio")
-    # 版本号
-    painter.setPen(QColor("#8080b0"))
-    painter.setFont(QFont("Microsoft YaHei", 10))
-    painter.drawText(QRect(0, 162, 680, 24), Qt.AlignCenter, f"v{get_version()}")
-    painter.end()
-
     splash_t0 = _time.time()
-    splash = QSplashScreen(px)
+    splash_path = get_resource_path("splash.png")
+    splash = QSplashScreen(QPixmap(str(splash_path)))
     splash.show()
     app.processEvents()
 
