@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from chestnut_studio.core.note_manager import Note, NoteManager, NOTE_TYPES
+from chestnut_studio.core.note_manager import Note, NoteManager, Term
 
 
 class TestNote:
@@ -233,5 +233,170 @@ class TestNoteManager:
             count = mgr.import_json(path)
             assert count == 1
             assert mgr.get_all()[0].type == "轨道4"
+        finally:
+            Path(path).unlink(missing_ok=True)
+
+
+class TestTerm:
+    """Term 数据类测试"""
+
+    def test_create_term(self):
+        term = Term(source="ありがとう", translation="谢谢", origin="日常")
+        assert term.source == "ありがとう"
+        assert term.translation == "谢谢"
+        assert term.origin == "日常"
+        assert term.note == ""
+
+    def test_create_term_with_note(self):
+        term = Term(source="大丈夫", translation="没关系", origin="日常", note="常用语")
+        assert term.note == "常用语"
+
+    def test_to_line_basic(self):
+        term = Term(source="ありがとう", translation="谢谢", origin="日常")
+        text = term.to_line()
+        assert "# 词: ありがとう" in text
+        assert "# 译: 谢谢" in text
+        assert "# 出: 日常" in text
+        assert text.startswith("# ---")
+
+    def test_from_block_basic(self):
+        block = "# ---\n# 词: ありがとう\n# 译: 谢谢\n# 出: 日常\n"
+        term = Term.from_block(block)
+        assert term is not None
+        assert term.source == "ありがとう"
+        assert term.translation == "谢谢"
+        assert term.origin == "日常"
+
+    def test_from_block_with_note(self):
+        block = "# ---\n# 词: すごい\n# 译: 厉害\n# 出: 动漫\n# 常用感叹词\n"
+        term = Term.from_block(block)
+        assert term is not None
+        assert term.note == "常用感叹词"
+
+    def test_from_block_no_source(self):
+        block = "# ---\n# 译: 谢谢\n"
+        assert Term.from_block(block) is None
+
+    def test_from_block_multiline_note(self):
+        block = "# ---\n# 词: おはよう\n# 译: 早上好\n# 出: 日常\n# 第一行\n# 第二行\n"
+        term = Term.from_block(block)
+        assert term is not None
+        assert term.note == "第一行\n第二行"
+
+    def test_from_line_basic(self):
+        term = Term.from_line("ありがとう | 谢谢 | 日常")
+        assert term is not None
+        assert term.source == "ありがとう"
+        assert term.translation == "谢谢"
+        assert term.origin == "日常"
+
+    def test_from_line_invalid(self):
+        assert Term.from_line("") is None
+        assert Term.from_line("# 注释") is None
+
+    def test_roundtrip_block(self):
+        original = Term(source="ありがとう", translation="谢谢", origin="日常", note="常用语")
+        text = original.to_line()
+        restored = Term.from_block(text)
+        assert restored is not None
+        assert restored.source == original.source
+        assert restored.translation == original.translation
+        assert restored.origin == original.origin
+        assert restored.note == original.note
+
+
+class TestNoteManagerTermMethods:
+    """NoteManager 术语管理方法测试"""
+
+    def test_add_term(self):
+        mgr = NoteManager()
+        term = mgr.add_term("ありがとう", "谢谢", "日常")
+        assert mgr.term_count() == 1
+        assert term.source == "ありがとう"
+
+    def test_add_term_duplicate_replaces(self):
+        mgr = NoteManager()
+        mgr.add_term("ありがとう", "谢谢", "日常")
+        mgr.add_term("ありがとう", "感谢", "正式")
+        assert mgr.term_count() == 1
+        assert mgr.get_terms()[0].translation == "感谢"
+
+    def test_get_terms_returns_copy(self):
+        mgr = NoteManager()
+        mgr.add_term("A", "a")
+        terms = mgr.get_terms()
+        terms.clear()
+        assert mgr.term_count() == 1
+
+    def test_update_term(self):
+        mgr = NoteManager()
+        mgr.add_term("ありがとう", "谢谢")
+        result = mgr.update_term("ありがとう", "ありがとう", "感谢", "正式", "备注")
+        assert result is True
+        assert mgr.get_terms()[0].translation == "感谢"
+
+    def test_update_term_nonexistent(self):
+        mgr = NoteManager()
+        assert mgr.update_term("不存在", "新", "新译", "", "") is False
+
+    def test_remove_term(self):
+        mgr = NoteManager()
+        mgr.add_term("ありがとう", "谢谢")
+        assert mgr.remove_term("ありがとう") is True
+        assert mgr.term_count() == 0
+
+    def test_remove_term_nonexistent(self):
+        mgr = NoteManager()
+        assert mgr.remove_term("不存在") is False
+
+    def test_clear_terms(self):
+        mgr = NoteManager()
+        mgr.add_term("A", "a")
+        mgr.add_term("B", "b")
+        mgr.clear_terms()
+        assert mgr.term_count() == 0
+
+    def test_export_terms(self):
+        mgr = NoteManager()
+        mgr.add_term("ありがとう", "谢谢", "日常")
+        with tempfile.NamedTemporaryFile(suffix=".txt", mode="w", delete=False, encoding="utf-8") as f:
+            f.write("existing\n")
+            path = f.name
+        try:
+            count = mgr.export_terms(path)
+            assert count == 1
+            content = Path(path).read_text(encoding="utf-8")
+            assert "# --- 术语 ---" in content
+            assert "ありがとう" in content
+        finally:
+            Path(path).unlink(missing_ok=True)
+
+    def test_import_terms(self):
+        mgr = NoteManager()
+        content = "# --- 术语 ---\n# ---\n# 词: ありがとう\n# 译: 谢谢\n# 出: 日常\n"
+        with tempfile.NamedTemporaryFile(suffix=".txt", mode="w", delete=False, encoding="utf-8") as f:
+            f.write(content)
+            path = f.name
+        try:
+            count = mgr.import_terms(path)
+            assert count == 1
+            assert mgr.get_terms()[0].source == "ありがとう"
+        finally:
+            Path(path).unlink(missing_ok=True)
+
+    def test_import_terms_multiple(self):
+        content = (
+            "# --- 术语 ---\n"
+            "# ---\n# 词: AAA\n# 译: aaa\n"
+            "# ---\n# 词: BBB\n# 译: bbb\n"
+        )
+        mgr = NoteManager()
+        with tempfile.NamedTemporaryFile(suffix=".txt", mode="w", delete=False, encoding="utf-8") as f:
+            f.write(content)
+            path = f.name
+        try:
+            count = mgr.import_terms(path)
+            assert count == 2
+            assert mgr.term_count() == 2
         finally:
             Path(path).unlink(missing_ok=True)
