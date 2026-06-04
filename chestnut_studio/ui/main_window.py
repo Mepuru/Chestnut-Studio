@@ -250,6 +250,7 @@ class MainWindow(QMainWindow):
             ("Ctrl+Q", "退出"),
             ("Enter", "发送笔记（输入框）"),
             ("Delete", "删除选中笔记（列表）"),
+            ("M", "打开术语录入（列表）"),
         ]
 
         table.setRowCount(len(shortcuts))
