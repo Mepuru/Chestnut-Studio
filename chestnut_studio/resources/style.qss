@@ -633,3 +633,26 @@ QTextEdit#reportView {
     border-color: {{accent}};
     color: {{text_on_accent}};
 }
+
+/* ── 焦点指示器（键盘导航可访问性） ── */
+/* 通用焦点轮廓 — 白色半透明，不干扰按钮自身 hover/active 色彩 */
+QPushButton:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.3);
+    outline-offset: 1px;
+}
+
+/* 实色背景按钮用更亮轮廓，确保可见 */
+#sendBtn:focus, #primaryBtn:focus {
+    outline-color: rgba(255, 255, 255, 0.6);
+}
+
+/* 列表焦点 */
+#noteList:focus {
+    outline: 1px solid rgba(255, 255, 255, 0.2);
+    outline-offset: -1px;
+}
+
+/* 下拉框 focus */
+#rateCombo:focus {
+    border-color: rgba(255, 255, 255, 0.3);
+}
