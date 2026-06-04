@@ -64,10 +64,3 @@ def get_stylesheet_path() -> Path:
     return get_resource_path("style.qss")
 
 
-def get_fonts_dir() -> Path:
-    """获取字体目录的路径
-
-    Returns:
-        fonts目录的绝对路径
-    """
-    return get_resource_path("fonts")

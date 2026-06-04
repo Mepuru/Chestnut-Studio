@@ -57,7 +57,7 @@ class PlayerControls(QWidget):
         self._play_btn.setObjectName("playBtn")
         self._play_btn.setIcon(QIcon(str(get_icon_path("play"))))
         self._play_btn.setIconSize(self._play_btn.sizeHint())
-        self._play_btn.setToolTip("播放/暂停 (Space)")
+        self._play_btn.setToolTip("播放/暂停")
         self._play_btn.setCursor(Qt.PointingHandCursor)
         self._play_btn.clicked.connect(self.play_pause_clicked.emit)
         layout.addWidget(self._play_btn)
