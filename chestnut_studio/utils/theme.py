@@ -9,7 +9,6 @@ QSS 模板中使用 {{token}} 占位符，运行时由 render_stylesheet() 替�
 """
 
 import re
-from pathlib import Path
 
 from chestnut_studio.resources import get_stylesheet_path
 
