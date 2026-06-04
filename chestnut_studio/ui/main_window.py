@@ -129,16 +129,16 @@ class MainWindow(QMainWindow):
         self._term_view_action.triggered.connect(self._show_terms)
         menu_bar.addAction(self._term_view_action)
 
-        # ── 帮助菜单 ──
-        help_menu = menu_bar.addMenu("帮助(&H)")
-        self._view_log_action = QAction("查看日志(&L)", self)
+        # ── 帮助菜单（不常用，不设加速键） ──
+        help_menu = menu_bar.addMenu("帮助")
+        self._view_log_action = QAction("查看日志", self)
         self._view_log_action.triggered.connect(self._open_log_file)
         help_menu.addAction(self._view_log_action)
-        self._debug_box_action = QAction("百宝箱(&B)", self)
+        self._debug_box_action = QAction("百宝箱", self)
         self._debug_box_action.triggered.connect(self._open_debug_box)
         help_menu.addAction(self._debug_box_action)
         help_menu.addSeparator()
-        self._about_action = QAction("关于(&A)", self)
+        self._about_action = QAction("关于", self)
         self._about_action.triggered.connect(self._show_about)
         help_menu.addAction(self._about_action)
 
