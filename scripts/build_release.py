@@ -21,6 +21,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent
 SEP = ";" if sys.platform == "win32" else ":"
+CHECK = "v"  # 避免 GBK 终端下 Unicode 字符报错
 
 
 def get_version() -> str:
@@ -58,7 +59,7 @@ def build_pyinstaller(version: str, python: Path) -> Path:
     name = f"ChestnutStudio-{version}-PyInstaller"
     resources_src = PROJECT_ROOT / "chestnut_studio" / "resources"
 
-    print(f"\n── PyInstaller --onefile ──")
+    print("\n── PyInstaller --onefile ──")
 
     cmd = [
         str(python),
@@ -91,7 +92,7 @@ def build_pyinstaller(version: str, python: Path) -> Path:
         sys.exit(1)
 
     size_kb = exe_path.stat().st_size / 1024
-    print(f"  ✓ {exe_path.name}  ({human_size(size_kb)}, {elapsed:.0f}s)")
+    print(f"  {CHECK} {exe_path.name}  ({human_size(size_kb)}, {elapsed:.0f}s)")
     return exe_path
 
 
@@ -148,7 +149,7 @@ def build_nuitka(version: str, python: Path) -> Path:
         sys.exit(1)
 
     size_kb = exe_path.stat().st_size / 1024
-    print(f"  ✓ {exe_path.name}  ({human_size(size_kb)}, {elapsed:.0f}s)")
+    print(f"  {CHECK} {exe_path.name}  ({human_size(size_kb)}, {elapsed:.0f}s)")
 
     # 清理 Nuitka 遗留的临时构建目录
     for d in ("main.build", "main.dist", "main.onefile-build"):
@@ -185,7 +186,7 @@ def main():
     print("╔══ 构建汇总 ═══════════════════════════╗")
     for p in results:
         kb = p.stat().st_size / 1024
-        print(f"  ✓ {p.name}  ({human_size(kb)})")
+        print(f"  {CHECK} {p.name}  ({human_size(kb)})")
     print(f"  📁 {PROJECT_ROOT / 'dist'}")
 
 

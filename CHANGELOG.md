@@ -1,0 +1,42 @@
+# Changelog
+
+## v2.3.0 (2026-06-04)
+
+### ✨ 新功能
+
+- **全项目日志系统** — `LogManager` 单例落地，所有模块统一日志
+  - 自动写入 `%LOCALAPPDATA%/ChestnutStudio/logs/app.log`
+  - 崩溃时自动快照为 `crash_时间戳.log`
+  - 超过 1MB 自动轮转，保留最近 10 个归档
+  - 会话分隔线 + 每条日志即时落盘，崩溃不丢
+- **开发者百宝箱** — 菜单「帮助 → 百宝箱」
+  - 崩溃测试：`1÷0` / `assert False` / `IndexError`
+  - 日志测试：DEBUG / INFO / WARNING / ERROR
+  - 性能测试：批量添加 100/500/1000 条笔记
+- **操作审计追踪** — 所有用户操作（打开视频、添加/删除笔记、导出导入、倍速切换等）忠实写入日志
+- **状态栏改进**
+  - 右下角常驻版本号
+  - 消息持久显示，直到下一条操作覆盖
+- **全局崩溃兜底** — `sys.excepthook` 捕获未处理异常，弹窗提示 + 日志快照
+
+### 🔧 改进
+
+- 笔记增删日志集中到 `NoteManager`，所有入口统一
+- 统一日志调用风格：`logger.info(...)` 替代冗长的 `LogManager.instance().emit(LogRecord(...))`
+- 统一日志存储路径，开发/发布均使用 `%LOCALAPPDATA%`
+- 构建全面切换至 Nuitka（移除 PyInstaller 默认）
+
+### 🧪 测试
+
+- 测试总数从 **68** 增长至 **175**（+157%）
+- 新增测试覆盖：时间工具、ASS 合并、版本号、术语 API、文件 I/O 异常路径
+
+### 🧹 清理
+
+- 移除 4 处死代码（`MergePlan.get_ass_content`、冗余 import、过时日志等）
+- 移除 `logs/` 目录（日志统一走 `%LOCALAPPDATA%`）
+
+### 📦 构建
+
+- 仅 Nuitka `--onefile` 构建
+- 输出：`dist/ChestnutStudio-2.3.0-Nuitka.exe` (≈33 MB)
