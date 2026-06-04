@@ -284,11 +284,11 @@ class MainWindow(QMainWindow):
             fps_text = f"{info.fps:.0f}fps " if info.fps else ""
             res_text = f"{info.width}×{info.height} " if info.width else ""
             status = f"已打开: {filename}  |  {res_text}{fps_text}"
-            self.statusBar().showMessage(status, 5000)
+            self.statusBar().showMessage(status)
         except FileNotFoundError:
-            self.statusBar().showMessage(f"已打开: {filename}  | 提示: 安装 ffmpeg 可查看视频信息", 8000)
+            self.statusBar().showMessage(f"已打开: {filename}  | 提示: 安装 ffmpeg 可查看视频信息")
         except Exception:  # 其他 ffmpeg 调用失败不阻塞播放
-            self.statusBar().showMessage(f"已打开: {filename}", 5000)
+            self.statusBar().showMessage(f"已打开: {filename}")
 
     # ── 笔记操作 ──
 
@@ -317,7 +317,7 @@ class MainWindow(QMainWindow):
     def _on_term_added(self, source: str, translation: str, origin: str, note: str):
         """添加术语"""
         self._note_manager.add_term(source, translation, origin, note)
-        self.statusBar().showMessage(f"术语: {source} → {translation}", 3000)
+        self.statusBar().showMessage(f"术语: {source} → {translation}")
 
     def _on_export_notes(self):
         """导出笔记 — 选轨道、选格式"""
@@ -358,7 +358,7 @@ class MainWindow(QMainWindow):
 
         selected_tracks = [t for t, cb in track_cbs.items() if cb.isChecked()]
         if not selected_tracks:
-            self.statusBar().showMessage("未选择任何轨道", 3000)
+            self.statusBar().showMessage("未选择任何轨道")
             return
 
         # 默认文件名 = 视频名（过长截断）
@@ -400,7 +400,7 @@ class MainWindow(QMainWindow):
         except OSError as e:
             QMessageBox.critical(self, "导出失败", str(e))
             return
-        self.statusBar().showMessage(f"已导出 {count} 条笔记", 3000)
+        self.statusBar().showMessage(f"已导出 {count} 条笔记")
 
     def _on_import_notes(self):
         """从 txt 文件导入笔记"""
@@ -427,7 +427,7 @@ class MainWindow(QMainWindow):
             msg = f"已导入 {count} 条笔记"
             if term_count:
                 msg += f"，{term_count} 条术语"
-            self.statusBar().showMessage(msg, 3000)
+            self.statusBar().showMessage(msg)
         self.note_panel.refresh()
 
     def _on_merge_ass_txt(self):
