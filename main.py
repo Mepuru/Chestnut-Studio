@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 
 from chestnut_studio.resources import get_icon_path, get_stylesheet_path
 from chestnut_studio.ui.main_window import MainWindow
-from chestnut_studio.utils.log_manager import LogManager, LogLevel, LogRecord
+from chestnut_studio.utils.log_manager import LogLevel, LogManager, LogRecord
 from chestnut_studio.utils.version import get_version
 
 
@@ -34,6 +34,13 @@ def _setup_logging() -> Path:
 
     # 文件 handler — 行缓冲 + 即时 flush，崩溃不丢日志
     log_file = open(log_path, "a", encoding="utf-8", buffering=1)
+
+    # 会话分隔线
+    sep = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_file.write(f"{'='*60}\n")
+    log_file.write(f"  Chestnut Studio v{get_version()} — {sep}\n")
+    log_file.write(f"{'='*60}\n")
+    log_file.flush()
 
     def file_handler(record: LogRecord) -> None:
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -106,7 +113,7 @@ def main():
     # 加载样式表
     style_path = get_stylesheet_path()
     if style_path.exists():
-        with open(style_path, "r", encoding="utf-8") as f:
+        with open(style_path, encoding="utf-8") as f:
             app.setStyleSheet(f.read())
 
     # 主窗口
