@@ -138,7 +138,6 @@ class NotePanel(QWidget):
         self._list = _NoteListWidget()
         self._list.setObjectName("noteList")
         self._list.setVerticalScrollMode(QListWidget.ScrollPerPixel)
-        self._list.setToolTip("Delete: 删除选中笔记  |  M: 打开术语录入")
         self._list.itemDoubleClicked.connect(self._on_item_clicked)
         self._list.setContextMenuPolicy(Qt.CustomContextMenu)
         self._list.customContextMenuRequested.connect(self._show_context_menu)
