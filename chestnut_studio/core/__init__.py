@@ -1,12 +1,12 @@
 """核心逻辑模块 - 无 UI 依赖"""
 
-from chestnut_studio.core.ffmpeg import FFmpeg, FFmpegError, VideoInfo
-from chestnut_studio.core.note_manager import Note, NoteManager
 from chestnut_studio.core.ass_merge import (
-    UncertainMatch,
     MergePlan,
+    UncertainMatch,
     build_merge_plan,
 )
+from chestnut_studio.core.ffmpeg import FFmpeg, FFmpegError, VideoInfo
+from chestnut_studio.core.note_manager import Note, NoteManager
 from chestnut_studio.core.track_config import (
     DEFAULT_TRACK_COUNT,
     MAX_TRACK_COUNT,

@@ -189,6 +189,7 @@ class MainWindow(QMainWindow):
     def _show_about(self):
         """显示关于对话框"""
         from PySide6.QtWidgets import QMessageBox
+
         from chestnut_studio.utils.version import get_version
 
         QMessageBox.about(
