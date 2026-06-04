@@ -1,5 +1,28 @@
 # Changelog
 
+## v2.3.1 (2026-06-04)
+
+### 🔧 改进
+
+- **移除 PyInstaller** — 仅保留 Nuitka 单后端构建，体积更小
+- **简化帮助菜单** — 移除不常用的键盘加速键（Alt+H/L/B/A）
+- **移除 Space 误导提示** — 播放按钮不再标注 (Space)，避免误导用户
+- **资源模块精简** — 移除 PyInstaller 残留代码和死函数 `get_fonts_dir()`
+
+### 🧹 清理
+
+- 移除 `PlayerControls` 未使用的 `seeking_started`/`seeking_finished` 信号
+- 移除 `build_release.py` 中的 PyInstaller 构建函数
+- 移除 `release_notes.md` 历史文件
+- 移除 `version.py` 中过时的 "PyInstaller 后备" 注释
+
+### 📦 构建
+
+- 仅 Nuitka --onefile 构建
+- 输出：`dist/ChestnutStudio-2.3.1-Nuitka.exe`（≈33 MB）
+
+---
+
 ## v2.3.0 (2026-06-04)
 
 ### ✨ 新功能
