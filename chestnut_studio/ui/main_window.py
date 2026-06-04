@@ -390,32 +390,41 @@ class MainWindow(QMainWindow):
                     bitrate = f"{info.bitrate}kbps"
             except Exception:  # ffmpeg 调用失败时跳过视频信息
                 pass
-        count = self._note_manager.export_text(path, selected_tracks, vname, dur, res, fps, bitrate)
-        self._note_manager.export_terms(path)
+        try:
+            count = self._note_manager.export_text(path, selected_tracks, vname, dur, res, fps, bitrate)
+            self._note_manager.export_terms(path)
+        except OSError as e:
+            QMessageBox.critical(self, "导出失败", str(e))
+            return
         self.statusBar().showMessage(f"已导出 {count} 条笔记", 3000)
 
     def _on_import_notes(self):
         """从 txt 文件导入笔记"""
         path, _ = QFileDialog.getOpenFileName(self, "导入笔记", "", self.NOTE_FILTER)
-        if path:
+        if not path:
+            return
+        try:
             count = self._note_manager.import_text(path)
             term_count = self._note_manager.import_terms(path)
-            if count == 0:
-                QMessageBox.warning(
-                    self,
-                    "导入失败",
-                    "文件格式不匹配，无法导入任何笔记。\n\n"
-                    "请确保每行格式为:\n"
-                    "  轨道名  时间  |  内容\n\n"
-                    "例如:\n"
-                    "  轨道1\t00:15.20\t| 你好",
-                )
-            else:
-                msg = f"已导入 {count} 条笔记"
-                if term_count:
-                    msg += f"，{term_count} 条术语"
-                self.statusBar().showMessage(msg, 3000)
-            self.note_panel.refresh()
+        except OSError as e:
+            QMessageBox.critical(self, "导入失败", str(e))
+            return
+        if count == 0:
+            QMessageBox.warning(
+                self,
+                "导入失败",
+                "文件格式不匹配，无法导入任何笔记。\n\n"
+                "请确保每行格式为:\n"
+                "  轨道名  时间  |  内容\n\n"
+                "例如:\n"
+                "  轨道1\t00:15.20\t| 你好",
+            )
+        else:
+            msg = f"已导入 {count} 条笔记"
+            if term_count:
+                msg += f"，{term_count} 条术语"
+            self.statusBar().showMessage(msg, 3000)
+        self.note_panel.refresh()
 
     def _on_merge_ass_txt(self):
         """打开 ASS+TXT 字幕合并对话框"""
