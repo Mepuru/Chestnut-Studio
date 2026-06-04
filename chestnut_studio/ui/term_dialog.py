@@ -179,7 +179,7 @@ class TermTableDialog(QDialog):
         terms = self._note_manager.get_terms()
         self.setWindowTitle(f"术语 ({len(terms)})")
         self.setMinimumSize(500, 400)
-        self.setObjectName("shortcutDialog")
+        self.setObjectName("termTableDialog")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

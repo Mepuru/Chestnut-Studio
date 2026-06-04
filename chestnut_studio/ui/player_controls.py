@@ -46,8 +46,6 @@ class PlayerControls(QWidget):
         self._duration = 0
         self._setup_ui()
 
-    _ICON_SIZE = 18  # 统一图标尺寸
-
     def _setup_ui(self):
         self.setObjectName("playerControls")
         layout = QHBoxLayout(self)

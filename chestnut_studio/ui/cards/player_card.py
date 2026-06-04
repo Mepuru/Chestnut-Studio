@@ -63,7 +63,6 @@ class PlayerCard(QWidget):
 
         # ── 播放控制栏 ──
         self._controls = PlayerControls(self)
-        self._controls.setObjectName("playerControlsBar")
         layout.addWidget(self._controls)
 
         # 连接控制栏信号

@@ -427,12 +427,12 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
     background: none;
 }
 
-/* ── 快捷键对话框 ── */
-#shortcutDialog {
+/* ── 数据表格对话框（快捷键 / 术语表） ── */
+#shortcutDialog, #termTableDialog {
     background: {{bg_base}};
 }
 
-#shortcutDialog QTableWidget {
+#shortcutDialog QTableWidget, #termTableDialog QTableWidget {
     background: {{bg_base}};
     border: none;
     color: {{text_primary}};
@@ -440,16 +440,16 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
     outline: none;
 }
 
-#shortcutDialog QTableWidget::item {
+#shortcutDialog QTableWidget::item, #termTableDialog QTableWidget::item {
     padding: 6px 12px;
     border: none;
 }
 
-#shortcutDialog QTableWidget::item:selected {
+#shortcutDialog QTableWidget::item:selected, #termTableDialog QTableWidget::item:selected {
     background: {{overlay_accent_light}};
 }
 
-#shortcutDialog QHeaderView::section {
+#shortcutDialog QHeaderView::section, #termTableDialog QHeaderView::section {
     background: {{bg_dark}};
     border: none;
     border-bottom: 1px solid {{border_subtle}};
