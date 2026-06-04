@@ -3,12 +3,9 @@
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from chestnut_studio.core.ass_merge import (
     AssDialogue,
     MergePlan,
-    TxtNote,
     _nth_comma,
     _parse_ass_time,
     _parse_track_colors,
@@ -17,7 +14,6 @@ from chestnut_studio.core.ass_merge import (
     parse_ass,
     parse_txt,
 )
-from chestnut_studio.utils.version import get_version
 
 # ══════════════════════════════════════════
 # 底层工具函数

@@ -1,6 +1,5 @@
 """时间格式转换工具测试"""
 
-import pytest
 
 from chestnut_studio.utils.time_utils import (
     ass_time_to_ms,
