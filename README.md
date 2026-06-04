@@ -177,6 +177,7 @@ uv run python scripts/build_release.py
     └── resources/             # 资源文件
         ├── icons/             # SVG 图标（play/pause/音量等）
         ├── icon.png           # 应用图标
+        ├── splash.png         # 启动页背景
         └── style.qss          # 深色主题 QSS 模板（{{token}} 占位符）
 ```
 
