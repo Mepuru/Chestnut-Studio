@@ -51,6 +51,9 @@ THEMES: dict[str, dict[str, str]] = {
         "overlay_selected": "rgba(124, 92, 252, 0.1)",
         "overlay_item": "rgba(255, 255, 255, 0.03)",
         "overlay_item_border": "rgba(255, 255, 255, 0.04)",
+        # 交互叠加层（强调色系）
+        "overlay_accent": "rgba(124, 92, 252, 0.1)",
+        "overlay_accent_light": "rgba(124, 92, 252, 0.15)",
         # 滚动条
         "scrollbar_handle": "rgba(255, 255, 255, 0.1)",
         "scrollbar_hover": "rgba(255, 255, 255, 0.2)",
