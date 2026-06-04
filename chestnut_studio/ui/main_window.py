@@ -499,6 +499,18 @@ class MainWindow(QMainWindow):
 
     def _check_update(self):
         """后台检查 GitHub 新版本（通过 QNetworkAccessManager 异步请求）"""
+        ver = get_version()
+
+        def _reset_style():
+            self._ver_label.setStyleSheet("")
+            self._ver_label.setCursor(Qt.CursorShape.ArrowCursor)
+            self._ver_label.setToolTip("")
+
+        _reset_style()
+        self._ver_label.setText(f"v{ver}  ⟳")
+        self._ver_label.setStyleSheet("color: #d4b85c;")  # 黄色 = 检查中
+        self._ver_label.setToolTip("检查更新中…")
+
         nam = QNetworkAccessManager(self)
         nam.finished.connect(self._on_update_reply)
         nam.get(QNetworkRequest(QUrl(API_URL)))
@@ -506,27 +518,46 @@ class MainWindow(QMainWindow):
 
     def _on_update_reply(self, reply):
         """处理 GitHub API 返回结果"""
-        if reply.error():
-            logger.info(f"更新检查失败: {reply.errorString()}")
+        ver = get_version()
+        err = reply.error()
+
+        # 先读取完整响应（readAll 只能调用一次）
+        raw = bytes(reply.readAll())
+
+        if err or not raw:
+            msg = reply.errorString() if err else "返回为空"
+            logger.info(f"更新检查失败: {msg}")
+            self._ver_label.setText(f"v{ver}  ⚠")
+            self._ver_label.setStyleSheet("color: #c06060;")  # 暗红 = 失败
+            self._ver_label.setToolTip(f"更新检查失败: {msg}")
             reply.deleteLater()
             return
 
         import json
 
         try:
-            data = json.loads(bytes(reply.readAll()).decode("utf-8"))
+            data = json.loads(raw.decode("utf-8"))
         except (json.JSONDecodeError, UnicodeDecodeError):
+            logger.info("更新检查失败: 响应解析异常")
+            self._ver_label.setText(f"v{ver}  ⚠")
+            self._ver_label.setStyleSheet("color: #c06060;")
+            self._ver_label.setToolTip("更新检查失败: 响应解析异常")
             reply.deleteLater()
             return
         reply.deleteLater()
 
-        info = parse_release_data(data, get_version())
+        info = parse_release_data(data, ver)
         if info is None:
+            # 已是最新，恢复默认样式
+            self._ver_label.setText(f"v{ver}")
+            self._ver_label.setStyleSheet("")
+            self._ver_label.setCursor(Qt.CursorShape.ArrowCursor)
+            self._ver_label.setToolTip("")
             return
 
         self._update_info = info
         self._ver_label.setText(f"⬆ v{info.latest_version}")
-        self._ver_label.setStyleSheet("color: #4ecdc4; font-weight: bold;")
+        self._ver_label.setStyleSheet("color: #4ecdc4; font-weight: bold;")  # 青色 = 可更新
         self._ver_label.setCursor(Qt.CursorShape.PointingHandCursor)
         self._ver_label.setToolTip(f"新版本 v{info.latest_version} 可用 — 点击查看更新日志")
         logger.info(f"发现新版本: v{info.latest_version}")
