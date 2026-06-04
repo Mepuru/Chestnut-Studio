@@ -292,10 +292,6 @@ class MergePlan:
 
         return result
 
-    def get_ass_content(self) -> str:
-        """获取合并后的 ASS 文本内容（用于预览）"""
-        return "\n".join(self._repr_lines())
-
 
 # ── 解析器 ──
 
