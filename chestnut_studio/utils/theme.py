@@ -34,7 +34,7 @@ THEMES: dict[str, dict[str, str]] = {
         "text_secondary": "#c0c0d8",
         "text_muted": "#9090b0",
         "text_tertiary": "#7070a0",
-        "text_dim": "#505080",
+        "text_dim": "#8080b0",
         "text_very_dim": "#505068",
         "text_on_accent": "#ffffff",
         "text_time": "#8080b0",
