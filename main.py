@@ -17,15 +17,8 @@ from chestnut_studio.utils.version import get_version
 
 
 def _get_log_dir() -> Path:
-    """获取日志目录
-
-    打包后 → %LOCALAPPDATA%/ChestnutStudio/logs
-    开发时 → 项目根目录/logs
-    """
-    if getattr(sys, "frozen", False):
-        base = Path(os.environ["LOCALAPPDATA"]) / "ChestnutStudio"
-    else:
-        base = Path(__file__).resolve().parent / "logs"
+    """获取日志目录 — %LOCALAPPDATA%/ChestnutStudio/logs"""
+    base = Path(os.environ["LOCALAPPDATA"]) / "ChestnutStudio"
     base.mkdir(parents=True, exist_ok=True)
     return base
 

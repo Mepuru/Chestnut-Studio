@@ -5,7 +5,6 @@
 """
 
 import os
-import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt
@@ -229,10 +228,7 @@ class MainWindow(QMainWindow):
 
     def _open_log_file(self):
         """用系统默认编辑器打开日志文件"""
-        if getattr(sys, "frozen", False):
-            base = Path(os.environ["LOCALAPPDATA"]) / "ChestnutStudio"
-        else:
-            base = Path(__file__).resolve().parent.parent.parent / "logs"
+        base = Path(os.environ["LOCALAPPDATA"]) / "ChestnutStudio"
         log_path = base / "app.log"
         if log_path.exists():
             os.startfile(str(log_path))
