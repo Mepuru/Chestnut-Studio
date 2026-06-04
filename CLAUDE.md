@@ -115,6 +115,60 @@ uv run python scripts/build_release.py
 
 ---
 
+## Release Notes 规范
+
+每次发布新版本时，用 `gh release create` 创建 GitHub Release，Release Notes 按以下格式编写。
+
+### 格式模板
+
+```markdown
+# Chestnut Studio v{version}
+
+> {一句话版本亮点}
+
+---
+
+### ✨ 新功能
+
+- **{功能名}** — {一句话概述}
+  - {子要点}（可选，有则写）
+  - {子要点}
+
+### 🔧 改进
+
+- {改动描述}
+
+### 🐛 修复
+
+- {问题描述}
+
+### 🧪 测试
+
+- {测试指标变化}
+
+### 📦 构建
+
+- {构建相关变更}
+```
+
+### 规则
+
+1. **每条 Release Note 必须自包含** — 不引用 CHANGELOG.md、commit hash 或其他外部文档。用户看到的应该是一个可以直接理解的发布说明。
+2. **只写用户能感知的变化** — 不上报纯粹的内部重构（改变量名、调整 import 顺序等），除非它有外部可观测的影响（性能提升、体积减小等）。
+3. **功能按重要性降序排列** — 新功能在前，修复居中，构建/测试在后。同类变更合并成一条（如"修复 5 处内存泄漏"）。
+4. **描述要具体** — 不说"优化了体验"，说"添加了确认对话框，防止误清空笔记"。
+5. **篇幅控制** — 大版本 ≤ 30 行，小版本（hotfix）≤ 15 行。
+
+### 发布命令
+
+```bash
+gh release create v{version} "dist/ChestnutStudio-{version}-Nuitka.exe" --title "Chestnut Studio v{version}" --notes-file /dev/stdin << EOF
+{按上面模板写 Release Notes}
+EOF
+```
+
+---
+
 ## 注意事项
 
 1. **核心层不引入 PySide6** — `core/` 下的代码必须在纯 Python 环境中可测试
