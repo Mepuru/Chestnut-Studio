@@ -235,9 +235,9 @@ class MergeDialog(QDialog):
         manual = len(self._plan.uncertain)
 
         if manual == 0:
-            self._stats_label.setText("已匹配 %d / %d — 全部确定" % (auto, total))
+            self._stats_label.setText(f"已匹配 {auto} / {total} — 全部确定")
         else:
-            self._stats_label.setText("已匹配 %d / %d — 待处理 %d 项" % (auto, total, manual))
+            self._stats_label.setText(f"已匹配 {auto} / {total} — 待处理 {manual} 项")
         self._stats_label.setVisible(True)
 
         self._report_view.setText(self._plan.generate_report())
@@ -261,8 +261,9 @@ class MergeDialog(QDialog):
             QMessageBox.information(
                 self,
                 "导出成功",
-                "字幕: %s\n报告: %s\n\n已匹配 %d / %d，待处理 %d 项"
-                % (ass_path, report_path, self._plan.auto_matched, self._plan.total_notes, len(self._plan.uncertain)),
+                f"字幕: {ass_path}\n报告: {report_path}\n\n"
+                f"已匹配 {self._plan.auto_matched} / {self._plan.total_notes}，"
+                f"待处理 {len(self._plan.uncertain)} 项",
             )
             self.accept()
         except Exception as e:

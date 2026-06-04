@@ -113,7 +113,7 @@ class MergePlan:
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
         color_summary = (
-            ", ".join("%s=%s" % (k, v) for k, v in sorted(self.track_colors.items())) if self.track_colors else "（无）"
+            ", ".join(f"{k}={v}" for k, v in sorted(self.track_colors.items())) if self.track_colors else "（无）"
         )
 
         lines = []
@@ -123,15 +123,15 @@ class MergePlan:
         lines.append("# 源 ASS: " + Path(self.ass_path).name)
         lines.append("# 源 TXT: " + Path(self.txt_path).name)
         lines.append("#")
-        lines.append("# ASS 行数: %d / TXT 笔记数: %d" % (total_ass, self.total_notes))
-        lines.append("# 自动匹配: %d / %d（%.1f%%）" % (self.auto_matched, self.total_notes, pct))
-        lines.append("# 潜在风险: %d 项 / 待处理: %d 项 / 空行: %d" % (len(self.risky), len(self.uncertain), empty))
+        lines.append(f"# ASS 行数: {total_ass} / TXT 笔记数: {self.total_notes}")
+        lines.append(f"# 自动匹配: {self.auto_matched} / {self.total_notes}（{pct:.1f}%）")
+        lines.append(f"# 潜在风险: {len(self.risky)} 项 / 待处理: {len(self.uncertain)} 项 / 空行: {empty}")
         lines.append("# 轨道颜色: " + color_summary)
         lines.append("# ---")
 
         # Section 1
         lines.append("")
-        lines.append("# 第 1 节 — 待手动处理（%d 项）" % len(self.uncertain))
+        lines.append(f"# 第 1 节 — 待手动处理（{len(self.uncertain)} 项）")
         lines.append("")
 
         if not self.uncertain:
@@ -139,16 +139,16 @@ class MergePlan:
             lines.append("")
         else:
             for i, u in enumerate(self.uncertain, 1):
-                lines.append("%d. ASS #%d  %s → %s" % (i, u.ass_idx + 1, u.ass_start, u.ass_end))
-                lines.append("   原因: %s" % u.reason)
+                lines.append(f"{i}. ASS #{u.ass_idx + 1}  {u.ass_start} → {u.ass_end}")
+                lines.append(f"   原因: {u.reason}")
                 for n in u.notes:
-                    lines.append("   · TXT #%d  [%s]  %s" % (n.index, n.track, n.text))
+                    lines.append(f"   · TXT #{n.index}  [{n.track}]  {n.text}")
                 lines.append("")
 
         # Section 2
         lines.append("# ---")
         lines.append("")
-        lines.append("# 第 2 节 — 潜在风险（%d 项）" % len(self.risky))
+        lines.append(f"# 第 2 节 — 潜在风险（{len(self.risky)} 项）")
         lines.append("# 说明：以下条目在重叠时间段内自动分配，建议在 Aegisub 中复核。")
         lines.append("")
 
@@ -160,9 +160,9 @@ class MergePlan:
                 sourceline = ""
                 if r.notes:
                     n = r.notes[0]
-                    sourceline = "  | 源 TXT #%d  [%s]  %s" % (n.index, n.track, n.text)
-                lines.append("%d. ASS #%d  %s → %s" % (i, r.ass_idx + 1, r.ass_start, r.ass_end))
-                lines.append("   原因: %s" % r.reason)
+                    sourceline = f"  | 源 TXT #{n.index}  [{n.track}]  {n.text}"
+                lines.append(f"{i}. ASS #{r.ass_idx + 1}  {r.ass_start} → {r.ass_end}")
+                lines.append(f"   原因: {r.reason}")
                 if sourceline:
                     lines.append(sourceline)
                 lines.append("")
@@ -175,18 +175,18 @@ class MergePlan:
         safe_items = [d for i, d in enumerate(self.dialogues) if d.text and i not in safe_indices]
         lines.append("# ---")
         lines.append("")
-        lines.append("# 第 3 节 — 已自动匹配（%d 条）" % len(safe_items))
+        lines.append(f"# 第 3 节 — 已自动匹配（{len(safe_items)} 条）")
         lines.append("")
 
         for i, d in enumerate(safe_items, 1):
             src_info = ""
             if d.src_note_idx:
-                src_info = "   | 源 TXT #%d  [%s]" % (d.src_note_idx, d.track)
-            lines.append("%d. ASS #%d  %s → %s" % (i, d.line_index + 1, d.start_str, d.end_str))
+                src_info = f"   | 源 TXT #{d.src_note_idx}  [{d.track}]"
+            lines.append(f"{i}. ASS #{d.line_index + 1}  {d.start_str} → {d.end_str}")
             if src_info:
                 lines.append(src_info)
-            tag = "[%s] " % d.track if d.track else ""
-            lines.append("   · %s%s" % (tag, d.text[:80]))
+            tag = f"[{d.track}] " if d.track else ""
+            lines.append(f"   · {tag}{d.text[:80]}")
             lines.append("")
 
         return "\n".join(lines)

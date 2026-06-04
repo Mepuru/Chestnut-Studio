@@ -192,16 +192,17 @@ class MainWindow(QMainWindow):
 
         from chestnut_studio.utils.version import get_version
 
+        ver = get_version()
         QMessageBox.about(
             self,
             "关于 Chestnut Studio",
-            "<h3>Chestnut Studio v%s</h3>"
+            f"<h3>Chestnut Studio v{ver}</h3>"
             "<p>一个简洁的视频笔记工具</p>"
             "<hr>"
             "<p>作者: <b>KuriKana</b></p>"
             "<p>边看视频边添加带时间戳的笔记，"
             "支持 10 条彩色轨道、术语库、"
-            "ASS+TXT 字幕合并。</p>" % get_version(),
+            "ASS+TXT 字幕合并。</p>",
         )
 
     def _show_terms(self):
