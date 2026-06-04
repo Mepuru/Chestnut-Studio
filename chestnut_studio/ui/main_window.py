@@ -128,6 +128,9 @@ class MainWindow(QMainWindow):
         self._view_log_action = QAction("查看日志(&L)", self)
         self._view_log_action.triggered.connect(self._open_log_file)
         help_menu.addAction(self._view_log_action)
+        self._debug_box_action = QAction("百宝箱(&B)", self)
+        self._debug_box_action.triggered.connect(self._open_debug_box)
+        help_menu.addAction(self._debug_box_action)
         help_menu.addSeparator()
         self._about_action = QAction("关于(&A)", self)
         self._about_action.triggered.connect(self._show_about)
@@ -233,6 +236,14 @@ class MainWindow(QMainWindow):
         base = Path(os.environ["LOCALAPPDATA"]) / "ChestnutStudio"
         logger.info(f"用户操作: 打开日志目录 → {base}")
         os.startfile(str(base))
+
+    def _open_debug_box(self):
+        """打开开发者百宝箱"""
+        logger.info("用户操作: 打开百宝箱")
+        from chestnut_studio.ui.debug_box import DebugBox
+
+        dialog = DebugBox(self, note_manager=self._note_manager)
+        dialog.exec()
 
     def _show_terms(self):
         """显示术语列表"""
