@@ -232,6 +232,7 @@ class MainWindow(QMainWindow):
         """用系统默认编辑器打开日志文件"""
         base = Path(os.environ["LOCALAPPDATA"]) / "ChestnutStudio"
         log_path = base / "app.log"
+        logger.info(f"用户操作: 查看日志 → {log_path}")
         if log_path.exists():
             os.startfile(str(log_path))
         else:
@@ -239,6 +240,7 @@ class MainWindow(QMainWindow):
 
     def _show_terms(self):
         """显示术语列表"""
+        logger.info("用户操作: 查看术语")
         from chestnut_studio.ui.term_dialog import TermTableDialog
 
         terms = self._note_manager.get_terms()
@@ -252,6 +254,7 @@ class MainWindow(QMainWindow):
 
     def _show_shortcuts(self):
         """显示快捷键列表"""
+        logger.info("用户操作: 查看快捷键")
         from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout
 
         dialog = QDialog(self)
@@ -479,7 +482,9 @@ class MainWindow(QMainWindow):
         # ── 全局快捷键（输入框有焦点也生效） ──
         # F1 → 播放/暂停
         if key == Qt.Key_F1:
+            was_playing = self.player_card.is_playing()
             self.player_card.play_pause()
+            logger.info(f"用户操作: {'暂停' if was_playing else '播放'} (F1)")
             event.accept()
             return
 
@@ -499,6 +504,7 @@ class MainWindow(QMainWindow):
         if mod == Qt.ControlModifier and Qt.Key_0 <= key <= Qt.Key_9:
             track = 10 if key == Qt.Key_0 else key - Qt.Key_1 + 1
             self.input_bar.set_current_track(track)
+            logger.info(f"用户操作: 切换轨道 → {track} (Ctrl+{key - Qt.Key_0})")
             event.accept()
             return
 

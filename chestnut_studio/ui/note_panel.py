@@ -157,6 +157,7 @@ class NotePanel(QWidget):
         """切换排序方式"""
         self._sort_mode = "track" if self._sort_mode == "time" else "time"
         self._sort_btn.setText("轨道" if self._sort_mode == "time" else "时间")
+        logger.info(f"用户操作: 排序切换为 {self._sort_mode}")
         self.refresh()
 
     def refresh(self):
@@ -287,6 +288,7 @@ class NotePanel(QWidget):
         widget = self._list.itemWidget(item)
         if isinstance(widget, NoteItemWidget):
             self._note_manager.remove(widget.note)
+            logger.info(f"用户操作: 删除笔记 [{widget.note.type}] {widget.note.text[:50]}")
             self.refresh()
 
     def _clear_all(self):

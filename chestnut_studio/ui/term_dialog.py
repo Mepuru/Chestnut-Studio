@@ -19,6 +19,9 @@ from PySide6.QtWidgets import (
 )
 
 from chestnut_studio.core.note_manager import NoteManager, Term
+from chestnut_studio.utils import get_logger
+
+logger = get_logger("UI")
 
 
 def _parse_note(note: str) -> tuple[str, str, str]:
@@ -211,6 +214,7 @@ class TermTableDialog(QDialog):
         if action == edit_action:
             self._edit_term(row)
         elif action == delete_action:
+            logger.info(f"用户操作: 删除术语 {t.source}")
             self._note_manager.remove_term(t.source)
             self._populate_table()
 
@@ -226,5 +230,6 @@ class TermTableDialog(QDialog):
             result = dialog.get_result()
             if result:
                 new_s, new_t, new_o, new_n = result
+                logger.info(f"用户操作: 编辑术语 {t.source} → {new_s}")
                 self._note_manager.update_term(t.source, new_s, new_t, new_o, new_n)
                 self._populate_table()

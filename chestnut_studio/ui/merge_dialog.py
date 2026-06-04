@@ -20,6 +20,9 @@ from PySide6.QtWidgets import (
 )
 
 from chestnut_studio.core.ass_merge import build_merge_plan
+from chestnut_studio.utils import get_logger
+
+logger = get_logger("UI")
 
 
 class MergeDialog(QDialog):
@@ -226,7 +229,9 @@ class MergeDialog(QDialog):
 
         try:
             self._plan = build_merge_plan(ass, txt)
+            logger.info(f"合并分析: ASS={ass}, TXT={txt}")
         except Exception as e:
+            logger.error(f"合并分析失败: {e}")
             QMessageBox.critical(self, "分析失败", "合并分析出错:\n" + str(e))
             return
 
@@ -258,6 +263,7 @@ class MergeDialog(QDialog):
 
         try:
             ass_path, report_path = self._plan.write(out)
+            logger.info(f"合并导出: {ass_path}, {report_path}")
             QMessageBox.information(
                 self,
                 "导出成功",
