@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -222,7 +223,7 @@ class NoteManager:
     # ── 文本格式导出/导入 ──
 
     @staticmethod
-    def _build_track_colors_line(types: tuple[str, ...] | None = None) -> str:
+    def _build_track_colors_line(types: Sequence[str] | None = None) -> str:
         """生成轨道颜色行，例如 '轨道1=#3b82f6, 轨道2=#10b981'"""
         used_types = types or NOTE_TYPES
         pairs = []
