@@ -229,14 +229,10 @@ class MainWindow(QMainWindow):
         )
 
     def _open_log_file(self):
-        """用系统默认编辑器打开日志文件"""
+        """在文件资源管理器中打开日志目录"""
         base = Path(os.environ["LOCALAPPDATA"]) / "ChestnutStudio"
-        log_path = base / "app.log"
-        logger.info(f"用户操作: 查看日志 → {log_path}")
-        if log_path.exists():
-            os.startfile(str(log_path))
-        else:
-            QMessageBox.information(self, "日志", "暂无日志记录。")
+        logger.info(f"用户操作: 打开日志目录 → {base}")
+        os.startfile(str(base))
 
     def _show_terms(self):
         """显示术语列表"""
