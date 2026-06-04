@@ -30,7 +30,7 @@ from chestnut_studio.ui.input_bar import InputBar
 from chestnut_studio.ui.note_panel import NotePanel
 from chestnut_studio.utils import get_logger
 from chestnut_studio.utils.time_utils import ms_to_time_str
-from chestnut_studio.utils.update_checker import API_URL, UpdateInfo, parse_release_data
+from chestnut_studio.utils.update_checker import API_URL, parse_release_data
 from chestnut_studio.utils.version import get_version
 
 logger = get_logger("UI")
@@ -67,7 +67,6 @@ class MainWindow(QMainWindow):
         # 数据模型
         self._note_manager = NoteManager()
         self._ffmpeg = FFmpeg()
-        self._update_info: UpdateInfo | None = None
 
         # 创建 UI
         self._setup_menu_bar()
@@ -187,7 +186,6 @@ class MainWindow(QMainWindow):
         self._ver_label = QLabel(f"v{get_version()}")
         self._ver_label.setObjectName("versionLabel")
         self.statusBar().addPermanentWidget(self._ver_label)
-        self._ver_label.installEventFilter(self)
         self._show_status("拖入视频文件 或 Ctrl+O 打开")
 
     def _show_status(self, msg: str):
@@ -489,24 +487,12 @@ class MainWindow(QMainWindow):
 
     # ── 更新检查 ──
 
-    def eventFilter(self, obj, event):
-        """拦截版本标签点击事件"""
-        if obj is self._ver_label and event.type() == event.Type.MouseButtonPress:
-            if self._update_info:
-                self._show_update_dialog()
-            return True
-        return super().eventFilter(obj, event)
-
     def _check_update(self):
         """后台检查 GitHub 新版本（通过 QNetworkAccessManager 异步请求）"""
         ver = get_version()
 
-        def _reset_style():
-            self._ver_label.setStyleSheet("")
-            self._ver_label.setCursor(Qt.CursorShape.ArrowCursor)
-            self._ver_label.setToolTip("")
-
-        _reset_style()
+        self._ver_label.setStyleSheet("")
+        self._ver_label.setToolTip("")
         self._ver_label.setText(f"v{ver}  ⟳")
         self._ver_label.setStyleSheet("color: #d4b85c;")  # 黄色 = 检查中
         self._ver_label.setToolTip("检查更新中…")
@@ -529,7 +515,6 @@ class MainWindow(QMainWindow):
 
         # ── 网络或 HTTP 错误 ──
         if reply.error() or status and status >= 400 or not raw:
-            # 尝试解析 JSON 错误体（GitHub 403 等会返回 JSON）
             msg = reply.errorString() or "请求失败"
             if raw:
                 import json
@@ -541,11 +526,7 @@ class MainWindow(QMainWindow):
                 except Exception:
                     pass
             logger.info(f"更新检查失败 (HTTP {status}): {msg}")
-            # 频率限制给个友好提示
-            if status == 403 and "rate limit" in msg.lower():
-                tip = "更新检查过于频繁，稍后再试"
-            else:
-                tip = "更新检查失败" if status is None else f"更新检查失败 (HTTP {status})"
+            tip = "更新检查过于频繁，稍后再试" if (status == 403 and "rate limit" in msg.lower()) else "更新检查失败"
             self._ver_label.setText(f"v{ver}  ⚠")
             self._ver_label.setStyleSheet("color: #c06060;")
             self._ver_label.setToolTip(tip)
@@ -561,7 +542,7 @@ class MainWindow(QMainWindow):
             logger.info("更新检查失败: 响应解析异常")
             self._ver_label.setText(f"v{ver}  ⚠")
             self._ver_label.setStyleSheet("color: #c06060;")
-            self._ver_label.setToolTip("更新检查失败: 响应解析异常")
+            self._ver_label.setToolTip("更新检查失败")
             reply.deleteLater()
             return
         reply.deleteLater()
@@ -571,56 +552,13 @@ class MainWindow(QMainWindow):
             # 已是最新，恢复默认样式
             self._ver_label.setText(f"v{ver}")
             self._ver_label.setStyleSheet("")
-            self._ver_label.setCursor(Qt.CursorShape.ArrowCursor)
             self._ver_label.setToolTip("")
             return
 
-        self._update_info = info
         self._ver_label.setText(f"⬆ v{info.latest_version}")
         self._ver_label.setStyleSheet("color: #4ecdc4; font-weight: bold;")  # 青色 = 可更新
-        self._ver_label.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._ver_label.setToolTip(f"新版本 v{info.latest_version} 可用 — 点击查看更新日志")
+        self._ver_label.setToolTip(f"新版本 v{info.latest_version} 可用")
         logger.info(f"发现新版本: v{info.latest_version}")
-
-    def _show_update_dialog(self):
-        """弹出更新日志对话框"""
-        info = self._update_info
-        if info is None:
-            return
-
-        from PySide6.QtGui import QDesktopServices
-        from PySide6.QtWidgets import (
-            QDialogButtonBox,
-            QTextEdit,
-            QVBoxLayout,
-        )
-
-        current = get_version()
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle(f"更新可用 — v{current} → v{info.latest_version}")
-        dialog.setMinimumSize(480, 360)
-        dialog.setObjectName("updateDialog")
-
-        layout = QVBoxLayout(dialog)
-        layout.setSpacing(12)
-
-        notes = QTextEdit(dialog)
-        notes.setReadOnly(True)
-        notes.setObjectName("updateNotes")
-        notes.setText(info.release_notes)
-        layout.addWidget(notes)
-
-        buttons = QDialogButtonBox(dialog)
-        dl_btn = buttons.addButton("下载", QDialogButtonBox.ButtonRole.ActionRole)
-        detail_btn = buttons.addButton("查看详情", QDialogButtonBox.ButtonRole.ActionRole)
-        buttons.addButton(QDialogButtonBox.StandardButton.Close)
-        layout.addWidget(buttons)
-
-        dl_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(info.download_url)) if info.download_url else None)
-        detail_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(info.release_url)))
-
-        dialog.exec()
 
     # ── 快捷键 ──
 
