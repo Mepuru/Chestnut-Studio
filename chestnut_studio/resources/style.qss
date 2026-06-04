@@ -77,6 +77,13 @@ QStatusBar::item {
     border: none;
 }
 
+#versionLabel {
+    color: #505080;
+    font-size: 8pt;
+    padding: 0 4px;
+    background: transparent;
+}
+
 /* ── 分割条 ── */
 QSplitter::handle {
     background: #25254a;
