@@ -165,7 +165,7 @@ def main():
     python = find_python()
 
     # 解析目标
-    targets = [a.lower() for a in sys.argv[1:]] if len(sys.argv) > 1 else ["pyinstaller", "nuitka"]
+    targets = [a.lower() for a in sys.argv[1:]] if len(sys.argv) > 1 else ["nuitka"]
 
     print(f"╔══ Chestnut Studio v{version} 构建 ═══╗")
     print(f"  Python: {python}")
