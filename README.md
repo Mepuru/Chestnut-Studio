@@ -61,57 +61,54 @@ uv run python main.py
 
 ## 构建
 
-提供两种打包后端，输出单文件 exe：
-
 ```bash
-# 构建全部（PyInstaller + Nuitka）
+# 构建（Nuitka --onefile，需预先安装 zig 编译器）
 uv run python scripts/build_release.py
-
-# 仅构建 PyInstaller 版（≈55 MB，构建快）
-uv run python scripts/build_release.py pyinstaller
-
-# 仅构建 Nuitka 版（≈33 MB，编译耗时稍长）
-uv run python scripts/build_release.py nuitka
 ```
 
-输出:
-```
-dist/
-├── ChestnutStudio-{version}-PyInstaller.exe   (≈55 MB)
-└── ChestnutStudio-{version}-Nuitka.exe        (≈33 MB)
-```
-
-| 后端 | 大小 | 原理 | 适用场景 |
-|------|------|------|----------|
-| PyInstaller | ≈55 MB | 捆绑 Python + DLL | 兼容性优先 |
-| Nuitka | ≈33 MB | 编译 Python → 原生 exe | 体积/启动速度优先 |
+输出到 `dist/ChestnutStudio-{version}-Nuitka.exe`（≈33 MB，原生编译）。
 
 ## 项目结构
 
 ```
-chestnut_studio/
-├── core/                  # 核心逻辑（无 UI 依赖）
-│   ├── ass_merge.py       # ASS+TXT 合并引擎
-│   ├── ffmpeg.py          # FFmpeg 封装
-│   ├── note_manager.py    # 笔记 + 术语数据模型
-│   └── track_config.py    # 轨道配置（颜色/数量）
-├── ui/                    # UI 组件
-│   ├── main_window.py     # 主窗口
-│   ├── input_bar.py       # 底部输入栏
-│   ├── merge_dialog.py    # ASS+TXT 合并对话框
-│   ├── note_panel.py      # 笔记列表面板
-│   ├── player_controls.py # 播放控制栏
-│   ├── term_dialog.py     # 术语编辑对话框
-│   └── cards/
-│       └── player_card.py # 视频播放器
-├── resources/
-│   ├── icons/             # SVG 图标
-│   ├── icon.png           # 应用图标
-│   └── style.qss          # 深色主题
-└── utils/
-    ├── log_manager.py     # 日志系统
-    ├── time_utils.py      # 时间格式转换
-    └── version.py         # 版本号读取
+├── main.py                   # 应用入口
+├── pyproject.toml             # 项目配置 + 版本号
+├── scripts/
+│   └── build_release.py      # Nuitka 构建脚本
+├── tests/                    # 175 个测试用例
+│   ├── conftest.py           # QApplication fixture
+│   ├── test_note_manager.py
+│   ├── test_ass_merge.py
+│   ├── test_time_utils.py
+│   ├── test_log_manager.py
+│   ├── test_version.py
+│   └── test_integration.py
+└── chestnut_studio/
+    ├── core/                  # 核心逻辑（无 UI 依赖）
+    │   ├── ass_merge.py       # ASS+TXT 合并引擎
+    │   ├── ffmpeg.py          # FFmpeg 封装
+    │   ├── note_manager.py    # 笔记 + 术语数据模型
+    │   └── track_config.py    # 轨道配置（颜色/数量）
+    ├── ui/                    # UI 组件（依赖 PySide6）
+    │   ├── main_window.py     # 主窗口
+    │   ├── input_bar.py       # 底部输入栏
+    │   ├── merge_dialog.py    # ASS+TXT 合并对话框
+    │   ├── note_panel.py      # 笔记列表面板
+    │   ├── player_controls.py # 播放控制栏
+    │   ├── term_dialog.py     # 术语编辑对话框
+    │   ├── debug_box.py       # 开发者百宝箱
+    │   └── cards/
+    │       └── player_card.py # 视频播放器封装
+    ├── utils/                 # 工具函数（无外部依赖）
+    │   ├── log_manager.py     # 线程安全日志系统
+    │   ├── theme.py           # 主题引擎（token 化 QSS）
+    │   ├── time_utils.py      # 时间格式转换
+    │   ├── update_checker.py  # GitHub 版本检查
+    │   └── version.py         # 版本号读取
+    └── resources/             # 资源文件
+        ├── icons/             # SVG 图标
+        ├── icon.png           # 应用图标（ico/64x64/256x256 多尺寸）
+        └── style.qss          # 深色主题样式模板
 ```
 
 ## 技术栈

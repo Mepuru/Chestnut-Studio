@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 def _read_pyproject_toml() -> str:
-    """从 pyproject.toml 直接读取版本号（开发模式 / PyInstaller 后备）"""
+    """从 pyproject.toml 直接读取版本号（打包环境后备）"""
     # 依次尝试常见路径
     candidates = [
         Path(__file__).parent.parent.parent / "pyproject.toml",

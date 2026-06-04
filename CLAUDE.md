@@ -7,15 +7,17 @@
 ## 项目概述
 
 Chestnut Studio 是一款视频笔记工具——边看视频边添加带时间戳的笔记。
-基于 PySide6 开发，当前版本 v2.2.3。
+基于 PySide6 开发，当前版本 v2.3.0。
 
 **核心特性**:
-- 视频播放 + 10 条彩色轨道
+- 视频播放 + 10 条彩色轨道（Ctrl+1~9/0 切换）
 - 时间戳笔记（输入时自动记录当前视频位置）
 - 笔记按轨道分组显示，双击跳转
-- 术语库管理（笔记右键 → 术语）
+- 术语库管理（笔记列表按 M 或右键 → 术语）
 - 导出/导入（TXT + JSON）
 - 拖放打开视频
+- ASS+TXT 字幕合并
+- 深色主题（token 化 QSS）
 
 ---
 
@@ -56,12 +58,18 @@ self.note_panel.term_requested.connect(self._on_term_requested)
 | `ui/note_panel.py` | 右侧笔记列表：分组显示、双击跳转、右键删除/术语 |
 | `ui/term_dialog.py` | 术语编辑/查看对话框 |
 | `ui/player_controls.py` | 播放控制栏：进度条、音量、倍速 |
+| `ui/merge_dialog.py` | ASS+TXT 字幕合并对话框 |
+| `ui/debug_box.py` | 开发者百宝箱（崩溃/日志/性能测试） |
 | `ui/cards/player_card.py` | QMediaPlayer 视频播放封装 |
 | `core/note_manager.py` | 笔记 + 术语数据模型（Note/Term/NoteManager） |
 | `core/ffmpeg.py` | FFmpeg 封装（视频信息解析） |
 | `core/track_config.py` | 轨道数量、颜色、NOTE_TYPES 唯一来源 |
+| `core/ass_merge.py` | ASS+TXT 字幕合并引擎（无 UI 依赖） |
+| `resources.py` | 资源路径管理（支持 Nuitka 打包） |
+| `utils/theme.py` | 主题引擎：34 个 token + render_stylesheet() |
 | `utils/log_manager.py` | 线程安全日志管理器（handler 模式） |
 | `utils/time_utils.py` | 时间格式转换（ms → SRT/ASS/VTT/LRC 等） |
+| `utils/update_checker.py` | GitHub 版本更新检查（纯数据层） |
 | `utils/version.py` | 版本号从 pyproject.toml 单源读取 |
 
 ---
@@ -114,3 +122,5 @@ uv run python scripts/build_release.py
 3. **全局快捷键在 `MainWindow.keyPressEvent`** — 保证任何焦点下都生效
 4. **术语编辑在 `term_dialog.py`** — 不要在新的地方另写一套术语 UI
 5. **`NOTE_TYPES` 从 `track_config.py` 导入** — 不要在其他文件硬编码轨道列表
+6. **QSS 使用 `{{token}}` 占位符** — `utils/theme.py` 渲染，不要硬编码颜色值到 QSS 中
+7. **内联 `setStyleSheet()` 仅用于动态值** — 轨道颜色（`get_track_color()`）、视频背景色（`get_theme()['bg_video']`）等无法通过 QSS 控制的场景才用
