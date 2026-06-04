@@ -511,28 +511,48 @@ class MainWindow(QMainWindow):
         self._ver_label.setStyleSheet("color: #d4b85c;")  # 黄色 = 检查中
         self._ver_label.setToolTip("检查更新中…")
 
+        req = QNetworkRequest(QUrl(API_URL))
+        req.setRawHeader(b"Accept", b"application/vnd.github+json")
+        req.setRawHeader(b"User-Agent", f"ChestnutStudio/{ver}".encode())
+        req.setRawHeader(b"X-GitHub-Api-Version", b"2022-11-28")
+
         nam = QNetworkAccessManager(self)
         nam.finished.connect(self._on_update_reply)
-        nam.get(QNetworkRequest(QUrl(API_URL)))
+        nam.get(req)
         self._update_nam = nam  # 防止被回收
 
     def _on_update_reply(self, reply):
         """处理 GitHub API 返回结果"""
         ver = get_version()
-        err = reply.error()
-
-        # 先读取完整响应（readAll 只能调用一次）
+        status = reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute)
         raw = bytes(reply.readAll())
 
-        if err or not raw:
-            msg = reply.errorString() if err else "返回为空"
-            logger.info(f"更新检查失败: {msg}")
+        # ── 网络或 HTTP 错误 ──
+        if reply.error() or status and status >= 400 or not raw:
+            # 尝试解析 JSON 错误体（GitHub 403 等会返回 JSON）
+            msg = reply.errorString() or "请求失败"
+            if raw:
+                import json
+
+                try:
+                    body = json.loads(raw.decode("utf-8"))
+                    if isinstance(body, dict) and "message" in body:
+                        msg = body["message"]
+                except Exception:
+                    pass
+            logger.info(f"更新检查失败 (HTTP {status}): {msg}")
+            # 频率限制给个友好提示
+            if status == 403 and "rate limit" in msg.lower():
+                tip = "更新检查过于频繁，稍后再试"
+            else:
+                tip = "更新检查失败" if status is None else f"更新检查失败 (HTTP {status})"
             self._ver_label.setText(f"v{ver}  ⚠")
-            self._ver_label.setStyleSheet("color: #c06060;")  # 暗红 = 失败
-            self._ver_label.setToolTip(f"更新检查失败: {msg}")
+            self._ver_label.setStyleSheet("color: #c06060;")
+            self._ver_label.setToolTip(tip)
             reply.deleteLater()
             return
 
+        # ── 正常响应 ──
         import json
 
         try:
