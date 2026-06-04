@@ -1,9 +1,0 @@
-[2026-06-04 13:15:56] [UI      ] INFO     拖入视频文件 或 Ctrl+O 打开
-[2026-06-04 13:16:08] [FFmpeg  ] DEBUG    解析视频: C:/Users/Kana/Downloads/1ハエのバカ短い人生を満喫してみたtime fliesゆっくり実況.mp4
-[2026-06-04 13:16:08] [FFmpeg  ] INFO     视频: 1920x1080, 60fps, 571560ms
-[2026-06-04 13:16:08] [UI      ] INFO     已打开: 1ハエのバカ短い人生を満喫してみたtime fliesゆっくり実況.mp4  |  1920×1080 60fps 
-[2026-06-04 13:16:19] [NoteManager] INFO     导入文本: 242 条 ← C:/Users/Kana/Downloads/1ハエのバカ短い人生を満喫してみたtime fliesゆっくり実況.txt
-[2026-06-04 13:16:19] [NoteManager] DEBUG    添加术语: ハエ → 苍蝇
-[2026-06-04 13:16:19] [NoteManager] DEBUG    添加术语: 世界保健機関 → 世界卫生组织/WHO
-[2026-06-04 13:16:19] [NoteManager] INFO     导入术语: 2 条
-[2026-06-04 13:16:19] [UI      ] INFO     已导入 242 条笔记，2 条术语
