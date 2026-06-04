@@ -237,7 +237,7 @@ class MainWindow(QMainWindow):
             "<p>一个简洁的视频笔记工具</p>"
             "<hr>"
             "<p>作者: <b>KuriKana</b></p>"
-            '<p>https://github.com/Mepuru/Chestnut-Studio</p>'
+            "<p>https://github.com/Mepuru/Chestnut-Studio</p>"
             "<p>边看视频边添加带时间戳的笔记，"
             "支持 10 条彩色轨道、术语库、"
             "ASS+TXT 字幕合并。</p>"

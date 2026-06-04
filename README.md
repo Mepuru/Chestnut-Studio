@@ -1,6 +1,10 @@
-# Chestnut Studio
+<div align="center">
+  <img src="chestnut_studio/resources/icon.png" width="64" alt="Chestnut Studio">
 
-一个简洁的视频笔记工具——边看视频边添加带时间戳的笔记。v2.3.1
+  # Chestnut Studio
+
+  一个简洁的视频笔记工具 —— 边看视频边添加带时间戳的笔记。v2.4.0
+</div>
 
 > **布局**: 左侧视频播放 + 播放控制栏 | 右侧笔记列表（按轨道分组）| 底部输入栏（轨道切换 + 时间戳 + 发送）
 
@@ -136,14 +140,18 @@ uv run python scripts/build_release.py
 ├── pyproject.toml            # 项目配置 + 版本号
 ├── scripts/
 │   └── build_release.py      # Nuitka 构建脚本
-├── tests/                    # 175 个测试用例
+├── tests/                    # 224 个测试用例
 │   ├── conftest.py
 │   ├── test_note_manager.py
 │   ├── test_ass_merge.py
 │   ├── test_time_utils.py
 │   ├── test_log_manager.py
 │   ├── test_version.py
-│   └── test_integration.py
+│   ├── test_integration.py
+│   ├── test_track_config.py
+│   ├── test_theme.py
+│   ├── test_update_checker.py
+│   └── test_resources.py
 └── chestnut_studio/
     ├── core/                  # 核心逻辑（无 UI 依赖）
     │   ├── ass_merge.py       # ASS+TXT 合并引擎
@@ -162,13 +170,14 @@ uv run python scripts/build_release.py
     │       └── player_card.py # QMediaPlayer 视频播放封装
     ├── utils/                 # 工具函数（无外部依赖）
     │   ├── log_manager.py     # 线程安全日志系统
-    │   ├── theme.py           # 主题引擎（34 token 驱动 QSS）
+    │   ├── theme.py           # 主题引擎（32 token 驱动 QSS）
     │   ├── time_utils.py      # 时间格式转换
     │   ├── update_checker.py  # GitHub 版本更新检查
     │   └── version.py         # 版本号从 pyproject.toml 单源读取
     └── resources/             # 资源文件
         ├── icons/             # SVG 图标（play/pause/音量等）
         ├── icon.png           # 应用图标
+        ├── splash.jpg         # 启动页背景
         └── style.qss          # 深色主题 QSS 模板（{{token}} 占位符）
 ```
 
