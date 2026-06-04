@@ -34,8 +34,7 @@ class PlayerControls(QWidget):
     skip_back_clicked = Signal()
     skip_forward_clicked = Signal()
     seek_requested = Signal(int)
-    seeking_started = Signal()
-    seeking_finished = Signal()
+
     volume_changed = Signal(int)
     rate_changed = Signal(float)
 
