@@ -7,7 +7,7 @@
 ## 项目概述
 
 Chestnut Studio 是一款视频笔记工具——边看视频边添加带时间戳的笔记。
-基于 PySide6 开发，当前版本 v2.3.0。
+基于 PySide6 开发，当前版本 v2.3.1。
 
 **核心特性**:
 - 视频播放 + 10 条彩色轨道（Ctrl+1~9/0 切换）
@@ -66,7 +66,7 @@ self.note_panel.term_requested.connect(self._on_term_requested)
 | `core/track_config.py` | 轨道数量、颜色、NOTE_TYPES 唯一来源 |
 | `core/ass_merge.py` | ASS+TXT 字幕合并引擎（无 UI 依赖） |
 | `resources.py` | 资源路径管理（支持 Nuitka 打包） |
-| `utils/theme.py` | 主题引擎：34 个 token + render_stylesheet() |
+| `utils/theme.py` | 主题引擎：33 个 token + render_stylesheet() |
 | `utils/log_manager.py` | 线程安全日志管理器（handler 模式） |
 | `utils/time_utils.py` | 时间格式转换（ms → SRT/ASS/VTT/LRC 等） |
 | `utils/update_checker.py` | GitHub 版本更新检查（纯数据层） |
