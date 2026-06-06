@@ -108,10 +108,17 @@ uv run pytest tests/ -v
 ## 构建
 
 ```bash
+# 构建 (Nuitka --mode=standalone + NSIS installer)
 uv run python scripts/build_release.py
 ```
 
-输出到 `dist/ChestnutStudio-{version}-Nuitka.exe`。
+输出到 `dist/ChestnutStudio-{version}-Setup-x86_64_v1.exe`。
+
+构建流程:
+1. `--mode=standalone` → 目录（exe + DLL + Python 运行时）
+2. NSIS (makensis) 打包成 setup.exe（LZMA 压缩）
+3. Zig 编译器以 `-mcpu=baseline` 模式运行（兼容所有 x86-64 CPU）
+4. 安装时自动检测旧版本，先静默卸载再安装新版
 
 ---
 
@@ -158,7 +165,7 @@ uv run python scripts/build_release.py
 ### 发布命令
 
 ```bash
-gh release create v{version} "dist/ChestnutStudio-{version}-Nuitka.exe" --title "Chestnut Studio v{version}" --notes-file /dev/stdin << EOF
+gh release create v{version} "dist/ChestnutStudio-{version}-Setup-x86_64_v1.exe" --title "Chestnut Studio v{version}" --notes-file /dev/stdin << EOF
 {按上面模板写 Release Notes}
 EOF
 ```

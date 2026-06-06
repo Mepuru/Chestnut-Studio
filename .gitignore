@@ -40,3 +40,7 @@ nuitka-crash-report.xml
 .ruff_cache/
 .reasonix/
 *.spec
+
+# Zig wrapper (compiled during build)
+scripts/zig_wrapper.exe
+scripts/zig_wrapper.pdb

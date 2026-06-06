@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMenu,
+    QMessageBox,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
@@ -95,13 +96,15 @@ class TermEditDialog(QDialog):
         layout.addWidget(self._context_edit)
 
         # 术语
-        layout.addWidget(QLabel("术语（关键词）:"))
+        layout.addWidget(QLabel("术语（关键词）*:"))
         self._source_edit = QLineEdit(term.source if term else "")
+        self._source_edit.setPlaceholderText("必填")
         layout.addWidget(self._source_edit)
 
         # 译文
-        layout.addWidget(QLabel("译文（中文）:"))
+        layout.addWidget(QLabel("译文（中文）*:"))
         self._trans_edit = QLineEdit(term.translation if term else "")
+        self._trans_edit.setPlaceholderText("必填")
         layout.addWidget(self._trans_edit)
 
         # 出处
@@ -132,6 +135,13 @@ class TermEditDialog(QDialog):
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
         layout.addLayout(btn_layout)
+
+    def accept(self):
+        """验证必填字段后再保存"""
+        if not self._source_edit.text().strip() or not self._trans_edit.text().strip():
+            QMessageBox.warning(self, "保存术语", "术语和译文不能为空，请填写完整再保存。")
+            return
+        super().accept()
 
     def get_result(self) -> tuple[str, str, str, str] | None:
         """获取编辑结果
