@@ -104,6 +104,7 @@ def build_nuitka(version: str, python: Path) -> Path:
             f"--output-filename={dist_name}",
             f"--output-dir={PROJECT_ROOT / 'dist'}",
             f"--include-data-dir={resources_src}=chestnut_studio/resources",
+            "--include-data-file=pyproject.toml=pyproject.toml",
             str(main_py),
         ]
 
