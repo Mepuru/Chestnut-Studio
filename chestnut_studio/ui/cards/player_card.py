@@ -115,12 +115,15 @@ class PlayerCard(QWidget):
     def pause(self):
         self._player.pause()
 
-    def play_pause(self):
+    @log_operation("{result}", after=True)
+    def play_pause(self) -> str:
         """播放/暂停切换"""
+        was_playing = self._is_playing
         if self._is_playing:
             self.pause()
         else:
             self.play()
+        return "暂停" if was_playing else "播放"
 
     def stop(self):
         self._player.stop()
@@ -165,11 +168,9 @@ class PlayerCard(QWidget):
 
     # ── 内部方法 ──
 
-    @log_operation("{result}", after=True)
-    def _toggle_play_pause(self) -> str:
-        was_playing = self._is_playing
+    def _toggle_play_pause(self):
+        """信号槽：播放控制栏按钮点击"""
         self.play_pause()
-        return "暂停" if was_playing else "播放"
 
     @log_operation("跳转 {ms:+d}ms → {result}ms", after=True)
     def _skip(self, ms: int) -> int:

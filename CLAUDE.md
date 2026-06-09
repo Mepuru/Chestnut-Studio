@@ -146,13 +146,29 @@ def _skip(self, ms: int) -> int:
 
 `{result}` 和 `{param_name}` 可以同时使用。
 
+### 条件分支的处理
+
+不要把日志写在分发函数（如 `keyPressEvent`）中。让每个分支调用的目标方法自身使用 `@log_operation`：
+
+```python
+# ❌ 不推荐：在分发层手动写日志
+def keyPressEvent(self, event):
+    if key == Qt.Key_F1:
+        self.player_card.play_pause()
+        logger.info("用户操作: 播放")   # ← 手动日志
+
+# ✅ 推荐：日志下推到目标方法
+def keyPressEvent(self, event):
+    if key == Qt.Key_F1:
+        self.player_card.play_pause()  # ← play_pause() 自身带 @log_operation
+```
+
 ### 什么时候不用装饰器？
 
-以下场景保留手动 `logger.info()`：
+以下场景保留手动 `self._logger.info()` 或 `logger.info()`：
 
-1. **条件分支型** — 同一方法内有多个互斥的 `logger` 调用（如 `keyPressEvent` 中 F1/F2/Ctrl+数字 走不同分支）
-2. **属性/表达式型** — 日志内容包含属性访问（`{note.type}`）、方法调用（`{ms_to_time_str(x)}`）或切片（`{text[:50]}`）（`str.format()` 不支持这些）
-3. **核心层技术调试** — `core/` 下的 debug/error 日志仍用 `self._logger.info()` 手动调用
+1. **属性/表达式型** — 日志内容包含属性访问（`{note.type}`）、方法调用（`{ms_to_time_str(x)}`）或切片（`{text[:50]}`）（`str.format()` 不支持这些）
+2. **核心层技术调试** — `core/` 下的 debug/error 日志仍用 `self._logger.info()` 手动调用
 
 ### 导入路径
 

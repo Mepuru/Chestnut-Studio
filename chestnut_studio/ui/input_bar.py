@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from chestnut_studio.core.track_config import NOTE_TYPES, get_track_color
+from chestnut_studio.utils import log_operation
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
 
@@ -77,6 +78,7 @@ class InputBar(QWidget):
         self._timestamp_ms = ms
         self._time_label.setText(ms_to_time_str(ms))
 
+    @log_operation("切换轨道 → {track}")
     def set_current_track(self, track: int):
         """用 Ctrl+数字 切换轨道（1~9=轨道1~9, 0=轨道10）"""
         idx = 9 if track == 0 else track - 1

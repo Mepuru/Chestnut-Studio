@@ -577,9 +577,7 @@ class MainWindow(QMainWindow):
         # ── 全局快捷键（输入框有焦点也生效） ──
         # F1 → 播放/暂停
         if key == Qt.Key_F1:
-            was_playing = self.player_card.is_playing()
             self.player_card.play_pause()
-            logger.info(f"用户操作: {'暂停' if was_playing else '播放'} (F1)")
             event.accept()
             return
 
@@ -599,7 +597,6 @@ class MainWindow(QMainWindow):
         if mod == Qt.ControlModifier and Qt.Key_0 <= key <= Qt.Key_9:
             track = 10 if key == Qt.Key_0 else key - Qt.Key_1 + 1
             self.input_bar.set_current_track(track)
-            logger.info(f"用户操作: 切换轨道 → {track} (Ctrl+{key - Qt.Key_0})")
             event.accept()
             return
 
