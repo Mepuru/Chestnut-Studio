@@ -6,6 +6,7 @@ from chestnut_studio.utils.log_manager import (
     LogManager,
     LogRecord,
 )
+from chestnut_studio.utils.log_utils import log_operation
 from chestnut_studio.utils.time_utils import ms_to_time_str, split_time
 from chestnut_studio.utils.version import get_version
 
@@ -28,6 +29,7 @@ __all__ = [
     "LogRecord",
     "Logger",
     "get_logger",
+    "log_operation",
     "ms_to_time_str",
     "split_time",
     "get_version",
