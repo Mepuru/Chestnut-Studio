@@ -139,9 +139,6 @@ class PlayerCard(QWidget):
         self._controls.set_muted(self._muted)
         self._controls.set_volume(value)
 
-    def toggle_mute(self):
-        self.set_volume(0 if self._volume > 0 else 80)
-
     def set_playback_rate(self, rate: float):
         self._playback_rate = max(0.1, min(2.0, rate))
         self._player.setPlaybackRate(self._playback_rate)

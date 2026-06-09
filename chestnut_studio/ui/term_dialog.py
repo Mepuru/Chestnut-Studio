@@ -73,7 +73,6 @@ class TermEditDialog(QDialog):
     ):
         super().__init__(parent)
         self._note_manager = note_manager
-        self._original_source = term.source if term else ""
         self._context = context
         self._origin = origin
         self._setup_ui(term)

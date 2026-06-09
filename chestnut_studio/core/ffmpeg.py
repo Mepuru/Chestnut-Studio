@@ -64,29 +64,6 @@ class FFmpeg:
         self._logger.info(f"视频: {info.width}x{info.height}, {info.fps:.0f}fps, {info.duration}ms")
         return info
 
-    def extract_audio(self, video_path: str, output_path: str, sample_rate: int = 1000) -> bool:
-        """提取音轨并降采样
-
-        Args:
-            video_path: 视频文件路径
-            output_path: 输出 WAV 路径
-            sample_rate: 采样率 (Hz)，默认 1000
-
-        Returns:
-            是否成功
-        """
-        cmd = [self._path, "-y", "-i", video_path, "-vn", "-ar", str(sample_rate), output_path]
-        self._logger.debug(f"提取音频: {video_path} → {output_path}, {sample_rate}Hz")
-        result = subprocess.run(
-            cmd, capture_output=True, encoding="utf-8", errors="replace", creationflags=CREATE_NO_WINDOW
-        )
-        ok = result.returncode == 0
-        if ok:
-            self._logger.info(f"音频提取完成: {output_path}")
-        else:
-            self._logger.warning(f"音频提取失败: {result.stderr[:200]}")
-        return ok
-
     def _parse_duration(self, line: str) -> int:
         """解析时长行，返回毫秒
 
