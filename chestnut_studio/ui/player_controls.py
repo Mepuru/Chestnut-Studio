@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from chestnut_studio.resources import get_icon_path
-from chestnut_studio.utils import get_logger
+from chestnut_studio.utils import get_logger, log_operation
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
 logger = get_logger("UI")
@@ -186,22 +186,25 @@ class PlayerControls(QWidget):
         """进度条拖拽中 — 仅更新时间预览"""
         self._current_time.setText(ms_to_time_str(value))
 
-    def _on_seek(self, value: int):
+    @log_operation("跳转进度 → {result}", after=True)
+    def _on_seek(self, value: int) -> str:
         """进度条点击/释放 — 跳转到目标位置"""
         self._current_time.setText(ms_to_time_str(value))
-        logger.info(f"用户操作: 跳转进度 → {ms_to_time_str(value)}")
         self.seek_requested.emit(value)
         self._is_dragging = False
+        return ms_to_time_str(value)
 
-    def _toggle_mute(self):
+    @log_operation("静音切换: {result}", after=True)
+    def _toggle_mute(self) -> str:
         """静音切换"""
         muted = self._volume_slider.value() == 0
-        logger.info(f"用户操作: {'取消静音' if muted else '静音'}")
         self.volume_changed.emit(0 if not muted else 80)
+        return "取消静音" if muted else "静音"
 
-    def _on_rate_changed(self, index: int):
+    @log_operation("倍速 → {result}x", after=True)
+    def _on_rate_changed(self, index: int) -> float:
         """倍速切换"""
         text = self._rate_combo.itemText(index)
         rate = float(text.replace("x", ""))
-        logger.info(f"用户操作: 倍速 → {rate}x")
         self.rate_changed.emit(rate)
+        return rate

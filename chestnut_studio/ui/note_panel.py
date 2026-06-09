@@ -290,8 +290,8 @@ class NotePanel(QWidget):
             self._note_manager.remove(widget.note)
             self.refresh()
 
-    @log_operation("清空笔记")
-    def _clear_all(self):
+    @log_operation("清空笔记 ({result} 条)", after=True)
+    def _clear_all(self) -> int:
         """清空所有笔记和术语（需确认）"""
         reply = QMessageBox.question(
             self,
@@ -301,7 +301,9 @@ class NotePanel(QWidget):
             QMessageBox.No,
         )
         if reply != QMessageBox.Yes:
-            return
+            return 0
+        count = len(self._note_manager.get_all())
         self._note_manager.clear_terms()
         self._note_manager.clear()
         self.refresh()
+        return count

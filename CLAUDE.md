@@ -105,6 +105,64 @@ uv run pytest tests/ -v
 
 ---
 
+## 日志约定
+
+> 统一使用 `@log_operation` 装饰器代替手动 `logger.info()` 记录用户操作审计日志。
+> 装饰器底层和手动调用走的是同一个 `LogManager` 管道，不存在两套系统。
+
+### 前置模式 `after=False`（默认）
+
+用于日志内容仅依赖方法参数的场景——在方法调用前记录。
+
+```python
+from chestnut_studio.utils import log_operation
+
+@log_operation("打开视频: {path}")
+def _on_open_video(self, path: str):
+    ...
+
+@log_operation("查看术语")
+def _show_terms(self):
+    ...
+```
+
+### 后置模式 `after=True`
+
+用于日志内容依赖函数内部运行时状态（如播放/暂停、静音切换）或内部计算结果（如跳转位置）的场景——在方法调用后记录，`{result}` 绑定返回值。
+
+```python
+@log_operation("{result}", after=True)
+def _toggle_play_pause(self) -> str:
+    was_playing = self._is_playing
+    self.play_pause()
+    return "暂停" if was_playing else "播放"
+
+@log_operation("跳转 {ms:+d}ms → {result}ms", after=True)
+def _skip(self, ms: int) -> int:
+    new_pos = max(0, min(self._player.position() + ms, self._duration))
+    self.set_position(new_pos)
+    return new_pos
+```
+
+`{result}` 和 `{param_name}` 可以同时使用。
+
+### 什么时候不用装饰器？
+
+以下场景保留手动 `logger.info()`：
+
+1. **条件分支型** — 同一方法内有多个互斥的 `logger` 调用（如 `keyPressEvent` 中 F1/F2/Ctrl+数字 走不同分支）
+2. **属性/表达式型** — 日志内容包含属性访问（`{note.type}`）、方法调用（`{ms_to_time_str(x)}`）或切片（`{text[:50]}`）（`str.format()` 不支持这些）
+3. **核心层技术调试** — `core/` 下的 debug/error 日志仍用 `self._logger.info()` 手动调用
+
+### 导入路径
+
+```python
+from chestnut_studio.utils import log_operation  # 推荐
+from chestnut_studio.utils.log_utils import log_operation  # 也可
+```
+
+---
+
 ## 构建
 
 ```bash
@@ -181,3 +239,4 @@ EOF
 5. **`NOTE_TYPES` 从 `track_config.py` 导入** — 不要在其他文件硬编码轨道列表
 6. **QSS 使用 `{{token}}` 占位符** — `utils/theme.py` 渲染，不要硬编码颜色值到 QSS 中
 7. **内联 `setStyleSheet()` 仅用于动态值** — 轨道颜色（`get_track_color()`）、视频背景色（`get_theme()['bg_video']`）等无法通过 QSS 控制的场景才用
+8. **`@log_operation` 优先于手写 `logger.info()`** — UI 层用户操作审计统一用装饰器，减少冗余；核心层技术日志保留手动调用

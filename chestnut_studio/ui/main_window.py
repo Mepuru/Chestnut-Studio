@@ -244,11 +244,12 @@ class MainWindow(QMainWindow):
         )
         msg.exec()
 
-    def _open_log_file(self):
+    @log_operation("打开日志目录 → {result}", after=True)
+    def _open_log_file(self) -> str:
         """在文件资源管理器中打开日志目录"""
         base = Path(os.environ["LOCALAPPDATA"]) / "ChestnutStudio"
-        logger.info(f"用户操作: 打开日志目录 → {base}")
         os.startfile(str(base))
+        return str(base)
 
     @log_operation("打开百宝箱")
     def _open_debug_box(self):

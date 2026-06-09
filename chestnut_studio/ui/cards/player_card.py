@@ -11,7 +11,7 @@ from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from chestnut_studio.ui.player_controls import PlayerControls
-from chestnut_studio.utils import get_logger
+from chestnut_studio.utils import get_logger, log_operation
 from chestnut_studio.utils.theme import get_theme
 
 logger = get_logger("UI")
@@ -165,14 +165,17 @@ class PlayerCard(QWidget):
 
     # ── 内部方法 ──
 
-    def _toggle_play_pause(self):
-        logger.info(f"用户操作: {'暂停' if self._is_playing else '播放'}")
+    @log_operation("{result}", after=True)
+    def _toggle_play_pause(self) -> str:
+        was_playing = self._is_playing
         self.play_pause()
+        return "暂停" if was_playing else "播放"
 
-    def _skip(self, ms: int):
+    @log_operation("跳转 {ms:+d}ms → {result}ms", after=True)
+    def _skip(self, ms: int) -> int:
         new_pos = max(0, min(self._player.position() + ms, self._duration))
-        logger.info(f"用户操作: 跳转 {ms:+d}ms → {new_pos}ms")
         self.set_position(new_pos)
+        return new_pos
 
     def _on_position_changed(self, position: int):
         self._controls.set_position(position)
