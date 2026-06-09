@@ -562,6 +562,7 @@ class MainWindow(QMainWindow):
             self._ver_label.setText(f"v{ver}")
             self._ver_label.setStyleSheet("")
             self._ver_label.setToolTip("")
+            logger.info("更新检查完成: 已是最新版本")
             return
 
         self._ver_label.setText(f"⬆ v{info.latest_version}")
