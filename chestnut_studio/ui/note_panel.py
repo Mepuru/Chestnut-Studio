@@ -3,8 +3,8 @@
 视频播放器右侧的笔记列表，按类型分组显示。
 """
 
-from PySide6.QtCore import QRect, QSize, Qt, Signal
-from PySide6.QtGui import QFontMetrics, QKeyEvent
+from PySide6.QtCore import QPoint, QRect, QSize, Qt, Signal
+from PySide6.QtGui import QFontMetrics, QKeyEvent, QResizeEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -44,14 +44,14 @@ class _NoteListWidget(QListWidget):
 class NoteItemWidget(QWidget):
     """单条笔记的显示控件"""
 
-    def __init__(self, note: Note, note_id: int = 0, parent=None):
+    def __init__(self, note: Note, note_id: int = 0, parent: QWidget | None = None):
         super().__init__(parent)
         self.note = note
         self._note_id = note_id
         self._text_label: QLabel | None = None
         self._setup_ui()
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         layout = QHBoxLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(6)
@@ -109,13 +109,13 @@ class NotePanel(QWidget):
     edit_requested = Signal(str, str)  # 双击笔记载入输入框 (type, text)
     term_requested = Signal(str, str)  # 打开术语录入 (note_text, origin)
 
-    def __init__(self, note_manager: NoteManager, parent=None):
+    def __init__(self, note_manager: NoteManager, parent: QWidget | None = None):
         super().__init__(parent)
         self._note_manager = note_manager
         self._sort_mode = "time"  # "time" | "track"
         self._setup_ui()
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         self.setObjectName("notePanel")
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -249,7 +249,7 @@ class NotePanel(QWidget):
             for note in notes:
                 self._add_note_item(note)
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: QResizeEvent):
         """窗口大小变化时重新计算笔记高度"""
         super().resizeEvent(event)
         self._recalc_item_heights()
@@ -270,7 +270,7 @@ class NotePanel(QWidget):
             self.jump_to_position.emit(widget.note.timestamp_ms)
             self.edit_requested.emit(widget.note.type, widget.note.text)
 
-    def _show_context_menu(self, pos):
+    def _show_context_menu(self, pos: QPoint):
         """右键菜单：删除笔记"""
         item = self._list.itemAt(pos)
         if not item:

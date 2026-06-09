@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QUrl
-from PySide6.QtGui import QAction, QIcon, QKeySequence
+from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QIcon, QKeyEvent, QKeySequence
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
     QDialog,
@@ -54,7 +54,7 @@ class MainWindow(QMainWindow):
     VIDEO_FILTER = "视频文件 (*.mp4 *.avi *.flv *.mkv *.mov *.wmv *.mp3 *.wav *.aac);;所有文件 (*)"
     NOTE_FILTER = "笔记文件 (*.txt)"
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle(f"Chestnut Studio v{get_version()}")
         self.resize(1200, 700)
@@ -81,7 +81,7 @@ class MainWindow(QMainWindow):
 
     # ── UI 构建 ──
 
-    def _setup_menu_bar(self):
+    def _setup_menu_bar(self) -> None:
         """创建菜单栏"""
         menu_bar = self.menuBar()
         menu_bar.setObjectName("mainMenuBar")
@@ -142,7 +142,7 @@ class MainWindow(QMainWindow):
         self._about_action.triggered.connect(self._show_about)
         help_menu.addAction(self._about_action)
 
-    def _setup_central_widget(self):
+    def _setup_central_widget(self) -> None:
         """创建中央区域布局"""
         central = QWidget()
         central.setObjectName("centralWidget")
@@ -180,7 +180,7 @@ class MainWindow(QMainWindow):
         splitter.setSizes([700, 300])
         main_layout.addWidget(splitter, 1)
 
-    def _setup_statusbar(self):
+    def _setup_statusbar(self) -> None:
         """配置状态栏：左侧信息提示（永不过期），右侧版本号"""
         self._status_label = QLabel()
         self.statusBar().addWidget(self._status_label, 1)
@@ -198,7 +198,7 @@ class MainWindow(QMainWindow):
         self._status_label.setText(msg)
         logger.info(msg)
 
-    def _connect_signals(self):
+    def _connect_signals(self) -> None:
         """连接信号"""
         # 播放器位置变化 → 更新输入栏时间戳
         self.player_card.position_changed.connect(self.input_bar.set_timestamp)
@@ -214,13 +214,13 @@ class MainWindow(QMainWindow):
         self.note_panel.edit_requested.connect(self.input_bar.load_for_edit)
         self.note_panel.term_requested.connect(self._on_term_requested)
 
-    def _setup_drop(self):
+    def _setup_drop(self) -> None:
         """设置拖放支持"""
         self.setAcceptDrops(True)
 
     # ── 术语查看 ──
 
-    def _show_about(self):
+    def _show_about(self) -> None:
         """显示关于对话框"""
         from chestnut_studio.utils.version import get_version
 
@@ -514,11 +514,11 @@ class MainWindow(QMainWindow):
         nam.get(req)
         self._update_nam = nam  # 防止被回收
 
-    def _on_update_reply(self, reply):
+    def _on_update_reply(self, reply: QNetworkReply) -> None:
         """处理 GitHub API 返回结果"""
         ver = get_version()
         status = reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute)
-        raw = bytes(reply.readAll())
+        raw = reply.readAll().data()
 
         # ── 网络或 HTTP 错误 ──
         # 注意：reply.error() 返回枚举成员，在 Python 中永远 truthy，
@@ -572,7 +572,7 @@ class MainWindow(QMainWindow):
 
     # ── 快捷键 ──
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event: QKeyEvent):
         """全局快捷键"""
         key = event.key()
         mod = event.modifiers()
@@ -614,13 +614,13 @@ class MainWindow(QMainWindow):
 
     VIDEO_EXTENSIONS = {".mp4", ".avi", ".flv", ".mkv", ".mov", ".wmv", ".mp3", ".wav", ".aac"}
 
-    def dragEnterEvent(self, event):
+    def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
             paths = [url.toLocalFile() for url in event.mimeData().urls()]
             if any(Path(p).suffix.lower() in self.VIDEO_EXTENSIONS for p in paths):
                 event.acceptProposedAction()
 
-    def dropEvent(self, event):
+    def dropEvent(self, event: QDropEvent):
         for url in event.mimeData().urls():
             path = url.toLocalFile()
             if Path(path).suffix.lower() in self.VIDEO_EXTENSIONS:

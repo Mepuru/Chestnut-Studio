@@ -38,14 +38,14 @@ class PlayerControls(QWidget):
     volume_changed = Signal(int)
     rate_changed = Signal(float)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._is_playing = False
         self._is_dragging = False  # 拖拽中
         self._duration = 0
         self._setup_ui()
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         self.setObjectName("playerControls")
         layout = QHBoxLayout(self)
         layout.setContentsMargins(8, 4, 8, 4)

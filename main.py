@@ -4,6 +4,7 @@ import os
 import shutil
 import sys
 import traceback
+import types
 from datetime import datetime
 from pathlib import Path
 
@@ -78,7 +79,7 @@ def _setup_crash_hook(log_path: Path) -> None:
     """全局未捕获异常兜底：落日志 + 时间戳快照 + 弹窗提示用户"""
     old_hook = sys.excepthook
 
-    def crash_hook(exc_type, exc_value, exc_tb):
+    def crash_hook(exc_type: type[BaseException], exc_value: BaseException, exc_tb: types.TracebackType | None):
         msg = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
         LogManager.instance().emit(LogRecord("CRASH", LogLevel.ERROR, msg))
 

@@ -3,7 +3,7 @@
 封装术语查看表格和编辑表单，消除 _show_terms / _show_shortcuts 之间的代码重复。
 """
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -210,7 +210,7 @@ class TermTableDialog(QDialog):
 
         layout.addWidget(self._table)
 
-    def _on_context_menu(self, pos):
+    def _on_context_menu(self, pos: QPoint):
         """右键菜单：编辑/删除术语"""
         row = self._table.rowAt(pos.y())
         terms = self._note_manager.get_terms()

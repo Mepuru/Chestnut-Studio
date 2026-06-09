@@ -23,7 +23,7 @@ logger = get_logger("DEBUG")
 class DebugBox(QDialog):
     """百宝箱对话框"""
 
-    def __init__(self, parent: QWidget | None = None, note_manager=None):
+    def __init__(self, parent: QWidget | None = None, note_manager: object = None):
         super().__init__(parent)
         self._note_manager = note_manager
         self.setWindowTitle("百宝箱")
@@ -31,7 +31,7 @@ class DebugBox(QDialog):
         self.setObjectName("debugBox")
         self._setup_ui()
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setSpacing(16)
 
@@ -90,7 +90,7 @@ class DebugBox(QDialog):
 
     def _crash_divide(self):
         logger.info("崩溃测试: 1 ÷ 0")
-        1 / 0  # ZeroDivisionError
+        _ = 1 / 0  # ZeroDivisionError
 
     def _crash_assert(self):
         logger.info("崩溃测试: assert False")

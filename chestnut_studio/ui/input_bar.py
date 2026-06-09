@@ -22,13 +22,13 @@ class InputBar(QWidget):
 
     note_sent = Signal(str, int, str)  # (type, timestamp_ms, text)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._timestamp_ms: int = 0
         self._current_track_idx: int = 0  # 默认轨道1
         self._setup_ui()
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         self.setObjectName("inputBar")
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 8, 12, 8)
