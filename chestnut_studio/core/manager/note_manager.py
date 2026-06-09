@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from chestnut_studio.core.compute.note_processor import (
     assign_note_ids,
@@ -159,6 +160,25 @@ class NoteManager:
         self._notes.sort()
         self._logger.info(f"导入文本: {len(imported)} 条 ← {path}")
         return len(imported)
+
+    # ── JSON 序列化（自动保存/项目文件） ──
+
+    def to_dict(self) -> dict[str, Any]:
+        """将所有笔记和术语序列化为可 JSON 序列化的 dict"""
+        return {
+            "notes": [n.to_dict() for n in self._notes],
+            "terms": [t.to_dict() for t in self._terms],
+        }
+
+    def from_dict(self, data: dict[str, Any]) -> None:
+        """从 dict 恢复笔记和术语（清空当前数据后加载）"""
+        self._notes.clear()
+        self._terms.clear()
+        for n in data.get("notes", []):
+            self._notes.append(Note.from_dict(n))
+        for t in data.get("terms", []):
+            self._terms.append(Term.from_dict(t))
+        self._notes.sort(key=lambda n: n.timestamp_ms)
 
     # ── 术语库 ──
 

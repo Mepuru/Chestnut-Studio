@@ -14,7 +14,8 @@ Chestnut Studio 是一款视频笔记工具——边看视频边添加带时间�
 - 时间戳笔记（输入时自动记录当前视频位置）
 - 笔记按轨道分组显示，双击跳转
 - 术语库管理（笔记列表按 M 或右键 → 术语）
-- 导出/导入（TXT + JSON）
+- 导出/导入（TXT）
+- 项目文件（.chestnut，手动 Ctrl+S 保存/打开）
 - 拖放打开视频
 - ASS+TXT 字幕合并
 - 深色主题（token 化 QSS）
@@ -108,6 +109,8 @@ self.note_panel.term_requested.connect(self._on_term_requested)
 | `core/io/term_repository.py` | 术语文件 I/O（读/追加区块格式） |
 | `core/io/ass_repository.py` | ASS/TXT 字幕文件解析（read_ass, read_txt_notes） |
 | `core/io/ass_writer.py` | 合并结果输出（write_output, generate_merge_report） |
+| `core/io/session_repository.py` | 项目文件 I/O（读/写 .chestnut） |
+| `core/model/session.py` | SessionState 纯数据类（全状态快照） |
 | `core/ffmpeg.py` | FFmpeg 封装（视频信息解析） |
 | `core/model/config.py` | 轨道数量/颜色/NOTE_TYPES 配置（单源） |
 | `resources.py` | 资源路径管理（支持 Nuitka 打包） |
@@ -128,6 +131,9 @@ self.note_panel.term_requested.connect(self._on_term_requested)
 | `F3` / `→` | 前进 5 秒 | 同上 |
 | `Ctrl+1~9` / `Ctrl+0` | 切换轨道 1~10 | 同上 |
 | `Ctrl+O` | 打开视频 | 菜单栏 |
+| `Ctrl+Shift+O` | 打开项目 | 菜单栏 |
+| `Ctrl+S` | 保存项目 | 菜单栏 |
+| `Ctrl+Shift+S` | 另存项目为 | 菜单栏 |
 | `Ctrl+E` | 导出笔记 | 菜单栏 |
 | `Ctrl+I` | 导入笔记 | 菜单栏 |
 | `Ctrl+Q` | 退出 | 菜单栏 |

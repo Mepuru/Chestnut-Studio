@@ -16,10 +16,12 @@ from chestnut_studio.core.model.ass_merge import (
 )
 from chestnut_studio.core.model.ffmpeg import FFmpegError, VideoInfo
 from chestnut_studio.core.model.note import Note, Term
+from chestnut_studio.core.model.session import SessionState
 
 __all__ = [
     "Note",
     "Term",
+    "SessionState",
     "AssDialogue",
     "TxtNote",
     "UncertainMatch",

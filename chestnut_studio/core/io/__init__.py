@@ -14,6 +14,7 @@ from chestnut_studio.core.io.note_repository import (
     read_notes_text,
     write_notes_text,
 )
+from chestnut_studio.core.io.session_repository import read_project, write_project
 from chestnut_studio.core.io.term_repository import append_terms, read_terms
 
 __all__ = [
@@ -25,4 +26,6 @@ __all__ = [
     "read_txt_notes",
     "generate_merge_report",
     "write_output",
+    "read_project",
+    "write_project",
 ]

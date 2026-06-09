@@ -178,6 +178,13 @@ class NotePanel(QWidget):
         self._empty_label.hide()
         layout.addWidget(self._empty_label)
 
+    def set_sort_mode(self, mode: str) -> None:
+        """外部设置排序模式（用于会话恢复）"""
+        if mode in ("time", "track") and mode != self._sort_mode:
+            self._sort_mode = mode
+            self._sort_btn.setText("轨道" if mode == "time" else "时间")
+            self.refresh()
+
     @log_operation("切换排序")
     def _toggle_sort(self):
         """切换排序方式"""

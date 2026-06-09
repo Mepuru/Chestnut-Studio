@@ -26,7 +26,9 @@ from PySide6.QtWidgets import (
 
 from chestnut_studio.core import NOTE_TYPES
 from chestnut_studio.core.ffmpeg import FFmpeg
+from chestnut_studio.core.io.session_repository import read_project, write_project
 from chestnut_studio.core.manager.note_manager import NoteManager
+from chestnut_studio.core.model.session import SessionState
 from chestnut_studio.resources import get_icon_path
 from chestnut_studio.ui.cards.player_card import PlayerCard
 from chestnut_studio.ui.input_bar import InputBar
@@ -79,6 +81,9 @@ class MainWindow(QMainWindow):
         self._connect_signals()
         self._setup_drop()
 
+        # 项目文件路径（用于手动保存/打开 .chestnut）
+        self._project_path: str | None = None
+
         # 延迟启动更新检查（不阻塞窗口显示）
         QTimer.singleShot(2000, self._check_update)
 
@@ -96,6 +101,23 @@ class MainWindow(QMainWindow):
         open_video_action.setShortcut(QKeySequence("Ctrl+O"))
         open_video_action.triggered.connect(self._on_open_video)
         file_menu.addAction(open_video_action)
+
+        open_project_action = QAction("打开项目(&P)...", self)
+        open_project_action.setShortcut(QKeySequence("Ctrl+Shift+O"))
+        open_project_action.triggered.connect(self._on_open_project)
+        file_menu.addAction(open_project_action)
+
+        file_menu.addSeparator()
+
+        save_project_action = QAction("保存项目(&S)", self)
+        save_project_action.setShortcut(QKeySequence("Ctrl+S"))
+        save_project_action.triggered.connect(self._on_save_project)
+        file_menu.addAction(save_project_action)
+
+        save_as_action = QAction("另存为(&A)...", self)
+        save_as_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
+        save_as_action.triggered.connect(self._on_save_project_as)
+        file_menu.addAction(save_as_action)
 
         file_menu.addSeparator()
 
@@ -159,29 +181,29 @@ class MainWindow(QMainWindow):
         self.input_bar = InputBar(self)
 
         # ── 左侧：播放器 + 输入栏 ｜ 右侧：笔记列表 ──
-        left_widget = QWidget()
-        left_widget.setObjectName("leftPane")
-        left_layout = QVBoxLayout(left_widget)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(0)
+        self._left_pane = QWidget()
+        self._left_pane.setObjectName("leftPane")
+        self._left_layout = QVBoxLayout(self._left_pane)
+        self._left_layout.setContentsMargins(0, 0, 0, 0)
+        self._left_layout.setSpacing(0)
 
         self.player_card = PlayerCard(self)
         self.player_card.setMinimumWidth(400)
-        left_layout.addWidget(self.player_card, 1)
-        left_layout.addWidget(self.input_bar)
+        self._left_layout.addWidget(self.player_card, 1)
+        self._left_layout.addWidget(self.input_bar)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setObjectName("mainSplitter")
-        splitter.setHandleWidth(1)
-        splitter.addWidget(left_widget)
+        self._splitter = QSplitter(Qt.Orientation.Horizontal)
+        self._splitter.setObjectName("mainSplitter")
+        self._splitter.setHandleWidth(1)
+        self._splitter.addWidget(self._left_pane)
 
         self.note_panel = NotePanel(self._note_manager, self)
         self.note_panel.setMinimumWidth(240)
         self.note_panel.setMaximumWidth(400)
-        splitter.addWidget(self.note_panel)
+        self._splitter.addWidget(self.note_panel)
 
-        splitter.setSizes([700, 300])
-        main_layout.addWidget(splitter, 1)
+        self._splitter.setSizes([700, 300])
+        main_layout.addWidget(self._splitter, 1)
 
     def _setup_statusbar(self) -> None:
         """配置状态栏：左侧信息提示（永不过期），右侧版本号"""
@@ -206,7 +228,7 @@ class MainWindow(QMainWindow):
         # 播放器位置变化 → 更新输入栏时间戳
         self.player_card.position_changed.connect(self.input_bar.set_timestamp)
 
-        # 视频打开 → 更新窗口标题
+        # 视频打开 → 更新窗口标题 + 自动保存
         self.player_card.video_opened.connect(self._on_video_opened)
 
         # 输入栏发送笔记 → 添加到管理器 + 刷新列表
@@ -300,6 +322,9 @@ class MainWindow(QMainWindow):
             ("F3 / →", "前进 5 秒"),
             ("Ctrl+0~9", "切换轨道"),
             ("Ctrl+O", "打开视频"),
+            ("Ctrl+S", "保存项目"),
+            ("Ctrl+Shift+S", "另存项目为"),
+            ("Ctrl+Shift+O", "打开项目"),
             ("Ctrl+E", "导出笔记"),
             ("Ctrl+I", "导入笔记"),
             ("Ctrl+Q", "退出"),
@@ -495,6 +520,125 @@ class MainWindow(QMainWindow):
 
         dialog = MergeDialog(self)
         dialog.exec()
+
+    # ── 项目文件 ──
+
+    PROJECT_FILTER = "Chestnut 项目文件 (*.chestnut)"
+
+    def _rebuild_player(self) -> None:
+        """销毁旧播放器创建新实例（避免 QVideoWidget 原生窗口状态残留）"""
+        # 断开外部信号（note_panel → player_card 的连接 }
+        try:
+            self.note_panel.jump_to_position.disconnect(self.player_card.set_position)
+        except (TypeError, RuntimeError):
+            pass
+        # 从布局移除并销毁
+        self._left_layout.removeWidget(self.player_card)
+        self.player_card.deleteLater()
+        # 创建新播放器
+        self.player_card = PlayerCard(self)
+        self.player_card.setMinimumWidth(400)
+        self._left_layout.insertWidget(0, self.player_card, 1)
+        # 重连外部信号
+        self.player_card.position_changed.connect(self.input_bar.set_timestamp)
+        self.player_card.video_opened.connect(self._on_video_opened)
+        self.note_panel.jump_to_position.connect(self.player_card.set_position)
+
+    def _gather_session_state(self) -> SessionState:
+        """从各个组件收集当前状态"""
+        return SessionState(
+            notes=self._note_manager.to_dict()["notes"],
+            terms=self._note_manager.to_dict()["terms"],
+            video_path=self.player_card.get_video_path(),
+            video_position=self.player_card.get_position(),
+            volume=self.player_card._volume,
+            playback_rate=self.player_card._playback_rate,
+            sort_mode=self.note_panel._sort_mode,
+            current_track=self.input_bar._current_track_idx,
+        )
+
+    def _apply_session_state(self, state: SessionState) -> None:
+        """将会话状态恢复到各组件"""
+        # 笔记和术语
+        self._note_manager.from_dict({"notes": state.notes, "terms": state.terms})
+        self.note_panel.refresh()
+
+        # 排序模式
+        self.note_panel.set_sort_mode(state.sort_mode)
+
+        # 当前轨道
+        if 0 <= state.current_track < len(NOTE_TYPES):
+            self.input_bar.set_current_track(state.current_track + 1)
+
+        # 音量
+        self.player_card.set_volume(state.volume)
+        self.player_card.set_playback_rate(state.playback_rate)
+
+        # 视频（播放器已是全新，有视频才加载）
+        if state.video_path and Path(state.video_path).exists():
+            self.player_card.open_video(state.video_path)
+            if state.video_position > 0:
+                self.player_card.set_position(state.video_position)
+        elif state.video_path:
+            logger.warning(f"项目视频不存在: {state.video_path}")
+
+    @log_operation("保存项目")
+    def _on_save_project(self) -> None:
+        """保存项目文件：有项目路径直接覆盖，否则调另存为"""
+        if self._project_path:
+            state = self._gather_session_state()
+            write_project(state, self._project_path)
+            self._show_status(f"已保存项目: {self._project_path}")
+        else:
+            self._on_save_project_as()
+
+    @log_operation("另存项目为")
+    def _on_save_project_as(self) -> None:
+        """选择路径保存项目文件"""
+        from pathlib import Path
+
+        default_name = "project.chestnut"
+        video_path = self.player_card.get_video_path()
+        if video_path:
+            name = Path(video_path).stem
+            if len(name) > 40:
+                name = name[:37] + "..."
+            default_name = name + ".chestnut"
+
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "另存项目为",
+            default_name,
+            self.PROJECT_FILTER,
+        )
+        if not path:
+            return
+        if not path.endswith(".chestnut"):
+            path += ".chestnut"
+        state = self._gather_session_state()
+        write_project(state, path)
+        self._project_path = path
+        self._show_status(f"已保存项目: {path}")
+
+    @log_operation("打开项目")
+    def _on_open_project(self) -> None:
+        """打开 .chestnut 项目文件"""
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "打开项目",
+            "",
+            self.PROJECT_FILTER,
+        )
+        if not path:
+            return
+        state = read_project(path)
+        if state is None:
+            QMessageBox.critical(self, "打开失败", "无法读取项目文件，文件可能已损坏。")
+            return
+        self._project_path = path
+        self._rebuild_player()
+        self._apply_session_state(state)
+        self._show_status(f"已打开项目: {path}")
 
     # ── 更新检查 ──
 

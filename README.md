@@ -140,7 +140,7 @@ uv run python scripts/build_release.py
 ├── pyproject.toml            # 项目配置 + 版本号
 ├── scripts/
 │   └── build_release.py      # Nuitka 构建脚本
-├── tests/                    # 219 个测试用例
+├── tests/                    # 241 个测试用例
 │   ├── conftest.py
 │   ├── test_ass_merge.py
 │   ├── test_compute.py

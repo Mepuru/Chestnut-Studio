@@ -109,6 +109,18 @@ class Term:
     origin: str = ""  # 出处
     note: str = ""  # 备注
 
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Term:
+        return cls(
+            source=data["source"],
+            translation=data["translation"],
+            origin=data.get("origin", ""),
+            note=data.get("note", ""),
+        )
+
     def to_line(self) -> str:
         """转导出块格式"""
         lines = ["# ---"]

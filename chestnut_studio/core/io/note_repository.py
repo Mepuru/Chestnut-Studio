@@ -39,6 +39,3 @@ def read_notes_text(path: str | Path) -> list[Note]:
             if note:
                 notes.append(note)
     return notes
-
-
-

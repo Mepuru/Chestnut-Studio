@@ -77,9 +77,9 @@ class PlayerCard(QWidget):
 
     def resizeEvent(self, event: QResizeEvent):
         super().resizeEvent(event)
-        # 保持提示标签覆盖在视频区域
-        video_height = self._video_widget.height()
-        self._hint_label.setGeometry(0, 0, self.width(), video_height)
+        # 保持提示标签覆盖在视频区域（视频隐藏时覆盖整个播放器）
+        video_height = self._video_widget.height() if self._video_widget.isVisible() else self.height() - self._controls.height()
+        self._hint_label.setGeometry(0, 0, self.width(), max(video_height, 0))
 
     def _setup_player(self) -> None:
         """初始化 QMediaPlayer"""

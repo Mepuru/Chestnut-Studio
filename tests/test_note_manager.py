@@ -189,6 +189,7 @@ class TestNoteManager:
         finally:
             Path(path).unlink(missing_ok=True)
 
+
 class TestTerm:
     """Term 数据类测试"""
 

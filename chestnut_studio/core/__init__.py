@@ -14,6 +14,7 @@
 
 from chestnut_studio.core.ffmpeg import FFmpeg
 from chestnut_studio.core.io.ass_repository import read_ass, read_txt_notes
+from chestnut_studio.core.io.session_repository import read_project, write_project
 from chestnut_studio.core.manager.ass_merge import build_merge_plan
 from chestnut_studio.core.manager.note_manager import NoteManager
 from chestnut_studio.core.model.ass_merge import AssDialogue, MergePlan, TxtNote, UncertainMatch
@@ -27,6 +28,7 @@ from chestnut_studio.core.model.config import (
 )
 from chestnut_studio.core.model.ffmpeg import FFmpegError, VideoInfo
 from chestnut_studio.core.model.note import Note, Term
+from chestnut_studio.core.model.session import SessionState
 
 __all__ = [
     "FFmpeg",
@@ -34,6 +36,7 @@ __all__ = [
     "VideoInfo",
     "Note",
     "Term",
+    "SessionState",
     "NoteManager",
     "NOTE_TYPES",
     "DEFAULT_TRACK_COUNT",
@@ -48,4 +51,6 @@ __all__ = [
     "build_merge_plan",
     "read_ass",
     "read_txt_notes",
+    "read_project",
+    "write_project",
 ]
