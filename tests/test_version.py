@@ -19,7 +19,7 @@ class TestGetVersion:
 
     def test_fallback_when_package_not_found(self):
         """当 importlib.metadata 找不到包时，回退到 pyproject.toml 读取"""
-        with patch("chestnut_studio.utils.version.version") as mock_version:
+        with patch("chestnut_studio.utils.version._metadata_version") as mock_version:
             mock_version.side_effect = PackageNotFoundError
             v = get_version()
             assert re.match(r"^\d+\.\d+\.\d+", v) is not None, f"回退版本号格式异常: {v}"

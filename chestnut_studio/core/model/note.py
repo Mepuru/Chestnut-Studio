@@ -1,0 +1,158 @@
+"""笔记与术语数据模型
+
+纯数据类定义，无 I/O、无业务逻辑、无 PySide6 依赖。
+"""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+
+from chestnut_studio.core.track_config import NOTE_TYPES
+from chestnut_studio.utils.time_utils import ms_to_time_str
+
+
+@dataclass
+class Note:
+    """单条笔记"""
+
+    def __lt__(self, other) -> bool:
+        return (self.timestamp_ms, self.text, self.type) < (
+            other.timestamp_ms,
+            other.text,
+            other.type,
+        )
+
+    def __hash__(self) -> int:
+        return hash((self.timestamp_ms, self.text, self.type))
+
+    timestamp_ms: int = 0
+    text: str = ""
+    type: str = "轨道1"
+
+    def __post_init__(self):
+        if self.type not in NOTE_TYPES:
+            raise ValueError(f"笔记类型必须为 {NOTE_TYPES}，收到: {self.type}")
+        if self.timestamp_ms < 0:
+            raise ValueError(f"时间戳不能为负值: {self.timestamp_ms}")
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> Note:
+        return cls(
+            timestamp_ms=data["timestamp_ms"],
+            text=data["text"],
+            type=data.get("type", "轨道1"),
+        )
+
+    def to_line(self, note_id: int = 0) -> str:
+        """转导出文本行: #id 轨道名  时间	| 内容"""
+        if note_id:
+            return f"#{note_id}	{self.type}	{ms_to_time_str(self.timestamp_ms)}	| {self.text}"
+        return f"{self.type}	{ms_to_time_str(self.timestamp_ms)}	| {self.text}"
+
+    @classmethod
+    def from_line(cls, line: str) -> Note | None:
+        """从文本行解析 Note，解析失败返回 None"""
+        line = line.strip()
+        if not line:
+            return None
+        # 跳过注释行（# 开头且第二位不是数字的）
+        if line.startswith("#") and (len(line) < 2 or not line[1].isdigit()):
+            return None
+        try:
+            # 格式: [#id ]轨道名  时间	| 内容
+            rest = line
+            # 跳过可选的 #id 前缀
+            if rest[0] == "#":
+                sep = rest.find(chr(9))
+                if sep > 1 and rest[1:sep].isdigit():
+                    rest = rest[sep + 1 :]
+
+            parts = rest.split("	| ", 1)
+            if len(parts) != 2:
+                return None
+            meta, text = parts
+            meta_parts = meta.rsplit("	", 1)
+            if len(meta_parts) != 2:
+                return None
+            track_name, time_str = meta_parts
+            if track_name not in NOTE_TYPES:
+                return None
+            m, r = time_str.split(":", 1)
+            s, cs = r.split(".")
+            # 统一处理 2 位（厘秒）和 3 位（毫秒）小数
+            cs = cs.ljust(3, "0")[:3]
+            ms = int(m) * 60000 + int(s) * 1000 + int(cs)
+            return cls(timestamp_ms=ms, text=text, type=track_name)
+        except (ValueError, IndexError, KeyError):
+            return None
+
+
+@dataclass
+class Term:
+    """术语条目"""
+
+    source: str  # 原文（日语）
+    translation: str  # 译文（中文）
+    origin: str = ""  # 出处
+    note: str = ""  # 备注
+
+    def to_line(self) -> str:
+        """转导出块格式"""
+        lines = ["# ---"]
+        lines.append(f"# 词: {self.source}")
+        lines.append(f"# 译: {self.translation}")
+        if self.origin:
+            lines.append(f"# 出: {self.origin}")
+        if self.note:
+            for n_line in self.note.split("\n"):
+                lines.append(f"# {n_line}")
+        return "\n".join(lines)
+
+    @classmethod
+    def from_block(cls, block: str) -> Term | None:
+        """从块格式解析 Term（跨多行）"""
+        lines = [ln.strip() for ln in block.strip().split("\n")]
+        source = ""
+        translation = ""
+        origin = ""
+        note_lines = []
+        for line in lines:
+            if line.startswith("# 词: "):
+                source = line[5:]
+            elif line.startswith("# 译: "):
+                translation = line[5:]
+            elif line.startswith("# 出: "):
+                origin = line[5:]
+            elif (
+                line.startswith("# ")
+                and not line.startswith("# ---")
+                and not line.startswith("# 词:")
+                and not line.startswith("# 译:")
+                and not line.startswith("# 出:")
+            ):
+                note_lines.append(line[2:])
+        if source and translation:
+            return cls(source=source, translation=translation, origin=origin, note="\n".join(note_lines))
+        return None
+
+    @classmethod
+    def from_line(cls, line: str) -> Term | None:
+        """保留旧版单行解析兼容"""
+        line = line.strip()
+        if not line or line.startswith("#"):
+            return None
+        try:
+            parts = [p.strip() for p in line.split(" | ", 3)]
+            if len(parts) < 2:
+                return None
+            term = cls(source=parts[0], translation=parts[1])
+            if len(parts) > 2:
+                term.origin = parts[2]
+            if len(parts) > 3:
+                term.note = parts[3]
+            return term
+        except (ValueError, IndexError):
+            return None

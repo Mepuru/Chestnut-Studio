@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from chestnut_studio.core.note_manager import Note, NoteManager, Term
+from chestnut_studio.core.model.note import Note, Term
+from chestnut_studio.core.note_manager import NoteManager
 
 
 class TestNote:

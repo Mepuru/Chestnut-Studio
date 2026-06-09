@@ -2,7 +2,8 @@
 
 import pytest
 
-from chestnut_studio.core.ffmpeg import FFmpeg, VideoInfo
+from chestnut_studio.core.ffmpeg import FFmpeg
+from chestnut_studio.core.model.ffmpeg import VideoInfo
 
 # ========== FFmpeg 测试 ==========
 

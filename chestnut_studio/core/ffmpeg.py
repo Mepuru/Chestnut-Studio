@@ -1,29 +1,17 @@
-"""FFmpeg 封装"""
+"""FFmpeg 封装
+
+数据模型（VideoInfo, FFmpegError）定义位于 core/model/ffmpeg.py。
+"""
 
 import re
 import subprocess
 import sys
-from dataclasses import dataclass
 
+from chestnut_studio.core.model.ffmpeg import VideoInfo
 from chestnut_studio.utils import get_logger
 
 # Windows 下隐藏控制台窗口的标志
 CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
-
-
-@dataclass
-class VideoInfo:
-    """视频信息"""
-
-    duration: int = 0  # 时长 (ms)
-    width: int = 0  # 宽度
-    height: int = 0  # 高度
-    fps: float = 0.0  # 帧率
-    bitrate: int = 0  # 码率 (kbps)
-
-
-class FFmpegError(Exception):
-    """FFmpeg 相关错误"""
 
 
 class FFmpeg:
