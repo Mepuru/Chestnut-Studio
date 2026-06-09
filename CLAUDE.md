@@ -38,7 +38,7 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 ```
 model/     → 纯数据类（dataclass），可被任意层引用
 compute/   → 纯计算函数，依赖 model/，零 I/O 零副作用（已落地）
-io/        → 文件/网络 I/O（规划中），依赖 model/ + compute/
+io/        → 文件/网络 I/O，依赖 model/ + compute/（已落地）
 manager/   → 编排器（轻量胶水），组合 model + compute + io（规划中）
 ```
 
@@ -102,7 +102,9 @@ self.note_panel.term_requested.connect(self._on_term_requested)
 | `core/model/ffmpeg.py` | VideoInfo / FFmpegError 纯数据类 |
 | `core/compute/note_processor.py` | 笔记纯计算函数（过滤/排序/ID分配） |
 | `core/compute/ass_merge_engine.py` | ASS+TXT 合并纯匹配算法（可被 Moonbit 替换） |
-| `core/note_manager.py` | NoteManager 编排器（CRUD + 导入导出编排，委托 compute） |
+| `core/io/note_repository.py` | 笔记文件 I/O（读/写 TXT + JSON） |
+| `core/io/term_repository.py` | 术语文件 I/O（读/追加区块格式） |
+| `core/note_manager.py` | NoteManager 编排器（CRUD + 导入导出编排，委托 compute + io） |
 | `core/ffmpeg.py` | FFmpeg 封装（视频信息解析） |
 | `core/track_config.py` | 轨道数量、颜色、NOTE_TYPES 唯一来源 |
 | `core/ass_merge.py` | ASS+TXT 文件解析 + build_merge_plan 编排（委托 compute） |
