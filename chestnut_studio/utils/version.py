@@ -36,7 +36,7 @@ def get_version() -> str:
     优先级: 直接读取 pyproject.toml → importlib.metadata → "unknown"
 
     Returns:
-        版本号字符串，如 "2.5.0"
+        版本号字符串，如 "2.6.0"
     """
     v = _read_pyproject_toml()
     if v != "unknown":

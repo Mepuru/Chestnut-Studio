@@ -1,6 +1,6 @@
 [project]
 name = "chestnut-studio"
-version = "2.5.0"
+version = "2.6.0"
 description = "视频笔记工具 — 边看视频边记时间戳笔记"
 readme = "README.md"
 license = "MIT"
@@ -23,6 +23,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "imageio>=2.37.3",
     "nuitka>=4.1.2",
     "pytest>=9.0.3",
     "ruff>=0.15.12",

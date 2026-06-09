@@ -1,5 +1,30 @@
 # Changelog
 
+## v2.6.0 (2026-06-09)
+
+### ✨ 新功能
+
+- **日志系统升级** — 新增 `@log_operation` 装饰器，自动记录用户操作日志，消除手动 `logger.info()` 调用
+  - 支持 `after=True` 后置模式，用 `{result}` 绑定返回值
+  - 替换 UI 层 13 处手动日志调用，源码更简洁
+  - 核心层技术日志保留原有 `self._logger.info()` 手动模式（两种入口、同一条管道）
+
+### 🔧 改进
+
+- **更新检查** — 成功时（已是最新版本）增加日志提示，覆盖全部出口
+- **CLAUDE.md** — 新增「日志约定」章节，明确装饰器使用规范
+
+### 🐛 修复
+
+- **HTTP 200 显示 Unknown Error** — PySide6 中 `QNetworkReply.error()` 返回枚举成员，Python 中所有枚举成员均为 truthy（含值为 0 的 `NoError`），导致成功响应被误判为错误
+- **点击进度条 seek 后进度卡死** —  `_is_dragging` 标志在 `sliderPressed` 中提早设置，`sliderMoved` 不触发时标志无法复位
+- **笔记列表文字显示不全** — 高度计算使用硬编码 `18 + n*18` 与 QLabel 实际渲染存在偏差，改用 `QFontMetrics` 精确计算文本换行高度
+
+### 🧪 测试
+
+- 新增 17 个 `@log_operation` 装饰器单元测试（含 `after=True` 后置模式 6 个）
+- 总测试数 241（+17）
+
 ## v2.5.0 (2026-06-06)
 
 ### 📦 构建
