@@ -1,12 +1,12 @@
 """笔记管理器模块
 
 编排 Notes 和 Terms 的 CRUD、导入导出。
-数据模型定义位于 core/model/note.py。
+数据模型位于 core/model/note.py，计算逻辑位于 core/compute/note_processor.py，
+文件 I/O 位于 core/io/note_repository.py 和 core/io/term_repository.py。
 """
 
 from __future__ import annotations
 
-import json
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
@@ -19,6 +19,13 @@ from chestnut_studio.core.compute.note_processor import (
 from chestnut_studio.core.compute.note_processor import (
     get_note_id as compute_get_note_id,
 )
+from chestnut_studio.core.io.note_repository import (
+    read_notes_json,
+    read_notes_text,
+    write_notes_json,
+    write_notes_text,
+)
+from chestnut_studio.core.io.term_repository import append_terms, read_terms
 from chestnut_studio.core.model.note import Note, Term
 from chestnut_studio.core.track_config import NOTE_TYPES, TRACK_COLORS_HEX
 from chestnut_studio.utils import get_logger
@@ -108,25 +115,23 @@ class NoteManager:
         notes = self._notes if types is None else [n for n in self._notes if n.type in types]
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
         track_colors = self._build_track_colors_line(types)
+        header = (
+            EXPORT_HEADER.format(
+                version=get_version(),
+                video=video_name,
+                duration=video_duration,
+                resolution=video_resolution,
+                fps=video_fps,
+                bitrate=video_bitrate,
+                time=now,
+                terms=len(self._terms),
+                track_colors=track_colors,
+            )
+            + "\n"
+        )
         try:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(
-                    EXPORT_HEADER.format(
-                        version=get_version(),
-                        video=video_name,
-                        duration=video_duration,
-                        resolution=video_resolution,
-                        fps=video_fps,
-                        bitrate=video_bitrate,
-                        time=now,
-                        terms=len(self._terms),
-                        track_colors=track_colors,
-                    )
-                    + "\n"
-                )
-                id_map = self.assign_ids()
-                for n in notes:
-                    f.write(n.to_line(id_map.get(n, 0)) + "\n")
+            id_map = self.assign_ids()
+            write_notes_text(notes, path, header, id_map)
         except OSError as e:
             self._logger.error(f"导出文本失败: {path} — {e}")
             raise OSError(f"导出笔记失败: {e}") from e
@@ -145,27 +150,20 @@ class NoteManager:
 
     def import_text(self, path: str | Path) -> int:
         """从文本文件导入笔记"""
-        count = 0
         try:
-            with open(path, encoding="utf-8") as f:
-                for line in f:
-                    note = Note.from_line(line)
-                    if note:
-                        self._notes.append(note)
-                        count += 1
+            imported = read_notes_text(path)
         except (OSError, UnicodeDecodeError) as e:
             self._logger.error(f"导入文本失败: {path} — {e}")
             raise OSError(f"导入笔记失败: {e}") from e
+        self._notes.extend(imported)
         self._notes.sort()
-        self._logger.info(f"导入文本: {count} 条 ← {path}")
-        return count
+        self._logger.info(f"导入文本: {len(imported)} 条 ← {path}")
+        return len(imported)
 
     def export_json(self, path: str | Path, types: list[str] | None = None) -> int:
         notes = self._notes if types is None else [n for n in self._notes if n.type in types]
-        data = {"version": 1, "notes": [n.to_dict() for n in notes]}
         try:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
+            write_notes_json(notes, path)
         except OSError as e:
             self._logger.error(f"导出 JSON 失败: {path} — {e}")
             raise OSError(f"导出 JSON 失败: {e}") from e
@@ -174,18 +172,14 @@ class NoteManager:
 
     def import_json(self, path: str | Path) -> int:
         try:
-            with open(path, encoding="utf-8") as f:
-                data = json.load(f)
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
+            imported = read_notes_json(path)
+        except (OSError, UnicodeDecodeError, ValueError) as e:
             self._logger.error(f"导入 JSON 失败: {path} — {e}")
             raise OSError(f"导入 JSON 失败: {e}") from e
-        for item in data.get("notes", []):
-            note = Note.from_dict(item)
-            self._notes.append(note)
+        self._notes.extend(imported)
         self._notes.sort()
-        count = len(data.get("notes", []))
-        self._logger.info(f"导入 JSON: {count} 条 ← {path}")
-        return count
+        self._logger.info(f"导入 JSON: {len(imported)} 条 ← {path}")
+        return len(imported)
 
     # ── 术语库 ──
 
@@ -229,10 +223,7 @@ class NoteManager:
     def export_terms(self, path: str | Path) -> int:
         """导出术语库到文件末尾"""
         try:
-            with open(path, "a", encoding="utf-8") as f:
-                f.write("\n" + "# --- 术语 ---" + "\n")
-                for term in self._terms:
-                    f.write(term.to_line() + "\n")
+            append_terms(self._terms, path)
         except OSError as e:
             self._logger.error(f"导出术语失败: {path} — {e}")
             raise OSError(f"导出术语失败: {e}") from e
@@ -241,35 +232,14 @@ class NoteManager:
 
     def import_terms(self, path: str | Path) -> int:
         """从文件导入术语（区块格式）"""
-        count = 0
-        in_terms = False
-        block = ""
         try:
-            with open(path, encoding="utf-8") as f:
-                for line in f:
-                    s = line.strip()
-                    if not in_terms:
-                        if s == "# --- 术语 ---" or s == "# 术语":
-                            in_terms = True
-                        continue
-                    if not s:
-                        continue
-                    if s.startswith("# ---"):
-                        if block:
-                            t = Term.from_block(block)
-                            if t:
-                                self.add_term(t.source, t.translation, t.origin, t.note)
-                                count += 1
-                        block = s + "\n"
-                    else:
-                        block += line
-                if block:
-                    t = Term.from_block(block)
-                    if t:
-                        self.add_term(t.source, t.translation, t.origin, t.note)
-                        count += 1
+            imported = read_terms(path)
         except (OSError, UnicodeDecodeError) as e:
             self._logger.error(f"导入术语失败: {path} — {e}")
             raise OSError(f"导入术语失败: {e}") from e
+        count = 0
+        for t in imported:
+            self.add_term(t.source, t.translation, t.origin, t.note)
+            count += 1
         self._logger.info(f"导入术语: {count} 条")
         return count
