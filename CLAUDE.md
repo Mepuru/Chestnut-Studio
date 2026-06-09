@@ -45,7 +45,7 @@ manager/   → 编排器（轻量胶水），组合 model + compute + io（规�
 **子层依赖规则**:
 - `model/` 可被 `compute/`、`io/`、`manager/`、`ui/` 任意引用
 - `compute/`、`io/`、`manager/` 不可反向依赖
-- 当前过渡期：`MergePlan` 中的 `write()`/`generate_report()` 已委托到 `core/io/ass_writer.py`，保持方法存根以兼容现有调用点
+- `MergePlan` 中的 `write()`/`generate_report()` 已由 `core/io/ass_writer.py` 中的 `write_output()`/`generate_merge_report()` 替代，`MergePlan` 已恢复为纯数据类
 
 ### 导入路径规范
 
@@ -102,14 +102,17 @@ self.note_panel.term_requested.connect(self._on_term_requested)
 | `core/model/ffmpeg.py` | VideoInfo / FFmpegError 纯数据类 |
 | `core/compute/note_processor.py` | 笔记纯计算函数（过滤/排序/ID分配） |
 | `core/compute/ass_merge_engine.py` | ASS+TXT 合并纯匹配算法（可被 Moonbit 替换） |
+| `core/manager/note_manager.py` | NoteManager 编排器（CRUD + 导入导出编排，委托 compute + io） |
+| `core/manager/ass_merge.py` | build_merge_plan 编排（解析 + 委托 compute） |
 | `core/io/note_repository.py` | 笔记文件 I/O（读/写 TXT + JSON） |
 | `core/io/term_repository.py` | 术语文件 I/O（读/追加区块格式） |
 | `core/io/ass_repository.py` | ASS/TXT 字幕文件解析（read_ass, read_txt_notes） |
 | `core/io/ass_writer.py` | 合并结果输出（write_output, generate_merge_report） |
-| `core/note_manager.py` | NoteManager 编排器（CRUD + 导入导出编排，委托 compute + io） |
+| `core/note_manager.py` | NoteManager 向后兼容重导出（实现在 manager/） |
 | `core/ffmpeg.py` | FFmpeg 封装（视频信息解析） |
-| `core/track_config.py` | 轨道数量、颜色、NOTE_TYPES 唯一来源 |
-| `core/ass_merge.py` | ASS+TXT 文件解析 + build_merge_plan 编排（委托 compute） |
+| `core/model/config.py` | 轨道数量/颜色/NOTE_TYPES 配置（单源） |
+| `core/track_config.py` | 向后兼容重导出（实现在 model/config.py） |
+| `core/ass_merge.py` | build_merge_plan 向后兼容重导出（实现在 manager/） |
 | `resources.py` | 资源路径管理（支持 Nuitka 打包） |
 | `utils/theme.py` | 主题引擎：32 个 token + render_stylesheet() |
 | `utils/log_manager.py` | 线程安全日志管理器（handler 模式） |
@@ -297,7 +300,7 @@ EOF
 2. **版本号唯一来源是 `pyproject.toml`** — 改版本只改那里，然后 `uv lock`
 3. **全局快捷键在 `MainWindow.keyPressEvent`** — 保证任何焦点下都生效
 4. **术语编辑在 `term_dialog.py`** — 不要在新的地方另写一套术语 UI
-5. **`NOTE_TYPES` 从 `track_config.py` 导入** — 不要在其他文件硬编码轨道列表
+5. **`NOTE_TYPES` 从 `core.model.config` 导入** — `track_config.py` 已废弃（重导出 facade），新代码应 `from chestnut_studio.core.model.config import NOTE_TYPES`
 6. **QSS 使用 `{{token}}` 占位符** — `utils/theme.py` 渲染，不要硬编码颜色值到 QSS 中
 7. **内联 `setStyleSheet()` 仅用于动态值** — 轨道颜色（`get_track_color()`）、视频背景色（`get_theme()['bg_video']`）等无法通过 QSS 控制的场景才用
 8. **`@log_operation` 优先于手写 `logger.info()`** — UI 层用户操作审计统一用装饰器，减少冗余；核心层技术日志保留手动调用

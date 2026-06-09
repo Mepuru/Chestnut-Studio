@@ -26,8 +26,8 @@ from chestnut_studio.core.io.note_repository import (
     write_notes_text,
 )
 from chestnut_studio.core.io.term_repository import append_terms, read_terms
+from chestnut_studio.core.model.config import NOTE_TYPES, TRACK_COLORS_HEX
 from chestnut_studio.core.model.note import Note, Term
-from chestnut_studio.core.track_config import NOTE_TYPES, TRACK_COLORS_HEX
 from chestnut_studio.utils import get_logger
 from chestnut_studio.utils.time_utils import ms_to_time_str
 from chestnut_studio.utils.version import get_version
