@@ -131,7 +131,7 @@ uv run python main.py
 uv run python scripts/build_release.py
 ```
 
-构建为单文件 exe（Nuitka --onefile，首次运行自动下载 zig 编译器），输出到 `dist/ChestnutStudio-{version}-Nuitka.exe`（≈33 MB）。
+构建为目录式 exe（Nuitka --mode=standalone + NSIS 打包），输出到 `dist/ChestnutStudio-{version}-Setup-x86_64_v1.exe`（≈29 MB）。
 
 ## 项目结构
 
@@ -140,7 +140,7 @@ uv run python scripts/build_release.py
 ├── pyproject.toml            # 项目配置 + 版本号
 ├── scripts/
 │   └── build_release.py      # Nuitka 构建脚本
-├── tests/                    # 224 个测试用例
+├── tests/                    # 263 个测试用例
 │   ├── conftest.py
 │   ├── test_note_manager.py
 │   ├── test_ass_merge.py
@@ -153,11 +153,27 @@ uv run python scripts/build_release.py
 │   ├── test_update_checker.py
 │   └── test_resources.py
 └── chestnut_studio/
-    ├── core/                  # 核心逻辑（无 UI 依赖）
-    │   ├── ass_merge.py       # ASS+TXT 合并引擎
+    ├── core/                  # 核心逻辑（零 PySide6 依赖）
+    │   ├── model/             # 纯数据类（Note, Term, AssDialogue, MergePlan, VideoInfo）
+    │   │   ├── note.py
+    │   │   ├── ass_merge.py
+    │   │   ├── config.py      # 轨道数量/颜色/NOTE_TYPES 单源
+    │   │   └── ffmpeg.py
+    │   ├── compute/           # 纯计算函数（无 I/O 无副作用）
+    │   │   ├── note_processor.py
+    │   │   └── ass_merge_engine.py
+    │   ├── io/                # 文件/网络 I/O
+    │   │   ├── note_repository.py
+    │   │   ├── term_repository.py
+    │   │   ├── ass_repository.py
+    │   │   └── ass_writer.py
+    │   ├── manager/           # 编排器（胶水层）
+    │   │   ├── note_manager.py
+    │   │   └── ass_merge.py
+    │   ├── ass_merge.py       # 向后兼容重导出
     │   ├── ffmpeg.py          # FFmpeg 封装
-    │   ├── note_manager.py    # 笔记 + 术语数据模型
-    │   └── track_config.py    # 轨道配置（10 条轨道颜色）
+    │   ├── note_manager.py    # 向后兼容重导出
+    │   └── track_config.py    # 向后兼容重导出
     ├── ui/                    # UI 组件（PySide6）
     │   ├── main_window.py     # 主窗口：菜单栏、信号、快捷键、拖放
     │   ├── input_bar.py       # 底部输入栏：轨道切换 + 时间戳
@@ -168,8 +184,9 @@ uv run python scripts/build_release.py
     │   ├── debug_box.py       # 开发者百宝箱
     │   └── cards/
     │       └── player_card.py # QMediaPlayer 视频播放封装
-    ├── utils/                 # 工具函数（无外部依赖）
+    ├── utils/                 # 工具函数（无第三方依赖）
     │   ├── log_manager.py     # 线程安全日志系统
+    │   ├── log_utils.py       # @log_operation 装饰器
     │   ├── theme.py           # 主题引擎（32 token 驱动 QSS）
     │   ├── time_utils.py      # 时间格式转换
     │   ├── update_checker.py  # GitHub 版本更新检查

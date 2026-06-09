@@ -55,21 +55,8 @@ pythonPlatform = "Windows"
 venvPath = "."
 venv = ".venv"
 
-# PySide6 枚举通过 Qt.XXX 简写访问（如 Qt.Key_F1 vs Qt.Key.Key_F1），
-# Stubs 只定义了完整路径，运行时两者兼容。此选项抑制误报。
-reportAttributeAccessIssue = "warning"
-
 # Qt 中跨类访问 _protected 成员是惯用模式（如 MainWindow 访问 InputBar._input）
 reportPrivateUsage = "none"
-
-# 以下三项因 PySide6 枚举简写（Qt.Key_F1）类型为 Unknown 而级联触发，
-# 非代码本身的问题。抑制为 warning 保留可见性但不阻断构建。
-reportUnknownMemberType = "warning"
-reportUnknownVariableType = "warning"
-reportUnknownArgumentType = "warning"
-reportMissingTypeArgument = "warning"
-reportOptionalMemberAccess = "warning"
-reportUnnecessaryComparison = "warning"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

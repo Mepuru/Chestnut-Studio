@@ -39,7 +39,7 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 model/     → 纯数据类（dataclass），可被任意层引用
 compute/   → 纯计算函数，依赖 model/，零 I/O 零副作用（已落地）
 io/        → 文件/网络 I/O，依赖 model/ + compute/（已落地）
-manager/   → 编排器（轻量胶水），组合 model + compute + io（规划中）
+manager/   → 编排器（轻量胶水），组合 model + compute + io（已落地）
 ```
 
 **子层依赖规则**:
@@ -146,6 +146,10 @@ self.note_panel.term_requested.connect(self._on_term_requested)
 # 代码检查 + 格式化
 uv run ruff check chestnut_studio/
 uv run ruff format chestnut_studio/
+
+# 类型检查（strict 模式，需先安装 pyright）
+# npm install -g pyright
+pyright --project pyproject.toml
 
 # 运行测试
 uv run pytest tests/ -v
@@ -305,3 +309,4 @@ EOF
 7. **内联 `setStyleSheet()` 仅用于动态值** — 轨道颜色（`get_track_color()`）、视频背景色（`get_theme()['bg_video']`）等无法通过 QSS 控制的场景才用
 8. **`@log_operation` 优先于手写 `logger.info()`** — UI 层用户操作审计统一用装饰器，减少冗余；核心层技术日志保留手动调用
 9. **数据类从 `core.model` 导入** — `Note`, `Term`, `AssDialogue`, `MergePlan`, `VideoInfo` 等纯数据类统一从 `core.model` 子包导入，不从原始模块（`note_manager.py` / `ass_merge.py` / `ffmpeg.py`）导入。编排器/服务类（`NoteManager` / `FFmpeg` / `build_merge_plan`）仍从原始模块导入。
+10. **所有函数参数和返回值必须有类型标注** — 项目使用 pyright strict 模式检查类型安全，新增代码需通过 `pyright --project pyproject.toml` 零错误零警告。`core/` 层已全量标注，UI 层除 `parent: QWidget | None = None` 和 Qt 事件参数（如 `event: QKeyEvent`）外均已覆盖。Qt 枚举使用完整路径（`Qt.Key.Key_F1` vs `Qt.Key_F1`）以通过 stub 检查。
