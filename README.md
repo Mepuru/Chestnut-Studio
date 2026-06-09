@@ -140,7 +140,7 @@ uv run python scripts/build_release.py
 ├── pyproject.toml            # 项目配置 + 版本号
 ├── scripts/
 │   └── build_release.py      # Nuitka 构建脚本
-├── tests/                    # 263 个测试用例
+├── tests/                    # 219 个测试用例
 │   ├── conftest.py
 │   ├── test_note_manager.py
 │   ├── test_ass_merge.py
@@ -170,10 +170,7 @@ uv run python scripts/build_release.py
     │   ├── manager/           # 编排器（胶水层）
     │   │   ├── note_manager.py
     │   │   └── ass_merge.py
-    │   ├── ass_merge.py       # 向后兼容重导出
-    │   ├── ffmpeg.py          # FFmpeg 封装
-    │   ├── note_manager.py    # 向后兼容重导出
-    │   └── track_config.py    # 向后兼容重导出
+│   ├── ffmpeg.py          # FFmpeg 封装
     ├── ui/                    # UI 组件（PySide6）
     │   ├── main_window.py     # 主窗口：菜单栏、信号、快捷键、拖放
     │   ├── input_bar.py       # 底部输入栏：轨道切换 + 时间戳
