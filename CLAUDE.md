@@ -61,9 +61,9 @@ from chestnut_studio.core.model.ffmpeg import VideoInfo, FFmpegError
 from chestnut_studio.core.note_manager import Note   # Note 已移到 model/note.py
 from chestnut_studio.core.ass_merge import AssDialogue  # AssDialogue 已移到 model/ass_merge.py
 
-# ✅ 编排器/服务类仍从原始模块导入
-from chestnut_studio.core.note_manager import NoteManager
-from chestnut_studio.core.ass_merge import build_merge_plan
+# ✅ 编排器/服务类从 manager/ 导入
+from chestnut_studio.core.manager.note_manager import NoteManager
+from chestnut_studio.core.manager.ass_merge import build_merge_plan
 from chestnut_studio.core.ffmpeg import FFmpeg
 ```
 

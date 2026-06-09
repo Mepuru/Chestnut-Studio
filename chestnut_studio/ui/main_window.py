@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
 
 from chestnut_studio.core import NOTE_TYPES
 from chestnut_studio.core.ffmpeg import FFmpeg
-from chestnut_studio.core.note_manager import NoteManager
+from chestnut_studio.core.manager.note_manager import NoteManager
 from chestnut_studio.resources import get_icon_path
 from chestnut_studio.ui.cards.player_card import PlayerCard
 from chestnut_studio.ui.input_bar import InputBar

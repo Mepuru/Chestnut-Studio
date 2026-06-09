@@ -20,8 +20,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from chestnut_studio.core.manager.note_manager import NoteManager
 from chestnut_studio.core.model.note import Term
-from chestnut_studio.core.note_manager import NoteManager
 from chestnut_studio.utils import get_logger
 
 logger = get_logger("UI")

@@ -20,8 +20,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from chestnut_studio.core.ass_merge import build_merge_plan
 from chestnut_studio.core.io.ass_writer import generate_merge_report, write_output
+from chestnut_studio.core.manager.ass_merge import build_merge_plan
 from chestnut_studio.utils import get_logger
 
 logger = get_logger("UI")

@@ -9,7 +9,7 @@
   note_manager.py  — NoteManager 编排器（CRUD + 导入导出编排）
   ass_merge.py     — build_merge_plan 编排（解析 + 委托 compute）
   ffmpeg.py        — FFmpeg 子进程封装
-  track_config.py  — 轨道颜色/数量配置（单源）
+   model/config.py  — 轨道颜色/数量配置（单源，track_config.py 已废弃）
 """
 
 from chestnut_studio.core.ffmpeg import FFmpeg

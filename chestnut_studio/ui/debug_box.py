@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from chestnut_studio.core import NOTE_TYPES
-from chestnut_studio.core.note_manager import NoteManager
+from chestnut_studio.core.manager.note_manager import NoteManager
 from chestnut_studio.ui.main_window import MainWindow
 from chestnut_studio.utils import get_logger
 

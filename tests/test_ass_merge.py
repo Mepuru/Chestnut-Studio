@@ -3,7 +3,6 @@
 import tempfile
 from pathlib import Path
 
-from chestnut_studio.core.ass_merge import build_merge_plan
 from chestnut_studio.core.io.ass_repository import (
     _nth_comma,
     _parse_ass_time,
@@ -19,6 +18,7 @@ from chestnut_studio.core.io.ass_writer import (
     generate_merge_report,
     write_output,
 )
+from chestnut_studio.core.manager.ass_merge import build_merge_plan
 from chestnut_studio.core.model.ass_merge import AssDialogue
 
 # ══════════════════════════════════════════

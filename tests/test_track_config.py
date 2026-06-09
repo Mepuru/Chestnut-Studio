@@ -1,6 +1,6 @@
 """轨道配置测试"""
 
-from chestnut_studio.core.track_config import (
+from chestnut_studio.core.model.config import (
     MAX_TRACK_COUNT,
     NOTE_TYPES,
     TRACK_COLORS_HEX,
