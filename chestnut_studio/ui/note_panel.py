@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 
 from chestnut_studio.core.note_manager import Note, NoteManager
 from chestnut_studio.core.track_config import NOTE_TYPES, get_track_color
-from chestnut_studio.utils import get_logger
+from chestnut_studio.utils import get_logger, log_operation
 from chestnut_studio.utils.time_utils import ms_to_time_str
 
 logger = get_logger("UI")
@@ -153,11 +153,11 @@ class NotePanel(QWidget):
         self._empty_label.hide()
         layout.addWidget(self._empty_label)
 
+    @log_operation("切换排序")
     def _toggle_sort(self):
         """切换排序方式"""
         self._sort_mode = "track" if self._sort_mode == "time" else "time"
         self._sort_btn.setText("轨道" if self._sort_mode == "time" else "时间")
-        logger.info(f"用户操作: 排序切换为 {self._sort_mode}")
         self.refresh()
 
     def refresh(self):
@@ -290,6 +290,7 @@ class NotePanel(QWidget):
             self._note_manager.remove(widget.note)
             self.refresh()
 
+    @log_operation("清空笔记")
     def _clear_all(self):
         """清空所有笔记和术语（需确认）"""
         reply = QMessageBox.question(
@@ -301,8 +302,6 @@ class NotePanel(QWidget):
         )
         if reply != QMessageBox.Yes:
             return
-        count = len(self._note_manager.get_all())
         self._note_manager.clear_terms()
         self._note_manager.clear()
         self.refresh()
-        logger.info(f"用户操作: 清空笔记 ({count} 条)")

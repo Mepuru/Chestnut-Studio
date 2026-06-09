@@ -28,7 +28,7 @@ from chestnut_studio.resources import get_icon_path
 from chestnut_studio.ui.cards.player_card import PlayerCard
 from chestnut_studio.ui.input_bar import InputBar
 from chestnut_studio.ui.note_panel import NotePanel
-from chestnut_studio.utils import get_logger
+from chestnut_studio.utils import get_logger, log_operation
 from chestnut_studio.utils.theme import get_theme
 from chestnut_studio.utils.time_utils import ms_to_time_str
 from chestnut_studio.utils.update_checker import API_URL, parse_release_data
@@ -250,17 +250,17 @@ class MainWindow(QMainWindow):
         logger.info(f"用户操作: 打开日志目录 → {base}")
         os.startfile(str(base))
 
+    @log_operation("打开百宝箱")
     def _open_debug_box(self):
         """打开开发者百宝箱"""
-        logger.info("用户操作: 打开百宝箱")
         from chestnut_studio.ui.debug_box import DebugBox
 
         dialog = DebugBox(self, note_manager=self._note_manager)
         dialog.exec()
 
+    @log_operation("查看术语")
     def _show_terms(self):
         """显示术语列表"""
-        logger.info("用户操作: 查看术语")
         from chestnut_studio.ui.term_dialog import TermTableDialog
 
         terms = self._note_manager.get_terms()
@@ -272,9 +272,9 @@ class MainWindow(QMainWindow):
 
     # ── 快捷键帮助 ──
 
+    @log_operation("查看快捷键")
     def _show_shortcuts(self):
         """显示快捷键列表"""
-        logger.info("用户操作: 查看快捷键")
         from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout
 
         dialog = QDialog(self)
@@ -349,9 +349,9 @@ class MainWindow(QMainWindow):
         self._note_manager.add(timestamp_ms=timestamp_ms, text=text, note_type=note_type)
         self.note_panel.refresh()
 
+    @log_operation("打开术语对话框 ← {origin}")
     def _on_term_requested(self, note_text: str, origin: str):
         """从笔记打开术语录入"""
-        logger.info(f"用户操作: 打开术语对话框 ← {origin}")
         from chestnut_studio.ui.term_dialog import TermEditDialog
 
         origin_text = Path(self.player_card.get_video_path()).name if self.player_card.get_video_path() else ""
@@ -483,9 +483,9 @@ class MainWindow(QMainWindow):
             self._show_status(msg)
         self.note_panel.refresh()
 
+    @log_operation("打开字幕合并对话框")
     def _on_merge_ass_txt(self):
         """打开 ASS+TXT 字幕合并对话框"""
-        logger.info("用户操作: 打开字幕合并对话框")
         from chestnut_studio.ui.merge_dialog import MergeDialog
 
         dialog = MergeDialog(self)
