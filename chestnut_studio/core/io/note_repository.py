@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from chestnut_studio.core.model.note import Note
@@ -42,19 +41,4 @@ def read_notes_text(path: str | Path) -> list[Note]:
     return notes
 
 
-def write_notes_json(notes: list[Note], path: str | Path) -> None:
-    """将笔记写入 JSON 文件"""
-    data = {"version": 1, "notes": [n.to_dict() for n in notes]}
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
 
-
-def read_notes_json(path: str | Path) -> list[Note]:
-    """从 JSON 文件读取笔记
-
-    Returns:
-        笔记列表（原始顺序）
-    """
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
-    return [Note.from_dict(item) for item in data.get("notes", [])]

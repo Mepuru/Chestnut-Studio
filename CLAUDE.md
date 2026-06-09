@@ -104,19 +104,16 @@ self.note_panel.term_requested.connect(self._on_term_requested)
 | `core/compute/ass_merge_engine.py` | ASS+TXT 合并纯匹配算法 |
 | `core/manager/note_manager.py` | NoteManager 编排器（CRUD + 导入导出编排，委托 compute + io） |
 | `core/manager/ass_merge.py` | build_merge_plan 编排（解析 + 委托 compute） |
-| `core/io/note_repository.py` | 笔记文件 I/O（读/写 TXT + JSON） |
+| `core/io/note_repository.py` | 笔记文件 I/O（读/写 TXT） |
 | `core/io/term_repository.py` | 术语文件 I/O（读/追加区块格式） |
 | `core/io/ass_repository.py` | ASS/TXT 字幕文件解析（read_ass, read_txt_notes） |
 | `core/io/ass_writer.py` | 合并结果输出（write_output, generate_merge_report） |
-| `core/note_manager.py` | NoteManager 向后兼容重导出（实现在 manager/） |
 | `core/ffmpeg.py` | FFmpeg 封装（视频信息解析） |
 | `core/model/config.py` | 轨道数量/颜色/NOTE_TYPES 配置（单源） |
-| `core/track_config.py` | 向后兼容重导出（实现在 model/config.py） |
-| `core/ass_merge.py` | build_merge_plan 向后兼容重导出（实现在 manager/） |
 | `resources.py` | 资源路径管理（支持 Nuitka 打包） |
 | `utils/theme.py` | 主题引擎：32 个 token + render_stylesheet() |
 | `utils/log_manager.py` | 线程安全日志管理器（handler 模式） |
-| `utils/time_utils.py` | 时间格式转换（ms → SRT/ASS/VTT/LRC 等） |
+| `utils/time_utils.py` | 时间格式转换（ms → MM:SS.mm 格式） |
 | `utils/update_checker.py` | GitHub 版本更新检查（纯数据层） |
 | `utils/version.py` | 版本号从 pyproject.toml 单源读取 |
 

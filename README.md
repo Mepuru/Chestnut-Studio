@@ -142,16 +142,18 @@ uv run python scripts/build_release.py
 │   └── build_release.py      # Nuitka 构建脚本
 ├── tests/                    # 219 个测试用例
 │   ├── conftest.py
-│   ├── test_note_manager.py
 │   ├── test_ass_merge.py
-│   ├── test_time_utils.py
-│   ├── test_log_manager.py
-│   ├── test_version.py
+│   ├── test_compute.py
 │   ├── test_integration.py
-│   ├── test_track_config.py
+│   ├── test_log_manager.py
+│   ├── test_log_utils.py
+│   ├── test_note_manager.py
+│   ├── test_resources.py
 │   ├── test_theme.py
+│   ├── test_time_utils.py
+│   ├── test_track_config.py
 │   ├── test_update_checker.py
-│   └── test_resources.py
+│   └── test_version.py
 └── chestnut_studio/
     ├── core/                  # 核心逻辑（零 PySide6 依赖）
     │   ├── model/             # 纯数据类（Note, Term, AssDialogue, MergePlan, VideoInfo）
@@ -170,7 +172,7 @@ uv run python scripts/build_release.py
     │   ├── manager/           # 编排器（胶水层）
     │   │   ├── note_manager.py
     │   │   └── ass_merge.py
-│   ├── ffmpeg.py          # FFmpeg 封装
+    │   └── ffmpeg.py          # FFmpeg 封装
     ├── ui/                    # UI 组件（PySide6）
     │   ├── main_window.py     # 主窗口：菜单栏、信号、快捷键、拖放
     │   ├── input_bar.py       # 底部输入栏：轨道切换 + 时间戳

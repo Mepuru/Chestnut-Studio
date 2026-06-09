@@ -11,9 +11,7 @@
 from chestnut_studio.core.io.ass_repository import read_ass, read_txt_notes
 from chestnut_studio.core.io.ass_writer import generate_merge_report, write_output
 from chestnut_studio.core.io.note_repository import (
-    read_notes_json,
     read_notes_text,
-    write_notes_json,
     write_notes_text,
 )
 from chestnut_studio.core.io.term_repository import append_terms, read_terms
@@ -21,8 +19,6 @@ from chestnut_studio.core.io.term_repository import append_terms, read_terms
 __all__ = [
     "write_notes_text",
     "read_notes_text",
-    "write_notes_json",
-    "read_notes_json",
     "append_terms",
     "read_terms",
     "read_ass",
