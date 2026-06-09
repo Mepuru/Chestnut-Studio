@@ -174,5 +174,93 @@ class TestLogOperation:
         assert logs[0].message == "准备崩溃"
 
 
+class TestLogOperationAfter:
+    """测试 @log_operation(after=True) 后置模式"""
+
+    def test_after_with_result(self):
+        """后置模式：{result} 绑定返回值"""
+        logs = []
+        LogManager.instance().add_handler(lambda r: logs.append(r))
+
+        class Foo:
+            @log_operation("清空笔记 ({result} 条)", after=True)
+            def clear(self) -> int:
+                return 42
+
+        result = Foo().clear()
+        assert result == 42
+        assert len(logs) == 1
+        assert logs[0].message == "清空笔记 (42 条)"
+
+    def test_after_with_param_and_result(self):
+        """后置模式：同时使用参数和返回值"""
+        logs = []
+        LogManager.instance().add_handler(lambda r: logs.append(r))
+
+        class Foo:
+            @log_operation("跳转 {ms:+d}ms → {result}ms", after=True)
+            def skip(self, ms: int) -> int:
+                return 5000 + ms
+
+        result = Foo().skip(3000)
+        assert result == 8000
+        assert len(logs) == 1
+        assert logs[0].message == "跳转 +3000ms → 8000ms"
+
+    def test_after_preserves_return_value(self):
+        """后置模式：保持返回值不变"""
+        logs = []
+        LogManager.instance().add_handler(lambda r: logs.append(r))
+
+        class Foo:
+            @log_operation("返回 {result}", after=True)
+            def get_value(self) -> str:
+                return "hello"
+
+        assert Foo().get_value() == "hello"
+
+    def test_after_logs_after_execution(self):
+        """后置模式：在函数执行后记录"""
+        state = []
+
+        class Foo:
+            @log_operation("执行完毕: {result}", after=True)
+            def run(self) -> str:
+                state.append("executed")
+                return "done"
+
+        Foo().run()
+        assert state == ["executed"]  # 先执行
+        # 装饰器在 return 后记录，不影响函数本身
+
+    def test_after_empty_result(self):
+        """后置模式：返回值 None 时 {result} 为 None"""
+        logs = []
+        LogManager.instance().add_handler(lambda r: logs.append(r))
+
+        class Foo:
+            @log_operation("结果: {result}", after=True)
+            def nothing(self):
+                pass
+
+        Foo().nothing()
+        assert len(logs) == 1
+        assert logs[0].message == "结果: None"
+
+    def test_after_keeps_source_and_level(self):
+        """后置模式：保留自定义 source 和 level"""
+        logs = []
+        LogManager.instance().add_handler(lambda r: logs.append(r))
+
+        class Foo:
+            @log_operation("{result}", source="FFmpeg", level=LogLevel.WARNING, after=True)
+            def check(self) -> str:
+                return "warning"
+
+        Foo().check()
+        assert logs[0].source == "FFmpeg"
+        assert logs[0].level == LogLevel.WARNING
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
