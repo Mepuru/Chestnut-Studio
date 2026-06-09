@@ -3,7 +3,7 @@
 
   # Chestnut Studio
 
-  一个简洁的视频笔记工具 —— 边看视频边添加带时间戳的笔记。v2.6.0
+   一个简洁的视频笔记工具 —— 边看视频边添加带时间戳的笔记。v2.7.0
 </div>
 
 > **布局**: 左侧视频播放 + 播放控制栏 | 右侧笔记列表（按轨道分组）| 底部输入栏（轨道切换 + 时间戳 + 发送）
@@ -140,7 +140,7 @@ uv run python scripts/build_release.py
 ├── pyproject.toml            # 项目配置 + 版本号
 ├── scripts/
 │   └── build_release.py      # Nuitka 构建脚本
-├── tests/                    # 241 个测试用例
+├── tests/                    # 236 个测试用例
 │   ├── conftest.py
 │   ├── test_ass_merge.py
 │   ├── test_compute.py
