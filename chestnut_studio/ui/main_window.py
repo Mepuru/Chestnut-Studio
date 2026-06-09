@@ -9,7 +9,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QIcon, QKeySequence
-from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest
+from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
@@ -521,7 +521,9 @@ class MainWindow(QMainWindow):
         raw = bytes(reply.readAll())
 
         # ── 网络或 HTTP 错误 ──
-        if reply.error() or status and status >= 400 or not raw:
+        # 注意：reply.error() 返回枚举成员，在 Python 中永远 truthy，
+        # 必须显式比较 != NoError
+        if reply.error() != QNetworkReply.NetworkError.NoError or status is not None and status >= 400 or not raw:
             msg = reply.errorString() or "请求失败"
             if raw:
                 import json
