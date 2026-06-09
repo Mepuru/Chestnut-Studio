@@ -95,6 +95,7 @@ class PlayerControls(QWidget):
         self._seek_slider.sliderPressed.connect(self._on_seek_start)
         self._seek_slider.sliderMoved.connect(self._on_seek_preview)
         self._seek_slider.valueChanged.connect(self._on_seek)
+        self._seek_slider.sliderReleased.connect(self._on_seek_end)
         self._seek_slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         layout.addWidget(self._seek_slider, 1)
 
@@ -179,19 +180,25 @@ class PlayerControls(QWidget):
     # ── 内部方法 ──
 
     def _on_seek_start(self):
-        """进度条按下 — 标记拖拽中"""
-        self._is_dragging = True
+        """进度条按下 — 准备拖拽"""
+        # 不设 _is_dragging：点击轨道时 valueChanged 也会触发，
+        # 如果在这里设 True，点击+无 valueChange 时标志会卡死
+        pass
 
     def _on_seek_preview(self, value: int):
-        """进度条拖拽中 — 仅更新时间预览"""
+        """进度条拖拽中 — 标记拖拽 + 更新时间预览"""
+        self._is_dragging = True  # 只有真正拖拽（sliderMoved）才设标志
         self._current_time.setText(ms_to_time_str(value))
+
+    def _on_seek_end(self):
+        """进度条释放 — 结束拖拽标记"""
+        self._is_dragging = False
 
     @log_operation("跳转进度 → {result}", after=True)
     def _on_seek(self, value: int) -> str:
         """进度条点击/释放 — 跳转到目标位置"""
         self._current_time.setText(ms_to_time_str(value))
         self.seek_requested.emit(value)
-        self._is_dragging = False
         return ms_to_time_str(value)
 
     @log_operation("静音切换: {result}", after=True)
