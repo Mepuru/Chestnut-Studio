@@ -57,7 +57,7 @@ class PlayerControls(QWidget):
         self._play_btn.setIcon(QIcon(str(get_icon_path("play"))))
         self._play_btn.setIconSize(self._play_btn.sizeHint())
         self._play_btn.setToolTip("播放/暂停")
-        self._play_btn.setCursor(Qt.PointingHandCursor)
+        self._play_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._play_btn.clicked.connect(self.play_pause_clicked.emit)
         layout.addWidget(self._play_btn)
 
@@ -67,7 +67,7 @@ class PlayerControls(QWidget):
         self._skip_back_btn.setIcon(QIcon(str(get_icon_path("skip_back"))))
         self._skip_back_btn.setIconSize(self._skip_back_btn.sizeHint())
         self._skip_back_btn.setToolTip("后退 5 秒")
-        self._skip_back_btn.setCursor(Qt.PointingHandCursor)
+        self._skip_back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._skip_back_btn.clicked.connect(self.skip_back_clicked.emit)
         layout.addWidget(self._skip_back_btn)
 
@@ -77,7 +77,7 @@ class PlayerControls(QWidget):
         self._skip_forward_btn.setIcon(QIcon(str(get_icon_path("skip_forward"))))
         self._skip_forward_btn.setIconSize(self._skip_forward_btn.sizeHint())
         self._skip_forward_btn.setToolTip("前进 5 秒")
-        self._skip_forward_btn.setCursor(Qt.PointingHandCursor)
+        self._skip_forward_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._skip_forward_btn.clicked.connect(self.skip_forward_clicked.emit)
         layout.addWidget(self._skip_forward_btn)
 
@@ -88,7 +88,7 @@ class PlayerControls(QWidget):
         layout.addWidget(self._current_time)
 
         # ── 进度条 ──
-        self._seek_slider = QSlider(Qt.Horizontal)
+        self._seek_slider = QSlider(Qt.Orientation.Horizontal)
         self._seek_slider.setObjectName("seekSlider")
         self._seek_slider.setRange(0, 0)
         self._seek_slider.setTracking(False)
@@ -96,7 +96,7 @@ class PlayerControls(QWidget):
         self._seek_slider.sliderMoved.connect(self._on_seek_preview)
         self._seek_slider.valueChanged.connect(self._on_seek)
         self._seek_slider.sliderReleased.connect(self._on_seek_end)
-        self._seek_slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self._seek_slider.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         layout.addWidget(self._seek_slider, 1)
 
         # ── 总时长 ──
@@ -111,12 +111,12 @@ class PlayerControls(QWidget):
         self._volume_btn.setIcon(QIcon(str(get_icon_path("volume"))))
         self._volume_btn.setIconSize(self._volume_btn.sizeHint())
         self._volume_btn.setToolTip("静音切换")
-        self._volume_btn.setCursor(Qt.PointingHandCursor)
+        self._volume_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._volume_btn.clicked.connect(self._toggle_mute)
         layout.addWidget(self._volume_btn)
 
         # ── 音量滑块 ──
-        self._volume_slider = QSlider(Qt.Horizontal)
+        self._volume_slider = QSlider(Qt.Orientation.Horizontal)
         self._volume_slider.setObjectName("volumeSlider")
         self._volume_slider.setRange(0, 100)
         self._volume_slider.setValue(80)

@@ -59,7 +59,7 @@ class InputBar(QWidget):
         # ── 发送按钮 ──
         self._send_btn = QPushButton("发送")
         self._send_btn.setObjectName("sendBtn")
-        self._send_btn.setCursor(Qt.PointingHandCursor)
+        self._send_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._send_btn.clicked.connect(self._send)
         layout.addWidget(self._send_btn)
 

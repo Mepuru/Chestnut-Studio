@@ -7,7 +7,7 @@
 """
 
 from dataclasses import dataclass, field, replace
-from typing import Any
+from typing import NamedTuple
 
 from chestnut_studio.core.model.ass_merge import (
     AssDialogue,
@@ -22,31 +22,40 @@ class _ExclusiveState:
     """独占区中间状态（仅在 compute_merge_plan 内部使用）"""
 
     end: float = 0.0
-    notes: list[TxtNote] = field(default_factory=list)
+    notes: list[TxtNote] = field(default_factory=lambda: [])
     text: str = ""
     track: str = ""
     note_idx: int = 0
 
 
-def _detect_overlap_pairs(dialogues: list[AssDialogue]) -> list[dict[str, Any]]:
+class _OverlapPair(NamedTuple):
+    """单一重叠对"""
+
+    a_idx: int
+    b_idx: int
+    zone_start: float
+    zone_end: float
+
+
+def _detect_overlap_pairs(dialogues: list[AssDialogue]) -> list[_OverlapPair]:
     """检测连续 ASS Dialogue 之间的时间重叠对"""
-    pairs = []
+    pairs: list[_OverlapPair] = []
     for di in range(len(dialogues) - 1):
         a, b = dialogues[di], dialogues[di + 1]
         if a.end_s > b.start_s + 0.05:  # > 50ms 视为有效重叠
             pairs.append(
-                {
-                    "a_idx": di,
-                    "b_idx": di + 1,
-                    "zone_start": b.start_s,
-                    "zone_end": min(a.end_s, b.end_s),
-                }
+                _OverlapPair(
+                    a_idx=di,
+                    b_idx=di + 1,
+                    zone_start=b.start_s,
+                    zone_end=min(a.end_s, b.end_s),
+                )
             )
     return pairs
 
 
 def _mark_exclusive_zones(
-    dialogues: list[AssDialogue], overlap_pairs: list[dict[str, Any]], state: dict[int, _ExclusiveState]
+    dialogues: list[AssDialogue], overlap_pairs: list[_OverlapPair], state: dict[int, _ExclusiveState]
 ) -> None:
     """标记每条 ASS 的独占区结束点（写入 state）
 
@@ -58,9 +67,9 @@ def _mark_exclusive_zones(
         state[di].end = d.end_s
 
     for op in overlap_pairs:
-        state[op["a_idx"]].end = op["zone_start"]
-        b = dialogues[op["b_idx"]]
-        state[op["b_idx"]].end = b.start_s  # B 的独占区为零长度
+        state[op.a_idx].end = op.zone_start
+        b = dialogues[op.b_idx]
+        state[op.b_idx].end = b.start_s  # B 的独占区为零长度
 
 
 def _collect_exclusive_notes(
@@ -119,7 +128,7 @@ def _resolve_exclusive_matches(
 def _resolve_overlap_notes(
     dialogues: list[AssDialogue],
     notes: list[TxtNote],
-    overlap_pairs: list[dict[str, Any]],
+    overlap_pairs: list[_OverlapPair],
     matched_note_indices: set[int],
     uncertain: list[UncertainMatch],
     state: dict[int, _ExclusiveState],
@@ -135,10 +144,10 @@ def _resolve_overlap_notes(
     overlap_notes = [n for n in notes if n.index not in matched_note_indices]
 
     for op in overlap_pairs:
-        zone_notes = []
-        remaining = []
+        zone_notes: list[TxtNote] = []
+        remaining: list[TxtNote] = []
         for note in overlap_notes:
-            if op["zone_start"] <= note.time_s <= op["zone_end"]:
+            if op.zone_start <= note.time_s <= op.zone_end:
                 zone_notes.append(note)
             else:
                 remaining.append(note)
@@ -147,8 +156,8 @@ def _resolve_overlap_notes(
         if not zone_notes:
             continue
 
-        a = dialogues[op["a_idx"]]
-        b = dialogues[op["b_idx"]]
+        a = dialogues[op.a_idx]
+        b = dialogues[op.b_idx]
 
         # 收集哪些 ASS 行可能被这些 TXT 匹配
         involved: list[int] = []
@@ -173,7 +182,7 @@ def _resolve_overlap_notes(
             if len(zone_notes) == 1:
                 note = zone_notes[0]
                 is_a = abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s)
-                target_idx = op["a_idx"] if is_a else op["b_idx"]
+                target_idx = op.a_idx if is_a else op.b_idx
                 state[target_idx].text = note.text
                 state[target_idx].track = note.track
                 state[target_idx].note_idx = note.index
@@ -189,7 +198,9 @@ def _resolve_overlap_notes(
                 )
             else:
                 for ai in involved:
-                    ass_notes = [n for n in zone_notes if dialogues[ai].start_s <= n.time_s <= dialogues[ai].end_s]
+                    ass_notes: list[TxtNote] = [
+                        n for n in zone_notes if dialogues[ai].start_s <= n.time_s <= dialogues[ai].end_s
+                    ]
                     if ass_notes:
                         uncertain.append(
                             UncertainMatch(

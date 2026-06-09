@@ -34,7 +34,7 @@ class PlayerCard(QWidget):
         super().__init__(parent)
         self._video_path = ""
         self._duration = 0
-        self._is_playing = False
+        self._is_playing: bool = False
         self._volume = 80
         self._muted = False
         self._playback_rate = 1.0
@@ -57,8 +57,8 @@ class PlayerCard(QWidget):
         # ── 空状态提示 ──
         self._hint_label = QLabel("拖入视频文件 或 Ctrl+O 打开")
         self._hint_label.setObjectName("videoHint")
-        self._hint_label.setAlignment(Qt.AlignCenter)
-        self._hint_label.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self._hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._hint_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         # 用绝对定位覆盖在视频区域上方
         self._hint_label.setGeometry(0, 0, self.width(), self.height())
 
@@ -189,6 +189,6 @@ class PlayerCard(QWidget):
         self.duration_changed.emit(duration)
 
     def _on_playback_state_changed(self, state: QMediaPlayer.PlaybackState):
-        self._is_playing = state == QMediaPlayer.PlayingState
+        self._is_playing = state == QMediaPlayer.PlaybackState.PlayingState
         self._controls.set_playing(self._is_playing)
         self.playback_state_changed.emit(self._is_playing)

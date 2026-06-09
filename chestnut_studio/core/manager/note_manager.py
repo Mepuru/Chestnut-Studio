@@ -99,7 +99,7 @@ class NoteManager:
     def _build_track_colors_line(types: Sequence[str] | None = None) -> str:
         """生成轨道颜色行，例如 '轨道1=#3b82f6, 轨道2=#10b981'"""
         used_types = types or NOTE_TYPES
-        pairs = []
+        pairs: list[str] = []
         for i, name in enumerate(used_types):
             pairs.append(f"{name}={TRACK_COLORS_HEX[i % len(TRACK_COLORS_HEX)]}")
         return ", ".join(pairs)

@@ -6,6 +6,7 @@
 from PySide6.QtCore import QPoint, QRect, QSize, Qt, Signal
 from PySide6.QtGui import QFontMetrics, QKeyEvent, QResizeEvent
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -33,9 +34,9 @@ class _NoteListWidget(QListWidget):
     m_pressed = Signal()
 
     def keyPressEvent(self, event: QKeyEvent):
-        if event.key() == Qt.Key_Delete:
+        if event.key() == Qt.Key.Key_Delete:
             self.delete_requested.emit()
-        elif event.key() == Qt.Key_M:
+        elif event.key() == Qt.Key.Key_M:
             self.m_pressed.emit()
         else:
             super().keyPressEvent(event)
@@ -89,10 +90,11 @@ class NoteItemWidget(QWidget):
         if not self.note.text.strip():
             return 36
         # 使用 text_label 的实际字体（QSS font-size: 9pt 已生效）
+        assert self._text_label is not None
         fm = QFontMetrics(self._text_label.font())
         rect = fm.boundingRect(
             QRect(0, 0, max(text_width, 50), 0),
-            Qt.AlignLeft | Qt.TextWordWrap,
+            Qt.AlignmentFlag.AlignLeft | Qt.TextFlag.TextWordWrap,
             self.note.text,
         )
         # 文本高度 + 上下 layout margin (6+6=12px)，最低 36px
@@ -137,7 +139,7 @@ class NotePanel(QWidget):
 
         self._sort_btn = QPushButton("轨道")  # 初始时间排序，点此切换到轨道
         self._sort_btn.setObjectName("sortBtn")
-        self._sort_btn.setCursor(Qt.PointingHandCursor)
+        self._sort_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._sort_btn.clicked.connect(self._toggle_sort)
         title_layout.addWidget(self._sort_btn)
 
@@ -145,13 +147,13 @@ class NotePanel(QWidget):
 
         self._term_btn = QPushButton("术语")
         self._term_btn.setObjectName("termBtn")
-        self._term_btn.setCursor(Qt.PointingHandCursor)
+        self._term_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._term_btn.clicked.connect(self._on_term_requested)
         title_layout.addWidget(self._term_btn)
 
         self._clear_btn = QPushButton("清空")
         self._clear_btn.setObjectName("clearBtn")
-        self._clear_btn.setCursor(Qt.PointingHandCursor)
+        self._clear_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._clear_btn.clicked.connect(self._clear_all)
         title_layout.addWidget(self._clear_btn)
 
@@ -160,9 +162,9 @@ class NotePanel(QWidget):
         # ── 笔记列表 ──
         self._list = _NoteListWidget()
         self._list.setObjectName("noteList")
-        self._list.setVerticalScrollMode(QListWidget.ScrollPerPixel)
+        self._list.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self._list.itemDoubleClicked.connect(self._on_item_clicked)
-        self._list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._list.customContextMenuRequested.connect(self._show_context_menu)
         self._list.delete_requested.connect(self._delete_selected)
         self._list.m_pressed.connect(self._on_term_requested)
@@ -171,7 +173,7 @@ class NotePanel(QWidget):
         # ── 空状态提示 ──
         self._empty_label = QLabel("暂无笔记\n在下方输入并发送")
         self._empty_label.setObjectName("noteEmptyLabel")
-        self._empty_label.setAlignment(Qt.AlignCenter)
+        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._empty_label.setWordWrap(True)
         self._empty_label.hide()
         layout.addWidget(self._empty_label)
@@ -209,7 +211,7 @@ class NotePanel(QWidget):
     def _add_note_item(self, note: Note):
         """添加一条笔记到列表"""
         item = QListWidgetItem()
-        item.setData(Qt.UserRole, id(note))
+        item.setData(Qt.ItemDataRole.UserRole, id(note))
         note_id = self._note_manager.get_note_id(note)
         widget = NoteItemWidget(note, note_id)
         # 初始高度估算（resize 时会用实际宽度重新计算）
@@ -242,7 +244,7 @@ class NotePanel(QWidget):
             group_layout.addWidget(group_label)
             group_layout.addStretch()
             group_item.setSizeHint(group_widget.sizeHint())
-            group_item.setFlags(group_item.flags() & ~Qt.ItemIsSelectable)
+            group_item.setFlags(group_item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
             self._list.addItem(group_item)
             self._list.setItemWidget(group_item, group_widget)
 
@@ -316,10 +318,10 @@ class NotePanel(QWidget):
             self,
             "清空所有笔记",
             "将清空所有笔记和术语，此操作不可撤销。\n确定继续？",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
-        if reply != QMessageBox.Yes:
+        if reply != QMessageBox.StandardButton.Yes:
             return 0
         count = len(self._note_manager.get_all())
         self._note_manager.clear_terms()

@@ -128,7 +128,7 @@ class Term:
         source = ""
         translation = ""
         origin = ""
-        note_lines = []
+        note_lines: list[str] = []
         for line in lines:
             if line.startswith("# 词: "):
                 source = line[5:]

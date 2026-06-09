@@ -54,7 +54,7 @@ def generate_merge_report(plan: MergePlan) -> str:
         ", ".join(f"{k}={v}" for k, v in sorted(plan.track_colors.items())) if plan.track_colors else "（无）"
     )
 
-    lines = []
+    lines: list[str] = []
     lines.append("# Chestnut Studio - ASS/TXT 合并报告 v" + get_version())
     lines.append("# 导出时间: " + now)
     lines.append("# ---")

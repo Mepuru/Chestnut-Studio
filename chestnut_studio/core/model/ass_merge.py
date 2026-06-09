@@ -59,4 +59,4 @@ class MergePlan:
     uncertain: list[UncertainMatch]  # 不确定的匹配项（需手动）
     risky: list[UncertainMatch]  # 潜在风险项（重叠区就近分配）
     _raw_ass_lines: list[str] = field(repr=False)  # 原始 ASS 行
-    track_colors: dict[str, str] = field(default_factory=dict)  # 轨道名→颜色
+    track_colors: dict[str, str] = field(default_factory=dict[str, str])  # 轨道名→颜色

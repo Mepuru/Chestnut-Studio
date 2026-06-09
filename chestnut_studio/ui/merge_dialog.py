@@ -82,7 +82,7 @@ class MergeDialog(QDialog):
         self._analyze_btn = QPushButton("分析合并")
         self._analyze_btn.setObjectName("primaryBtn")
         self._analyze_btn.clicked.connect(self._analyze)
-        layout.addWidget(self._analyze_btn, alignment=Qt.AlignCenter)
+        layout.addWidget(self._analyze_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # ── 统计摘要 ──
         self._stats_label = QLabel("")

@@ -15,6 +15,8 @@ from PySide6.QtWidgets import (
 )
 
 from chestnut_studio.core import NOTE_TYPES
+from chestnut_studio.core.note_manager import NoteManager
+from chestnut_studio.ui.main_window import MainWindow
 from chestnut_studio.utils import get_logger
 
 logger = get_logger("DEBUG")
@@ -23,7 +25,7 @@ logger = get_logger("DEBUG")
 class DebugBox(QDialog):
     """百宝箱对话框"""
 
-    def __init__(self, parent: QWidget | None = None, note_manager: object = None):
+    def __init__(self, parent: QWidget | None = None, note_manager: NoteManager | None = None):
         super().__init__(parent)
         self._note_manager = note_manager
         self.setWindowTitle("百宝箱")
@@ -90,7 +92,7 @@ class DebugBox(QDialog):
 
     def _crash_divide(self):
         logger.info("崩溃测试: 1 ÷ 0")
-        _ = 1 / 0  # ZeroDivisionError
+        1 / 0  # ZeroDivisionError  # pyright: ignore[reportUnusedExpression]
 
     def _crash_assert(self):
         logger.info("崩溃测试: assert False")
@@ -98,11 +100,12 @@ class DebugBox(QDialog):
 
     def _crash_index(self):
         logger.info("崩溃测试: IndexError")
-        _ = [][0]
+        [][0]  # pyright: ignore[reportUnusedExpression]
 
     # ── 性能测试 ──
 
     def _add_bulk_notes(self, count: int):
+        assert self._note_manager is not None
         for i in range(count):
             track = NOTE_TYPES[i % len(NOTE_TYPES)]
             self._note_manager.add(
@@ -111,5 +114,5 @@ class DebugBox(QDialog):
         logger.info(f"性能测试: 批量添加完毕，共 {count} 条（分布到 {len(NOTE_TYPES)} 个轨道）")
         # 通知父窗口刷新列表
         parent = self.parent()
-        if hasattr(parent, "note_panel"):
+        if isinstance(parent, MainWindow):
             parent.note_panel.refresh()

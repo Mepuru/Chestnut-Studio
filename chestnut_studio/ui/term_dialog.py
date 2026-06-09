@@ -5,6 +5,7 @@
 
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QDialog,
     QHBoxLayout,
     QLabel,
@@ -35,7 +36,7 @@ def _parse_note(note: str) -> tuple[str, str, str]:
     ctx = ""
     ref = ""
     lines = note.split("\n")
-    clean = []
+    clean: list[str] = []
     for ln in lines:
         if ln.startswith("原文: "):
             ctx = ln[4:]
@@ -49,7 +50,7 @@ def _parse_note(note: str) -> tuple[str, str, str]:
 
 def _build_note(context: str, reference: str, rest_note: str) -> str:
     """将上下文、参考资料和备注合并为 note 字段"""
-    parts = []
+    parts: list[str] = []
     if context:
         parts.append("原文: " + context)
     if reference:
@@ -199,13 +200,13 @@ class TermTableDialog(QDialog):
         self._table.setColumnCount(5)
         self._table.setHorizontalHeaderLabels(["术语", "译文", "出处", "原文", "备注"])
         self._table.horizontalHeader().setStretchLastSection(True)
-        self._table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self._table.setSelectionBehavior(QTableWidget.SelectRows)
+        self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self._table.verticalHeader().hide()
 
         self._populate_table()
 
-        self._table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._table.customContextMenuRequested.connect(self._on_context_menu)
 
         layout.addWidget(self._table)
@@ -238,7 +239,7 @@ class TermTableDialog(QDialog):
         t = terms[row]
 
         dialog = TermEditDialog(self, term=t, note_manager=self._note_manager)
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             result = dialog.get_result()
             if result:
                 new_s, new_t, new_o, new_n = result

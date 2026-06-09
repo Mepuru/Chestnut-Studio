@@ -5,6 +5,7 @@ import shutil
 import sys
 import traceback
 import types
+import typing
 from datetime import datetime
 from pathlib import Path
 
@@ -17,7 +18,7 @@ from chestnut_studio.utils.log_manager import LogLevel, LogManager, LogRecord
 from chestnut_studio.utils.theme import render_stylesheet
 from chestnut_studio.utils.version import get_version
 
-_log_file = None  # 日志文件句柄，供 crash hook 快照用
+_log_file: typing.TextIO | None = None  # 日志文件句柄，供 crash hook 快照用
 
 
 def _get_log_dir() -> Path:
@@ -51,6 +52,7 @@ def _setup_logging() -> Path:
     _log_file = open(log_path, "a", encoding="utf-8", buffering=1)
 
     # 会话分隔线
+    assert _log_file is not None
     sep = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     _log_file.write(f"{'=' * 60}\n")
     _log_file.write(f"  Chestnut Studio v{get_version()} — {sep}\n")
@@ -58,6 +60,7 @@ def _setup_logging() -> Path:
     _log_file.flush()
 
     def file_handler(record: LogRecord) -> None:
+        assert _log_file is not None
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         line = f"[{ts}] [{record.source}] {record.level.name:7s}  {record.message}\n"
         _log_file.write(line)
@@ -86,12 +89,13 @@ def _setup_crash_hook(log_path: Path) -> None:
         # 快照：将当前日志复制为 crash_20260604_143000.log 并清空 app.log
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         snap_path = log_path.with_stem(f"crash_{ts}")
-        try:
-            _log_file.flush()
-            shutil.copy2(log_path, snap_path)
-            _log_file.truncate(0)
-        except Exception:
-            pass
+        if _log_file is not None:
+            try:
+                _log_file.flush()
+                shutil.copy2(log_path, snap_path)
+                _log_file.truncate(0)
+            except Exception:
+                pass
 
         # 弹窗告诉用户日志位置
         try:
@@ -102,7 +106,7 @@ def _setup_crash_hook(log_path: Path) -> None:
             )
         except Exception:
             pass
-        if old_hook:
+        if old_hook is not None:
             old_hook(exc_type, exc_value, exc_tb)
         else:
             sys.__excepthook__(exc_type, exc_value, exc_tb)
@@ -136,7 +140,7 @@ def main():
 
     def _msg(text: str) -> None:
         """更新启动页底部提示文字"""
-        splash.showMessage(text, Qt.AlignBottom | Qt.AlignCenter, QColor("#8080b0"))
+        splash.showMessage(text, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignCenter, QColor("#8080b0"))
         app.processEvents()
 
     # 阶段 0：日志初始化（放在 splash 后，不影响启动页弹出速度）
@@ -167,7 +171,7 @@ def main():
     elapsed = (_time.time() - splash_t0) * 1000
     remain = max(0, 1500 - elapsed)
     if remain > 0:
-        splash.showMessage("正在启动…", Qt.AlignBottom | Qt.AlignCenter, QColor("#8080b0"))
+        splash.showMessage("正在启动…", Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignCenter, QColor("#8080b0"))
         app.processEvents()
         QTimer.singleShot(int(remain), lambda: splash.finish(window))
     else:

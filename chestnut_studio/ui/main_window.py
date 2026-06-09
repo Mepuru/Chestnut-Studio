@@ -11,7 +11,10 @@ from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QIcon, QKeyEvent, QKeySequence
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QCheckBox,
     QDialog,
+    QDialogButtonBox,
     QFileDialog,
     QLabel,
     QMainWindow,
@@ -167,7 +170,7 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(self.player_card, 1)
         left_layout.addWidget(self.input_bar)
 
-        splitter = QSplitter(Qt.Horizontal)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setObjectName("mainSplitter")
         splitter.setHandleWidth(1)
         splitter.addWidget(left_widget)
@@ -231,7 +234,7 @@ class MainWindow(QMainWindow):
         icon = self.windowIcon()
         if not icon.isNull():
             msg.setIconPixmap(icon.pixmap(48, 48))
-        msg.setTextFormat(Qt.RichText)
+        msg.setTextFormat(Qt.TextFormat.RichText)
         msg.setText(
             f"<h3>Chestnut Studio v{ver}</h3>"
             "<p>一个简洁的视频笔记工具</p>"
@@ -287,8 +290,8 @@ class MainWindow(QMainWindow):
         table.setColumnCount(2)
         table.setHorizontalHeaderLabels(["按键", "功能"])
         table.horizontalHeader().setStretchLastSection(True)
-        table.setEditTriggers(QTableWidget.NoEditTriggers)
-        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.verticalHeader().hide()
 
         shortcuts = [
@@ -363,7 +366,7 @@ class MainWindow(QMainWindow):
             context=note_text,
             origin=origin_text,
         )
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             result = dialog.get_result()
             if result:
                 self._on_term_added(*result)
@@ -384,8 +387,6 @@ class MainWindow(QMainWindow):
         if not used_types:
             return
 
-        from PySide6.QtWidgets import QCheckBox, QDialogButtonBox, QLabel, QVBoxLayout
-
         dialog = QDialog(self)
         dialog.setWindowTitle("导出笔记")
         dialog.setMinimumWidth(280)
@@ -393,7 +394,7 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(dialog)
         layout.addWidget(QLabel("选择要导出的轨道:"))
 
-        track_cbs = {}
+        track_cbs: dict[str, QCheckBox] = {}
         for t in NOTE_TYPES:
             cb = QCheckBox(t)
             cb.setChecked(t in used_types)
@@ -401,16 +402,19 @@ class MainWindow(QMainWindow):
             track_cbs[t] = cb
             layout.addWidget(cb)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttons.button(QDialogButtonBox.Ok).setText("导出")
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QDialogButtonBox.StandardButton.Ok).setText("导出")
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
         layout.addWidget(buttons)
 
-        if dialog.exec() != QDialog.Accepted:
+        if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
-        selected_tracks = [t for t, cb in track_cbs.items() if cb.isChecked()]
+        selected_tracks: list[str] = []
+        for t, cb in track_cbs.items():
+            if cb.isChecked():
+                selected_tracks.append(t)
         if not selected_tracks:
             self._show_status("未选择任何轨道")
             return
@@ -518,7 +522,8 @@ class MainWindow(QMainWindow):
         """处理 GitHub API 返回结果"""
         ver = get_version()
         status = reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute)
-        raw = reply.readAll().data()
+        reply_data = reply.readAll()
+        raw: bytes = bytes(reply_data.data()) if reply_data else b""
 
         # ── 网络或 HTTP 错误 ──
         # 注意：reply.error() 返回枚举成员，在 Python 中永远 truthy，
@@ -529,9 +534,10 @@ class MainWindow(QMainWindow):
                 import json
 
                 try:
-                    body = json.loads(raw.decode("utf-8"))
-                    if isinstance(body, dict) and "message" in body:
-                        msg = body["message"]
+                    body: dict[str, object] = json.loads(raw.decode("utf-8"))
+                    message_val = body.get("message")
+                    if isinstance(message_val, str):
+                        msg = message_val
                 except Exception:
                     pass
             logger.info(f"更新检查失败 (HTTP {status}): {msg}")
@@ -579,26 +585,26 @@ class MainWindow(QMainWindow):
 
         # ── 全局快捷键（输入框有焦点也生效） ──
         # F1 → 播放/暂停
-        if key == Qt.Key_F1:
+        if key == Qt.Key.Key_F1:
             self.player_card.play_pause()
             event.accept()
             return
 
         # F2 / ← → 后退 5 秒
-        if key in (Qt.Key_F2, Qt.Key_Left):
+        if key in (Qt.Key.Key_F2, Qt.Key.Key_Left):
             self.player_card.skip_back()
             event.accept()
             return
 
         # F3 / → → 前进 5 秒
-        if key in (Qt.Key_F3, Qt.Key_Right):
+        if key in (Qt.Key.Key_F3, Qt.Key.Key_Right):
             self.player_card.skip_forward()
             event.accept()
             return
 
         # Ctrl+1~9 / Ctrl+0 → 切换轨道
-        if mod == Qt.ControlModifier and Qt.Key_0 <= key <= Qt.Key_9:
-            track = 10 if key == Qt.Key_0 else key - Qt.Key_1 + 1
+        if mod == Qt.KeyboardModifier.ControlModifier and Qt.Key.Key_0 <= key <= Qt.Key.Key_9:
+            track = 10 if key == Qt.Key.Key_0 else key - Qt.Key.Key_1 + 1
             self.input_bar.set_current_track(track)
             event.accept()
             return

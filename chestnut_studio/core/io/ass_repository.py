@@ -67,7 +67,7 @@ def read_ass(filepath: str) -> tuple[list[AssDialogue], list[str]]:
     with open(filepath, encoding="utf-8") as f:
         raw_lines = f.read().split("\n")
 
-    dialogues = []
+    dialogues: list[AssDialogue] = []
     for i, line in enumerate(raw_lines):
         if line.startswith("Dialogue:"):
             idx = _nth_comma(line, 8)
@@ -102,7 +102,7 @@ def read_txt_notes(filepath: str) -> tuple[list[TxtNote], dict[str, str]]:
 
     track_colors = _parse_track_colors(raw)
 
-    notes = []
+    notes: list[TxtNote] = []
     for line in raw.split("\n"):
         line = line.strip()
         if not line or not re.match(r"#\d+\t", line):
