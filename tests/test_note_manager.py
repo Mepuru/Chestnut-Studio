@@ -1,6 +1,5 @@
 """笔记管理器测试"""
 
-import json
 import tempfile
 from pathlib import Path
 
@@ -190,55 +189,6 @@ class TestNoteManager:
         finally:
             Path(path).unlink(missing_ok=True)
 
-    def test_export_json(self):
-        mgr = NoteManager()
-        mgr.add(1000, "测试", "轨道2")
-
-        with tempfile.NamedTemporaryFile(suffix=".json", mode="w", delete=False, encoding="utf-8") as f:
-            path = f.name
-
-        try:
-            count = mgr.export_json(path)
-            assert count == 1
-            with open(path, encoding="utf-8") as f:
-                data = json.load(f)
-            assert data["notes"][0]["text"] == "测试"
-        finally:
-            Path(path).unlink(missing_ok=True)
-
-    def test_export_json_filtered(self):
-        mgr = NoteManager()
-        mgr.add(1000, "轨道1的", "轨道1")
-        mgr.add(2000, "轨道2的", "轨道2")
-
-        with tempfile.NamedTemporaryFile(suffix=".json", mode="w", delete=False, encoding="utf-8") as f:
-            path = f.name
-
-        try:
-            count = mgr.export_json(path, ["轨道1"])
-            assert count == 1
-            with open(path, encoding="utf-8") as f:
-                data = json.load(f)
-            assert len(data["notes"]) == 1
-            assert data["notes"][0]["text"] == "轨道1的"
-        finally:
-            Path(path).unlink(missing_ok=True)
-
-    def test_import_json(self):
-        mgr = NoteManager()
-        data = {"version": 1, "notes": [{"timestamp_ms": 5000, "text": "导入的笔记", "type": "轨道4"}]}
-        with tempfile.NamedTemporaryFile(suffix=".json", mode="w", delete=False, encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False)
-            path = f.name
-
-        try:
-            count = mgr.import_json(path)
-            assert count == 1
-            assert mgr.get_all()[0].type == "轨道4"
-        finally:
-            Path(path).unlink(missing_ok=True)
-
-
 class TestTerm:
     """Term 数据类测试"""
 
@@ -415,12 +365,6 @@ class TestNoteManagerFileErrors:
         with pytest.raises(OSError, match="导出笔记失败"):
             mgr.export_text(self._bad_path(".txt"))
 
-    def test_export_json_bad_path(self):
-        mgr = NoteManager()
-        mgr.add(1000, "测试")
-        with pytest.raises(OSError, match="导出 JSON 失败"):
-            mgr.export_json(self._bad_path(".json"))
-
     def test_export_terms_bad_path(self):
         mgr = NoteManager()
         mgr.add_term("test", "测试")
@@ -431,11 +375,6 @@ class TestNoteManagerFileErrors:
         mgr = NoteManager()
         with pytest.raises(OSError, match="导入笔记失败"):
             mgr.import_text(self._bad_path(".txt"))
-
-    def test_import_json_bad_path(self):
-        mgr = NoteManager()
-        with pytest.raises(OSError, match="导入 JSON 失败"):
-            mgr.import_json(self._bad_path(".json"))
 
     def test_import_terms_bad_path(self):
         mgr = NoteManager()

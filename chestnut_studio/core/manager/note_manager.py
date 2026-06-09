@@ -20,9 +20,7 @@ from chestnut_studio.core.compute.note_processor import (
     get_note_id as compute_get_note_id,
 )
 from chestnut_studio.core.io.note_repository import (
-    read_notes_json,
     read_notes_text,
-    write_notes_json,
     write_notes_text,
 )
 from chestnut_studio.core.io.term_repository import append_terms, read_terms
@@ -160,27 +158,6 @@ class NoteManager:
         self._notes.extend(imported)
         self._notes.sort()
         self._logger.info(f"导入文本: {len(imported)} 条 ← {path}")
-        return len(imported)
-
-    def export_json(self, path: str | Path, types: list[str] | None = None) -> int:
-        notes = self._notes if types is None else [n for n in self._notes if n.type in types]
-        try:
-            write_notes_json(notes, path)
-        except OSError as e:
-            self._logger.error(f"导出 JSON 失败: {path} — {e}")
-            raise OSError(f"导出 JSON 失败: {e}") from e
-        self._logger.info(f"导出 JSON: {len(notes)} 条 → {path}")
-        return len(notes)
-
-    def import_json(self, path: str | Path) -> int:
-        try:
-            imported = read_notes_json(path)
-        except (OSError, UnicodeDecodeError, ValueError) as e:
-            self._logger.error(f"导入 JSON 失败: {path} — {e}")
-            raise OSError(f"导入 JSON 失败: {e}") from e
-        self._notes.extend(imported)
-        self._notes.sort()
-        self._logger.info(f"导入 JSON: {len(imported)} 条 ← {path}")
         return len(imported)
 
     # ── 术语库 ──
