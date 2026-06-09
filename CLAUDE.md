@@ -45,7 +45,7 @@ manager/   → 编排器（轻量胶水），组合 model + compute + io（规�
 **子层依赖规则**:
 - `model/` 可被 `compute/`、`io/`、`manager/`、`ui/` 任意引用
 - `compute/`、`io/`、`manager/` 不可反向依赖
-- 当前过渡期：`ass_merge.py` 中的 `MergePlan` 暂带 I/O 方法（`write()`/`generate_report()`），后续拆分到 `io/`
+- 当前过渡期：`MergePlan` 中的 `write()`/`generate_report()` 已委托到 `core/io/ass_writer.py`，保持方法存根以兼容现有调用点
 
 ### 导入路径规范
 
@@ -98,12 +98,14 @@ self.note_panel.term_requested.connect(self._on_term_requested)
 | `ui/debug_box.py` | 开发者百宝箱（崩溃/日志/性能测试） |
 | `ui/cards/player_card.py` | QMediaPlayer 视频播放封装 |
 | `core/model/note.py` | Note / Term 纯数据类 |
-| `core/model/ass_merge.py` | AssDialogue / TxtNote / MergePlan 纯数据类（I/O 方法过渡期） |
+| `core/model/ass_merge.py` | AssDialogue / TxtNote / MergePlan 纯数据类（write/generate_report 薄委托） |
 | `core/model/ffmpeg.py` | VideoInfo / FFmpegError 纯数据类 |
 | `core/compute/note_processor.py` | 笔记纯计算函数（过滤/排序/ID分配） |
 | `core/compute/ass_merge_engine.py` | ASS+TXT 合并纯匹配算法（可被 Moonbit 替换） |
 | `core/io/note_repository.py` | 笔记文件 I/O（读/写 TXT + JSON） |
 | `core/io/term_repository.py` | 术语文件 I/O（读/追加区块格式） |
+| `core/io/ass_repository.py` | ASS/TXT 字幕文件解析（read_ass, read_txt_notes） |
+| `core/io/ass_writer.py` | 合并结果输出（write_output, generate_merge_report） |
 | `core/note_manager.py` | NoteManager 编排器（CRUD + 导入导出编排，委托 compute + io） |
 | `core/ffmpeg.py` | FFmpeg 封装（视频信息解析） |
 | `core/track_config.py` | 轨道数量、颜色、NOTE_TYPES 唯一来源 |
