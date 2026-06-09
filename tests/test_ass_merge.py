@@ -3,16 +3,21 @@
 import tempfile
 from pathlib import Path
 
-from chestnut_studio.core.ass_merge import (
+from chestnut_studio.core.ass_merge import build_merge_plan
+from chestnut_studio.core.io.ass_repository import (
     _nth_comma,
     _parse_ass_time,
     _parse_track_colors,
     _parse_txt_time,
-    build_merge_plan,
-    parse_ass,
-    parse_txt,
+    read_ass,
+    read_txt_notes,
 )
-from chestnut_studio.core.model.ass_merge import AssDialogue, MergePlan
+from chestnut_studio.core.io.ass_writer import (
+    _build_style_line,
+    _collect_used_tracks,
+    _hex_to_ass_color,
+)
+from chestnut_studio.core.model.ass_merge import AssDialogue
 
 # ══════════════════════════════════════════
 # 底层工具函数
@@ -114,7 +119,7 @@ class TestParseAss:
             f.write(SAMPLE_ASS)
             path = f.name
         try:
-            dialogues, raw = parse_ass(path)
+            dialogues, raw = read_ass(path)
             assert len(dialogues) == 3
             assert dialogues[0].start_s == 1.0
             assert dialogues[0].end_s == 4.0
@@ -128,7 +133,7 @@ class TestParseAss:
             f.write(SAMPLE_ASS)
             path = f.name
         try:
-            dialogues, raw = parse_ass(path)
+            dialogues, raw = read_ass(path)
             d = dialogues[0]
             assert d.start_str == "0:00:01.00"
             assert d.end_str == "0:00:04.00"
@@ -143,7 +148,7 @@ class TestParseAss:
             f.write(malformed)
             path = f.name
         try:
-            dialogues, raw = parse_ass(path)
+            dialogues, raw = read_ass(path)
             assert len(dialogues) == 3
         finally:
             Path(path).unlink(missing_ok=True)
@@ -155,7 +160,7 @@ class TestParseTxt:
             f.write(SAMPLE_TXT)
             path = f.name
         try:
-            notes, colors = parse_txt(path)
+            notes, colors = read_txt_notes(path)
             assert len(notes) == 3
             assert notes[0].text == "笔记A"
             assert notes[0].time_s == 1.5
@@ -169,7 +174,7 @@ class TestParseTxt:
             f.write(SAMPLE_TXT)
             path = f.name
         try:
-            notes, colors = parse_txt(path)
+            notes, colors = read_txt_notes(path)
             assert colors == {"轨道1": "#3b82f6"}
         finally:
             Path(path).unlink(missing_ok=True)
@@ -180,7 +185,7 @@ class TestParseTxt:
             f.write(empty_text)
             path = f.name
         try:
-            notes, colors = parse_txt(path)
+            notes, colors = read_txt_notes(path)
             assert len(notes) == 0
         finally:
             Path(path).unlink(missing_ok=True)
@@ -193,16 +198,16 @@ class TestParseTxt:
 
 class TestMergePlanHelpers:
     def test_hex_to_ass_color(self):
-        assert MergePlan._hex_to_ass_color("#3b82f6") == "&H00f6823b"
+        assert _hex_to_ass_color("#3b82f6") == "&H00f6823b"
 
     def test_hex_to_ass_color_short(self):
-        assert MergePlan._hex_to_ass_color("invalid") == "&H00FFFFFF"
+        assert _hex_to_ass_color("invalid") == "&H00FFFFFF"
 
     def test_hex_to_ass_color_no_hash(self):
-        assert MergePlan._hex_to_ass_color("3b82f6") == "&H00f6823b"
+        assert _hex_to_ass_color("3b82f6") == "&H00f6823b"
 
     def test_build_style_line(self):
-        line = MergePlan._build_style_line("轨道1", "#3b82f6")
+        line = _build_style_line("轨道1", "#3b82f6")
         assert line.startswith("Style: 轨道1,思源黑体 CN,70,&H00f6823b")
 
     def test_collect_used_tracks(self):
@@ -252,8 +257,7 @@ class TestMergePlanHelpers:
                 track="轨道1",
             ),
         ]
-        plan = MergePlan("", "", dialogues, [], 0, 0, [], [], [], {})
-        used = plan._collect_used_tracks()
+        used = _collect_used_tracks(dialogues)
         assert used == ["轨道1", "轨道2"]
 
 

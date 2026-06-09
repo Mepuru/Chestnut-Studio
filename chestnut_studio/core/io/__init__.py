@@ -8,6 +8,8 @@
   io/ 不可反向依赖 manager/
 """
 
+from chestnut_studio.core.io.ass_repository import read_ass, read_txt_notes
+from chestnut_studio.core.io.ass_writer import generate_merge_report, write_output
 from chestnut_studio.core.io.note_repository import (
     read_notes_json,
     read_notes_text,
@@ -23,4 +25,8 @@ __all__ = [
     "read_notes_json",
     "append_terms",
     "read_terms",
+    "read_ass",
+    "read_txt_notes",
+    "generate_merge_report",
+    "write_output",
 ]

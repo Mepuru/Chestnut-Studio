@@ -20,8 +20,9 @@ class TestNote:
         assert note.type == "轨道1"
 
     def test_invalid_type(self):
-        with pytest.raises(ValueError, match="笔记类型"):
-            Note(timestamp_ms=0, text="", type="无效类型")
+        """Note 构造不再校验类型，但 NoteManager.add 会校验"""
+        note = Note(timestamp_ms=0, text="", type="无效类型")
+        assert note.type == "无效类型"  # Note 接受任意类型字符串
 
     def test_negative_timestamp(self):
         with pytest.raises(ValueError, match="不能为负"):

@@ -1,10 +1,12 @@
 """ASS+TXT 字幕合并引擎 — 纯计算函数
 
 核心匹配算法，无文件 I/O。输入已解析的 ASS Dialogues 和 TXT Notes，
-输出合并计划。
+输出合并计划。不修改输入参数，所有中间状态使用局部变量。
 
 **原则**: 只有 100% 确定的匹配才自动填入——即恰好 1 条 TXT 落在某条 ASS 的独占时间区内。
 """
+
+from dataclasses import dataclass, field
 
 from chestnut_studio.core.model.ass_merge import (
     AssDialogue,
@@ -12,6 +14,17 @@ from chestnut_studio.core.model.ass_merge import (
     TxtNote,
     UncertainMatch,
 )
+
+
+@dataclass
+class _ExclusiveState:
+    """独占区中间状态（仅在 compute_merge_plan 内部使用）"""
+
+    end: float = 0.0
+    notes: list[TxtNote] = field(default_factory=list)
+    text: str = ""
+    track: str = ""
+    note_idx: int = 0
 
 
 def _detect_overlap_pairs(dialogues: list[AssDialogue]) -> list[dict]:
@@ -31,30 +44,38 @@ def _detect_overlap_pairs(dialogues: list[AssDialogue]) -> list[dict]:
     return pairs
 
 
-def _mark_exclusive_zones(dialogues: list[AssDialogue], overlap_pairs: list[dict]) -> None:
-    """标记每条 ASS 的独占区结束点（修改 AssDialogue._exclusive_end）"""
-    for d in dialogues:
-        d._exclusive_end = d.end_s
+def _mark_exclusive_zones(
+    dialogues: list[AssDialogue], overlap_pairs: list[dict], state: dict[int, _ExclusiveState]
+) -> None:
+    """标记每条 ASS 的独占区结束点（写入 state）
+
+    重叠区中:
+      - 先出现的 A: 独占区 = [A.start, overlap_start)，overlap 部分被截掉
+      - 后出现的 B: 独占区 = [B.start, B.start)（零长度），全文在重叠区内
+    """
+    for di, d in enumerate(dialogues):
+        state[di].end = d.end_s
 
     for op in overlap_pairs:
-        a = dialogues[op["a_idx"]]
+        state[op["a_idx"]].end = op["zone_start"]
         b = dialogues[op["b_idx"]]
-        a._exclusive_end = op["zone_start"]
-        b._exclusive_end = b.start_s
+        state[op["b_idx"]].end = b.start_s  # B 的独占区为零长度
 
 
-def _collect_exclusive_notes(dialogues: list[AssDialogue], notes: list[TxtNote]) -> None:
-    """将笔记分配到独占区（修改 AssDialogue._exclusive_notes）"""
+def _collect_exclusive_notes(
+    dialogues: list[AssDialogue], notes: list[TxtNote], state: dict[int, _ExclusiveState]
+) -> None:
+    """将笔记分配到独占区（写入 state）"""
     for note in notes:
-        for d in dialogues:
-            excl_end = d._exclusive_end
+        for di, d in enumerate(dialogues):
+            excl_end = state[di].end
             if d.start_s <= note.time_s < excl_end:
-                d._exclusive_notes.append(note)
+                state[di].notes.append(note)
                 break
 
 
 def _resolve_exclusive_matches(
-    dialogues: list[AssDialogue],
+    dialogues: list[AssDialogue], state: dict[int, _ExclusiveState]
 ) -> tuple[int, list[UncertainMatch], set[int]]:
     """独占区匹配：恰好 1 条 → 自动匹配，多条 → 入不确定列表
 
@@ -65,15 +86,15 @@ def _resolve_exclusive_matches(
     auto_matched = 0
 
     for di, d in enumerate(dialogues):
-        zone_notes = d._exclusive_notes
+        zone_notes = state[di].notes
         if not zone_notes:
             continue
 
         if len(zone_notes) == 1:
             note = zone_notes[0]
-            d._exclusive_text = note.text
-            d._exclusive_track = note.track
-            d._exclusive_note_idx = note.index
+            state[di].text = note.text
+            state[di].track = note.track
+            state[di].note_idx = note.index
             auto_matched += 1
         else:
             uncertain.append(
@@ -87,8 +108,8 @@ def _resolve_exclusive_matches(
             )
 
     matched_note_indices: set[int] = set()
-    for d in dialogues:
-        for n in d._exclusive_notes:
+    for st in state.values():
+        for n in st.notes:
             matched_note_indices.add(n.index)
 
     return auto_matched, uncertain, matched_note_indices
@@ -100,6 +121,7 @@ def _resolve_overlap_notes(
     overlap_pairs: list[dict],
     matched_note_indices: set[int],
     uncertain: list[UncertainMatch],
+    state: dict[int, _ExclusiveState],
 ) -> tuple[list[UncertainMatch], int]:
     """处理重叠区未匹配的 TXT 笔记
 
@@ -149,20 +171,15 @@ def _resolve_overlap_notes(
         elif len(involved) >= 2:
             if len(zone_notes) == 1:
                 note = zone_notes[0]
-                # 选离 start 更近的那条 ASS
-                if abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s):
-                    a._exclusive_text = note.text
-                    a._exclusive_track = note.track
-                    a._exclusive_note_idx = note.index
-                else:
-                    b._exclusive_text = note.text
-                    b._exclusive_track = note.track
-                    b._exclusive_note_idx = note.index
-                additional_auto += 1
                 is_a = abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s)
+                target_idx = op["a_idx"] if is_a else op["b_idx"]
+                state[target_idx].text = note.text
+                state[target_idx].track = note.track
+                state[target_idx].note_idx = note.index
+                additional_auto += 1
                 risky.append(
                     UncertainMatch(
-                        ass_idx=op["a_idx"] if is_a else op["b_idx"],
+                        ass_idx=target_idx,
                         ass_start=a.start_str if is_a else b.start_str,
                         ass_end=a.end_str if is_a else b.end_str,
                         notes=[note],
@@ -196,10 +213,11 @@ def compute_merge_plan(
 ) -> MergePlan:
     """从已解析的 ASS dialogues 和 TXT notes 构建合并计划
 
-    纯计算函数，无 I/O 操作，结果完全由输入决定。
+    纯计算函数，不修改输入参数，无 I/O 操作。
+    所有中间状态使用局部 _ExclusiveState 管理。
 
     Args:
-        dialogues: 已解析的 ASS Dialogue 列表
+        dialogues: 已解析的 ASS Dialogue 列表（不会被修改）
         notes: 已解析的 TXT Note 列表
         track_colors: 轨道名 → 颜色映射
         ass_path: ASS 文件路径（仅用于 MergePlan 记录）
@@ -207,35 +225,42 @@ def compute_merge_plan(
         raw_ass_lines: 原始 ASS 行（仅用于 MergePlan 记录）
 
     Returns:
-        MergePlan 对象
+        包含匹配结果的 MergePlan（携带有修改结果的 dialogue 副本）
     """
     if raw_ass_lines is None:
         raw_ass_lines = []
+
+    # 初始化每个 dialogue 的独占区状态
+    state: dict[int, _ExclusiveState] = {di: _ExclusiveState() for di in range(len(dialogues))}
 
     # 1. 检测重叠对
     overlap_pairs = _detect_overlap_pairs(dialogues)
 
     # 2. 标记独占区
-    _mark_exclusive_zones(dialogues, overlap_pairs)
+    _mark_exclusive_zones(dialogues, overlap_pairs, state)
 
     # 3. 独占区收集 + 匹配
-    _collect_exclusive_notes(dialogues, notes)
-    auto_matched, uncertain, matched_note_indices = _resolve_exclusive_matches(dialogues)
+    _collect_exclusive_notes(dialogues, notes, state)
+    auto_matched, uncertain, matched_note_indices = _resolve_exclusive_matches(dialogues, state)
 
     # 4. 处理重叠区
-    risky, additional_auto = _resolve_overlap_notes(dialogues, notes, overlap_pairs, matched_note_indices, uncertain)
+    risky, additional_auto = _resolve_overlap_notes(
+        dialogues, notes, overlap_pairs, matched_note_indices, uncertain, state
+    )
     auto_matched += additional_auto
 
-    # 5. 将 _exclusive_text / _exclusive_track 写入 dialogues
-    for d in dialogues:
-        d.text = d._exclusive_text
-        d.track = d._exclusive_track
-        d.src_note_idx = d._exclusive_note_idx
+    # 5. 将结果写入 dialogues
+    result_dialogues = list(dialogues)  # 浅拷贝，避免修改调用方的原始列表
+    for di, d in enumerate(result_dialogues):
+        st = state[di]
+        d.text = st.text
+        d.track = st.track
+        d.src_note_idx = st.note_idx
 
     return MergePlan(
         ass_path=ass_path,
         txt_path=txt_path,
-        dialogues=dialogues,
+        dialogues=result_dialogues,
         notes=notes,
         total_notes=len(notes),
         auto_matched=auto_matched,

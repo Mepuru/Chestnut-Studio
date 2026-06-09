@@ -1,14 +1,30 @@
 """笔记与术语数据模型
 
-纯数据类定义，无 I/O、无业务逻辑、无 PySide6 依赖。
+纯数据类定义 + 文本格式序列化/反序列化方法。
+无业务逻辑、无 PySide6 依赖、不引用 core/ 下其他模块。
 """
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 
-from chestnut_studio.core.track_config import NOTE_TYPES
-from chestnut_studio.utils.time_utils import ms_to_time_str
+# 时间格式: MM:SS.mm（厘秒精度，2位小数）
+_TIME_FMT = "{m:02d}:{s:02d}.{cs:02d}"
+
+
+def _ms_to_time_str(ms: int) -> str:
+    """毫秒 → MM:SS.mm（内联实现，不依赖 utils/time_utils）"""
+    m, r = divmod(ms, 60000)
+    s, cs = divmod(r, 1000)
+    return _TIME_FMT.format(m=m, s=s, cs=cs // 10)
+
+
+def _parse_time_str(t: str) -> int:
+    """MM:SS.mm 或 MM:SS.mmm → 毫秒（内联实现）"""
+    m, r = t.split(":", 1)
+    s, cs = r.split(".")
+    cs = cs.ljust(3, "0")[:3]
+    return int(m) * 60000 + int(s) * 1000 + int(cs)
 
 
 @dataclass
@@ -27,11 +43,9 @@ class Note:
 
     timestamp_ms: int = 0
     text: str = ""
-    type: str = "轨道1"
+    type: str = "轨道1"  # 默认值，不依赖外部常量
 
     def __post_init__(self):
-        if self.type not in NOTE_TYPES:
-            raise ValueError(f"笔记类型必须为 {NOTE_TYPES}，收到: {self.type}")
         if self.timestamp_ms < 0:
             raise ValueError(f"时间戳不能为负值: {self.timestamp_ms}")
 
@@ -47,10 +61,11 @@ class Note:
         )
 
     def to_line(self, note_id: int = 0) -> str:
-        """转导出文本行: #id 轨道名  时间	| 内容"""
+        """转导出文本行: [#id ]轨道名  时间	| 内容"""
+        time_str = _ms_to_time_str(self.timestamp_ms)
         if note_id:
-            return f"#{note_id}	{self.type}	{ms_to_time_str(self.timestamp_ms)}	| {self.text}"
-        return f"{self.type}	{ms_to_time_str(self.timestamp_ms)}	| {self.text}"
+            return f"#{note_id}	{self.type}	{time_str}	| {self.text}"
+        return f"{self.type}	{time_str}	| {self.text}"
 
     @classmethod
     def from_line(cls, line: str) -> Note | None:
@@ -78,13 +93,7 @@ class Note:
             if len(meta_parts) != 2:
                 return None
             track_name, time_str = meta_parts
-            if track_name not in NOTE_TYPES:
-                return None
-            m, r = time_str.split(":", 1)
-            s, cs = r.split(".")
-            # 统一处理 2 位（厘秒）和 3 位（毫秒）小数
-            cs = cs.ljust(3, "0")[:3]
-            ms = int(m) * 60000 + int(s) * 1000 + int(cs)
+            ms = _parse_time_str(time_str)
             return cls(timestamp_ms=ms, text=text, type=track_name)
         except (ValueError, IndexError, KeyError):
             return None

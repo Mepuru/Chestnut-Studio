@@ -12,13 +12,9 @@
   track_config.py  — 轨道颜色/数量配置（单源）
 """
 
-from chestnut_studio.core.ass_merge import (
-    MergePlan,
-    build_merge_plan,
-    parse_ass,
-    parse_txt,
-)
+from chestnut_studio.core.ass_merge import MergePlan, build_merge_plan
 from chestnut_studio.core.ffmpeg import FFmpeg
+from chestnut_studio.core.io.ass_repository import read_ass, read_txt_notes
 from chestnut_studio.core.model.ass_merge import AssDialogue, TxtNote, UncertainMatch
 from chestnut_studio.core.model.ffmpeg import FFmpegError, VideoInfo
 from chestnut_studio.core.model.note import Note, Term
@@ -50,6 +46,6 @@ __all__ = [
     "AssDialogue",
     "TxtNote",
     "build_merge_plan",
-    "parse_ass",
-    "parse_txt",
+    "read_ass",
+    "read_txt_notes",
 ]

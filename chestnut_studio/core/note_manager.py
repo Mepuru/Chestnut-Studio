@@ -58,6 +58,8 @@ class NoteManager:
     # ── 增 ──
 
     def add(self, timestamp_ms: int, text: str, note_type: str = "轨道1") -> Note:
+        if note_type not in NOTE_TYPES:
+            raise ValueError(f"笔记类型必须为 {NOTE_TYPES}，收到: {note_type}")
         note = Note(timestamp_ms=timestamp_ms, text=text, type=note_type)
         self._notes.append(note)
         self._notes.sort(key=lambda n: n.timestamp_ms)
