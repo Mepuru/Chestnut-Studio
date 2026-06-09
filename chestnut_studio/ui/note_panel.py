@@ -17,9 +17,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from chestnut_studio.core import NOTE_TYPES, get_track_color
 from chestnut_studio.core.model.note import Note
 from chestnut_studio.core.note_manager import NoteManager
-from chestnut_studio.core.track_config import NOTE_TYPES, get_track_color
 from chestnut_studio.utils import get_logger, log_operation
 from chestnut_studio.utils.time_utils import ms_to_time_str
 

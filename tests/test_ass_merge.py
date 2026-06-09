@@ -16,6 +16,8 @@ from chestnut_studio.core.io.ass_writer import (
     _build_style_line,
     _collect_used_tracks,
     _hex_to_ass_color,
+    generate_merge_report,
+    write_output,
 )
 from chestnut_studio.core.model.ass_merge import AssDialogue
 
@@ -398,7 +400,7 @@ class TestBuildMergePlan:
             ass_path, txt_path = fa.name, ft.name
         try:
             plan = build_merge_plan(ass_path, txt_path)
-            report = plan.generate_report()
+            report = generate_merge_report(plan)
             assert "第 1 节" in report
             assert "第 2 节" in report
             assert "第 3 节" in report
@@ -428,7 +430,7 @@ class TestBuildMergePlan:
         try:
             plan = build_merge_plan(ass_path, txt_path)
             out_path = ass_path.replace(".ass", "M_test.ass")
-            ass_out, report_path = plan.write(out_path)
+            ass_out, report_path = write_output(plan, out_path)
             try:
                 output = Path(ass_out).read_text(encoding="utf-8")
                 assert "笔记A" in output

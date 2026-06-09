@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from chestnut_studio.core.ass_merge import build_merge_plan
+from chestnut_studio.core.io.ass_writer import generate_merge_report, write_output
 from chestnut_studio.utils import get_logger
 
 logger = get_logger("UI")
@@ -175,7 +176,7 @@ class MergeDialog(QDialog):
             self._stats_label.setText(f"已匹配 {auto} / {total} — 待处理 {manual} 项")
         self._stats_label.setVisible(True)
 
-        self._report_view.setText(self._plan.generate_report())
+        self._report_view.setText(generate_merge_report(self._plan))
         self._report_view.setVisible(True)
         self._export_btn.setEnabled(True)
         self._analyze_btn.setText("重新分析")
@@ -192,7 +193,7 @@ class MergeDialog(QDialog):
             out = self._out_path.text()
 
         try:
-            ass_path, report_path = self._plan.write(out)
+            ass_path, report_path = write_output(self._plan, out)
             logger.info(f"合并导出: {ass_path}, {report_path}")
             QMessageBox.information(
                 self,

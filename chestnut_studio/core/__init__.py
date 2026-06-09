@@ -12,14 +12,12 @@
   track_config.py  — 轨道颜色/数量配置（单源）
 """
 
-from chestnut_studio.core.ass_merge import MergePlan, build_merge_plan
 from chestnut_studio.core.ffmpeg import FFmpeg
 from chestnut_studio.core.io.ass_repository import read_ass, read_txt_notes
-from chestnut_studio.core.model.ass_merge import AssDialogue, TxtNote, UncertainMatch
-from chestnut_studio.core.model.ffmpeg import FFmpegError, VideoInfo
-from chestnut_studio.core.model.note import Note, Term
-from chestnut_studio.core.note_manager import NoteManager
-from chestnut_studio.core.track_config import (
+from chestnut_studio.core.manager.ass_merge import build_merge_plan
+from chestnut_studio.core.manager.note_manager import NoteManager
+from chestnut_studio.core.model.ass_merge import AssDialogue, MergePlan, TxtNote, UncertainMatch
+from chestnut_studio.core.model.config import (
     DEFAULT_TRACK_COUNT,
     MAX_TRACK_COUNT,
     NOTE_TYPES,
@@ -27,6 +25,8 @@ from chestnut_studio.core.track_config import (
     get_track_bg_color_hex,
     get_track_color,
 )
+from chestnut_studio.core.model.ffmpeg import FFmpegError, VideoInfo
+from chestnut_studio.core.model.note import Note, Term
 
 __all__ = [
     "FFmpeg",

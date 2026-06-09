@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from chestnut_studio.core.track_config import NOTE_TYPES
+from chestnut_studio.core import NOTE_TYPES
 from chestnut_studio.utils import get_logger
 
 logger = get_logger("DEBUG")

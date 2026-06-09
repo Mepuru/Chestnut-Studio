@@ -60,15 +60,3 @@ class MergePlan:
     risky: list[UncertainMatch]  # 潜在风险项（重叠区就近分配）
     _raw_ass_lines: list[str] = field(repr=False)  # 原始 ASS 行
     track_colors: dict[str, str] = field(default_factory=dict)  # 轨道名→颜色
-
-    def generate_report(self) -> str:
-        """生成合并报告（委托 core.io.ass_writer）"""
-        from chestnut_studio.core.io.ass_writer import generate_merge_report
-
-        return generate_merge_report(self)
-
-    def write(self, output_path: str) -> tuple[str, str]:
-        """写出合并后的 ASS 文件 + 报告（委托 core.io.ass_writer）"""
-        from chestnut_studio.core.io.ass_writer import write_output
-
-        return write_output(self, output_path)
