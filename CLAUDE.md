@@ -101,7 +101,7 @@ self.note_panel.term_requested.connect(self._on_term_requested)
 | `core/model/ass_merge.py` | AssDialogue / TxtNote / MergePlan 纯数据类（write/generate_report 薄委托） |
 | `core/model/ffmpeg.py` | VideoInfo / FFmpegError 纯数据类 |
 | `core/compute/note_processor.py` | 笔记纯计算函数（过滤/排序/ID分配） |
-| `core/compute/ass_merge_engine.py` | ASS+TXT 合并纯匹配算法（可被 Moonbit 替换） |
+| `core/compute/ass_merge_engine.py` | ASS+TXT 合并纯匹配算法 |
 | `core/manager/note_manager.py` | NoteManager 编排器（CRUD + 导入导出编排，委托 compute + io） |
 | `core/manager/ass_merge.py` | build_merge_plan 编排（解析 + 委托 compute） |
 | `core/io/note_repository.py` | 笔记文件 I/O（读/写 TXT + JSON） |

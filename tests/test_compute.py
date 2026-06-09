@@ -1,7 +1,6 @@
 """计算层测试 — 纯函数，无 I/O，零副作用
 
 这些测试直接调用 compute/ 中的函数，不经过任何 I/O 编排器。
-它们是 Moonbit/WASM 替换的契约测试——Moonbit 实现必须满足同样的输入输出。
 """
 
 from chestnut_studio.core.compute.ass_merge_engine import compute_merge_plan
