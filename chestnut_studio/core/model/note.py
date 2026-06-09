@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from typing import Any
 
 # 时间格式: MM:SS.mm（厘秒精度，2位小数）
 _TIME_FMT = "{m:02d}:{s:02d}.{cs:02d}"
@@ -31,7 +32,7 @@ def _parse_time_str(t: str) -> int:
 class Note:
     """单条笔记"""
 
-    def __lt__(self, other) -> bool:
+    def __lt__(self, other: Note) -> bool:
         return (self.timestamp_ms, self.text, self.type) < (
             other.timestamp_ms,
             other.text,
@@ -49,11 +50,11 @@ class Note:
         if self.timestamp_ms < 0:
             raise ValueError(f"时间戳不能为负值: {self.timestamp_ms}")
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict) -> Note:
+    def from_dict(cls, data: dict[str, Any]) -> Note:
         return cls(
             timestamp_ms=data["timestamp_ms"],
             text=data["text"],

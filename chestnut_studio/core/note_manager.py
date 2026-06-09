@@ -4,4 +4,4 @@
 新代码应从 chestnut_studio.core.manager.note_manager 导入。
 """
 
-from chestnut_studio.core.manager.note_manager import NoteManager  # noqa: F401
+from chestnut_studio.core.manager.note_manager import NoteManager as NoteManager  # noqa: F401

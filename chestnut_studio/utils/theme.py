@@ -9,6 +9,7 @@ QSS 模板中使用 {{token}} 占位符，运行时由 render_stylesheet() 替�
 """
 
 import re
+from re import Match
 
 from chestnut_studio.resources import get_stylesheet_path
 
@@ -92,7 +93,7 @@ def render_stylesheet(theme_name: str | None = None) -> str:
     theme = THEMES[name]
     template = get_stylesheet_path().read_text(encoding="utf-8")
 
-    def _replace(match: re.Match) -> str:
+    def _replace(match: Match[str]) -> str:
         key = match.group(1)
         if key not in theme:
             raise KeyError(f"主题 '{name}' 中缺少 token: {key}")

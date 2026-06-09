@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -31,7 +32,7 @@ def parse_version(v: str) -> tuple[int, ...]:
     return tuple(int(x) for x in v.strip("v").split("."))
 
 
-def parse_release_data(data: dict, current_version: str) -> UpdateInfo | None:
+def parse_release_data(data: dict[str, Any], current_version: str) -> UpdateInfo | None:
     """从 GitHub API 返回的 JSON 中解析更新信息
 
     Args:

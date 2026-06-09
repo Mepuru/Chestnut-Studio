@@ -7,6 +7,7 @@
 """
 
 from dataclasses import dataclass, field, replace
+from typing import Any
 
 from chestnut_studio.core.model.ass_merge import (
     AssDialogue,
@@ -27,7 +28,7 @@ class _ExclusiveState:
     note_idx: int = 0
 
 
-def _detect_overlap_pairs(dialogues: list[AssDialogue]) -> list[dict]:
+def _detect_overlap_pairs(dialogues: list[AssDialogue]) -> list[dict[str, Any]]:
     """检测连续 ASS Dialogue 之间的时间重叠对"""
     pairs = []
     for di in range(len(dialogues) - 1):
@@ -45,7 +46,7 @@ def _detect_overlap_pairs(dialogues: list[AssDialogue]) -> list[dict]:
 
 
 def _mark_exclusive_zones(
-    dialogues: list[AssDialogue], overlap_pairs: list[dict], state: dict[int, _ExclusiveState]
+    dialogues: list[AssDialogue], overlap_pairs: list[dict[str, Any]], state: dict[int, _ExclusiveState]
 ) -> None:
     """标记每条 ASS 的独占区结束点（写入 state）
 
@@ -118,7 +119,7 @@ def _resolve_exclusive_matches(
 def _resolve_overlap_notes(
     dialogues: list[AssDialogue],
     notes: list[TxtNote],
-    overlap_pairs: list[dict],
+    overlap_pairs: list[dict[str, Any]],
     matched_note_indices: set[int],
     uncertain: list[UncertainMatch],
     state: dict[int, _ExclusiveState],

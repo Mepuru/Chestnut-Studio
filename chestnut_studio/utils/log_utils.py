@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import functools
 import inspect
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from chestnut_studio.utils.log_manager import LogLevel, LogManager
+
+F = TypeVar("F", bound=Callable[..., Any])
 
 
 def log_operation(
@@ -13,7 +17,7 @@ def log_operation(
     source: str = "UI",
     level: LogLevel = LogLevel.INFO,
     after: bool = False,
-):
+) -> Callable[[F], F]:
     """自动记录方法级操作日志的装饰器。
 
     支持两种模式：
@@ -58,13 +62,13 @@ def log_operation(
                message 中可使用 {result} 引用返回值。
     """
     if not message:
-        return lambda func: func
+        return lambda func: func  # type: ignore[return-value]
 
-    def decorator(func):
+    def decorator(func: F) -> F:
         sig = inspect.signature(func)
 
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             bound = sig.bind(*args, **kwargs)
             bound.apply_defaults()
 
@@ -86,6 +90,6 @@ def log_operation(
                 LogManager.instance().get_logger(source).log(level, formatted)
                 return result
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]
 
     return decorator

@@ -4,4 +4,4 @@
 新代码应从 chestnut_studio.core.manager.ass_merge 导入。
 """
 
-from chestnut_studio.core.manager.ass_merge import build_merge_plan  # noqa: F401
+from chestnut_studio.core.manager.ass_merge import build_merge_plan as build_merge_plan  # noqa: F401
