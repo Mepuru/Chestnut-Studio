@@ -6,6 +6,7 @@
 import os
 
 from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtGui import QResizeEvent
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
@@ -29,7 +30,7 @@ class PlayerCard(QWidget):
     video_opened = Signal(str)
     playback_state_changed = Signal(bool)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._video_path = ""
         self._duration = 0
@@ -41,7 +42,7 @@ class PlayerCard(QWidget):
         self._setup_ui()
         self._setup_player()
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         self.setObjectName("playerCard")
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -74,13 +75,13 @@ class PlayerCard(QWidget):
         self._controls.volume_changed.connect(self.set_volume)
         self._controls.rate_changed.connect(self.set_playback_rate)
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: QResizeEvent):
         super().resizeEvent(event)
         # 保持提示标签覆盖在视频区域
         video_height = self._video_widget.height()
         self._hint_label.setGeometry(0, 0, self.width(), video_height)
 
-    def _setup_player(self):
+    def _setup_player(self) -> None:
         """初始化 QMediaPlayer"""
         self._audio_output = QAudioOutput()
         self._audio_output.setVolume(self._volume / 100.0)
@@ -187,7 +188,7 @@ class PlayerCard(QWidget):
         self._controls.set_duration(duration)
         self.duration_changed.emit(duration)
 
-    def _on_playback_state_changed(self, state):
+    def _on_playback_state_changed(self, state: QMediaPlayer.PlaybackState):
         self._is_playing = state == QMediaPlayer.PlayingState
         self._controls.set_playing(self._is_playing)
         self.playback_state_changed.emit(self._is_playing)

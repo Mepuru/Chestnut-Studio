@@ -4,6 +4,7 @@
 其余生成报告供用户手动处理。
 """
 
+from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import Qt
@@ -32,12 +33,12 @@ class MergeDialog(QDialog):
     ASS_FILTER = "ASS 字幕 (*.ass)"
     TXT_FILTER = "笔记文件 (*.txt)"
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._plan = None
         self._setup_ui()
 
-    def _make_file_row(self, label: str, path_ref, btn_callback):
+    def _make_file_row(self, label: str, path_ref: QLabel, btn_callback: Callable[[], None]) -> QWidget:
         row = QWidget()
         layout = QHBoxLayout(row)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -59,7 +60,7 @@ class MergeDialog(QDialog):
 
         return row
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         self.setWindowTitle("合并字幕")
         self.setMinimumSize(680, 480)
         self.resize(720, 520)
