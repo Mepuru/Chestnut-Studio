@@ -11,6 +11,14 @@ from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 
+from chestnut_studio.core.compute.note_processor import (
+    assign_note_ids,
+    filter_notes_by_type,
+    get_used_note_types,
+)
+from chestnut_studio.core.compute.note_processor import (
+    get_note_id as compute_get_note_id,
+)
 from chestnut_studio.core.model.note import Note, Term
 from chestnut_studio.core.track_config import NOTE_TYPES, TRACK_COLORS_HEX
 from chestnut_studio.utils import get_logger
@@ -68,12 +76,10 @@ class NoteManager:
         return list(self._notes)
 
     def get_by_type(self, note_type: str) -> list[Note]:
-        return [n for n in self._notes if n.type == note_type]
+        return filter_notes_by_type(self._notes, note_type)
 
     def get_used_types(self) -> list[str]:
-        """获取有数据的轨道列表"""
-        used = set(n.type for n in self._notes)
-        return [t for t in NOTE_TYPES if t in used]
+        return get_used_note_types(self._notes)
 
     def count(self) -> int:
         return len(self._notes)
@@ -130,15 +136,12 @@ class NoteManager:
     def assign_ids(self) -> dict[Note, int]:
         """按时间排序分配序号，返回 {Note对象: 序号} 映射"""
         self._notes.sort(key=lambda n: n.timestamp_ms)
-        return {note: i for i, note in enumerate(self._notes, 1)}
+        return assign_note_ids(self._notes)
 
     def get_note_id(self, note: Note) -> int:
         """获取笔记在当前排序下的序号"""
         self._notes.sort(key=lambda n: n.timestamp_ms)
-        for i, n in enumerate(self._notes, 1):
-            if n is note:
-                return i
-        return 0
+        return compute_get_note_id(self._notes, note)
 
     def import_text(self, path: str | Path) -> int:
         """从文本文件导入笔记"""

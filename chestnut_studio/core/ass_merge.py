@@ -5,6 +5,7 @@
 其他情况（多条 TXT 抢同一 ASS、时间重叠等）均放入报告中，让用户手动处理。
 
 数据模型定义位于 core/model/ass_merge.py。
+纯计算引擎位于 core/compute/ass_merge_engine.py。
 
 用法:
     from chestnut_studio.core.ass_merge import build_merge_plan
@@ -18,11 +19,11 @@ from __future__ import annotations
 
 import re
 
+from chestnut_studio.core.compute.ass_merge_engine import compute_merge_plan
 from chestnut_studio.core.model.ass_merge import (
     AssDialogue,
     MergePlan,
     TxtNote,
-    UncertainMatch,
 )
 
 # ── 解析器 ──
@@ -158,193 +159,25 @@ def parse_txt(filepath: str) -> tuple[list[TxtNote], dict[str, str]]:
     return notes, track_colors
 
 
-# ── 合并引擎 ──
+# ── 合并编排器 ──
 
 
 def build_merge_plan(ass_path: str, txt_path: str) -> MergePlan:
-    """构建合并计划——仅 100% 确定的才自动匹配
+    """构建合并计划——纯计算引擎的 I/O 编排器
 
     流程:
-    1. 解析 ASS 和 TXT
-    2. 检测重叠对，标记每条 ASS 的独占区
-    3. 独占区匹配：恰好 1 条 TXT → 自动填入；多条 TXT → 入不确定列表
-    4. 所有落在重叠区的 TXT → 入不确定列表（不做自动分配）
-    5. 生成报告
+    1. 解析 ASS 和 TXT 文件
+    2. 委托 compute_merge_plan 执行匹配算法
+    3. 返回 MergePlan
     """
     dialogues, raw_lines = parse_ass(ass_path)
     notes, track_colors = parse_txt(txt_path)
 
-    # ── 检测重叠对 ──
-    overlap_pairs = []
-    for di in range(len(dialogues) - 1):
-        a, b = dialogues[di], dialogues[di + 1]
-        if a.end_s > b.start_s + 0.05:  # > 50ms 视为有效重叠
-            overlap_pairs.append(
-                {
-                    "a_idx": di,
-                    "b_idx": di + 1,
-                    "zone_start": b.start_s,
-                    "zone_end": min(a.end_s, b.end_s),
-                }
-            )
-
-    # ── 标记独占区结束点 ──
-    for d in dialogues:
-        d._exclusive_end = d.end_s
-
-    for op in overlap_pairs:
-        a = dialogues[op["a_idx"]]
-        b = dialogues[op["b_idx"]]
-        a._exclusive_end = op["zone_start"]
-        b._exclusive_end = b.start_s
-
-    # ── 第一轮：独占区收集 ──
-    for note in notes:
-        for d in dialogues:
-            excl_end = d._exclusive_end
-            if d.start_s <= note.time_s < excl_end:
-                d._exclusive_notes.append(note)
-                break
-
-    # ── 第二轮：确定匹配 / 入不确定列表 ──
-    uncertain: list[UncertainMatch] = []
-    risky: list[UncertainMatch] = []
-    auto_matched = 0
-
-    for di, d in enumerate(dialogues):
-        zone_notes = d._exclusive_notes
-        if not zone_notes:
-            continue
-
-        if len(zone_notes) == 1:
-            # ✅ 100% 确定：独占区内恰好 1 条 TXT
-            note = zone_notes[0]
-            d._exclusive_text = note.text
-            d._exclusive_track = note.track
-            d._exclusive_note_idx = note.index
-            auto_matched += 1
-        else:
-            # ⚠️ 不确定：独占区内多条 TXT
-            uncertain.append(
-                UncertainMatch(
-                    ass_idx=di,
-                    ass_start=d.start_str,
-                    ass_end=d.end_str,
-                    notes=zone_notes,
-                    reason=f"同一条 ASS 时间窗口内有 {len(zone_notes)} 条 TXT 笔记",
-                )
-            )
-
-    # ── 收集重叠区 TXT（排除已在独占区匹配掉的） ──
-    matched_note_indices: set[int] = set()
-    for d in dialogues:
-        for n in d._exclusive_notes:
-            matched_note_indices.add(n.index)
-
-    overlap_notes = [n for n in notes if n.index not in matched_note_indices]
-
-    # 将重叠区未匹配的 TXT 按所属重叠对分组
-    # 先找每个重叠 TXT 属于哪个重叠对
-    for op in overlap_pairs:
-        zone_notes = []
-        remaining = []
-        for note in overlap_notes:
-            if op["zone_start"] <= note.time_s <= op["zone_end"]:
-                zone_notes.append(note)
-            else:
-                remaining.append(note)
-        overlap_notes = remaining
-
-        if not zone_notes:
-            continue
-
-        a = dialogues[op["a_idx"]]
-        b = dialogues[op["b_idx"]]
-
-        # 收集哪些 ASS 行可能被这些 TXT 匹配
-        involved: list[int] = []
-        seen: set[int] = set()
-        for note in zone_notes:
-            for di, d in enumerate(dialogues):
-                if d.start_s <= note.time_s <= d.end_s and di not in seen:
-                    seen.add(di)
-                    involved.append(di)
-
-        if len(involved) == 1:
-            # 虽然涉及重叠区，但 TXT 都在同一条 ASS 的时间窗口内
-            uncertain.append(
-                UncertainMatch(
-                    ass_idx=involved[0],
-                    ass_start=dialogues[involved[0]].start_str,
-                    ass_end=dialogues[involved[0]].end_str,
-                    notes=zone_notes,
-                    reason=f"重叠区内 {len(zone_notes)} 条 TXT 落在同一条 ASS 窗口",
-                )
-            )
-        elif len(involved) >= 2:
-            # 多条 ASS 竞争同一重叠区间
-            # 如果只有 1 条 TXT，按时间就近分配
-            if len(zone_notes) == 1:
-                note = zone_notes[0]
-                a = dialogues[op["a_idx"]]
-                b = dialogues[op["b_idx"]]
-                # 选离 start 更近的那条 ASS
-                if abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s):
-                    a._exclusive_text = note.text
-                    a._exclusive_track = note.track
-                    a._exclusive_note_idx = note.index
-                else:
-                    b._exclusive_text = note.text
-                    b._exclusive_track = note.track
-                    b._exclusive_note_idx = note.index
-                auto_matched += 1
-                # 记录为潜在风险
-                risky.append(
-                    UncertainMatch(
-                        ass_idx=op["a_idx"]
-                        if abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s)
-                        else op["b_idx"],
-                        ass_start=a.start_str
-                        if abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s)
-                        else b.start_str,
-                        ass_end=a.end_str
-                        if abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s)
-                        else b.end_str,
-                        notes=[note],
-                        reason="重叠区——按时间就近分配到 %s"
-                        % ("A 轴" if abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s) else "B 轴"),
-                    )
-                )
-            else:
-                # 多条 TXT 争重叠区，无法自动判断
-                for ai in involved:
-                    ass_notes = [n for n in zone_notes if dialogues[ai].start_s <= n.time_s <= dialogues[ai].end_s]
-                    if ass_notes:
-                        uncertain.append(
-                            UncertainMatch(
-                                ass_idx=ai,
-                                ass_start=dialogues[ai].start_str,
-                                ass_end=dialogues[ai].end_str,
-                                notes=ass_notes,
-                                reason="时间重叠——多条 ASS 竞争该时间段",
-                            )
-                        )
-
-    # ── 将 _exclusive_text / _exclusive_track 写入 dialogues ──
-    for d in dialogues:
-        d.text = d._exclusive_text
-        d.track = d._exclusive_track
-        d.src_note_idx = d._exclusive_note_idx
-
-    return MergePlan(
-        ass_path=ass_path,
-        txt_path=txt_path,
+    return compute_merge_plan(
         dialogues=dialogues,
         notes=notes,
-        total_notes=len(notes),
-        auto_matched=auto_matched,
-        uncertain=uncertain,
-        risky=risky,
         track_colors=track_colors,
-        _raw_ass_lines=raw_lines,
+        ass_path=ass_path,
+        txt_path=txt_path,
+        raw_ass_lines=raw_lines,
     )
