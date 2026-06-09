@@ -6,7 +6,7 @@
 **原则**: 只有 100% 确定的匹配才自动填入——即恰好 1 条 TXT 落在某条 ASS 的独占时间区内。
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from chestnut_studio.core.model.ass_merge import (
     AssDialogue,
@@ -213,8 +213,9 @@ def compute_merge_plan(
 ) -> MergePlan:
     """从已解析的 ASS dialogues 和 TXT notes 构建合并计划
 
-    纯计算函数，不修改输入参数，无 I/O 操作。
-    所有中间状态使用局部 _ExclusiveState 管理。
+    纯计算函数：不修改输入参数，无 I/O 操作，结果由输入完全决定。
+    使用 dataclasses.replace() 创建新的 AssDialogue 对象，
+    输入列表中的原始对象不会被修改。
 
     Args:
         dialogues: 已解析的 ASS Dialogue 列表（不会被修改）
@@ -225,7 +226,7 @@ def compute_merge_plan(
         raw_ass_lines: 原始 ASS 行（仅用于 MergePlan 记录）
 
     Returns:
-        包含匹配结果的 MergePlan（携带有修改结果的 dialogue 副本）
+        包含匹配结果的 MergePlan（内部 dialogues 为新建对象，不影响输入）
     """
     if raw_ass_lines is None:
         raw_ass_lines = []
@@ -249,13 +250,11 @@ def compute_merge_plan(
     )
     auto_matched += additional_auto
 
-    # 5. 将结果写入 dialogues
-    result_dialogues = list(dialogues)  # 浅拷贝，避免修改调用方的原始列表
-    for di, d in enumerate(result_dialogues):
-        st = state[di]
-        d.text = st.text
-        d.track = st.track
-        d.src_note_idx = st.note_idx
+    # 5. 创建新 dialogue 对象写入结果（不修改输入列表中的原始对象）
+    result_dialogues = [
+        replace(d, text=state[di].text, track=state[di].track, src_note_idx=state[di].note_idx)
+        for di, d in enumerate(dialogues)
+    ]
 
     return MergePlan(
         ass_path=ass_path,

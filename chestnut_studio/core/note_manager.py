@@ -88,7 +88,7 @@ class NoteManager:
         return filter_notes_by_type(self._notes, note_type)
 
     def get_used_types(self) -> list[str]:
-        return get_used_note_types(self._notes)
+        return get_used_note_types(self._notes, NOTE_TYPES)
 
     def count(self) -> int:
         return len(self._notes)

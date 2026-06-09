@@ -56,14 +56,25 @@ class TestNoteProcessor:
         assert get_used_note_types([]) == []
 
     def test_get_used_note_types_maintains_order(self):
+        """无配置时按输入中首次出现顺序返回"""
         notes = [
             Note(1000, "C", "轨道3"),
             Note(2000, "A", "轨道1"),
         ]
         used = get_used_note_types(notes)
-        # 按 NOTE_TYPES 顺序返回
-        assert used[0] == "轨道1"
-        assert used[1] == "轨道3"
+        assert used[0] == "轨道3"  # 首个出现的轨道
+        assert used[1] == "轨道1"
+
+    def test_get_used_note_types_with_custom_order(self):
+        """可传入自定义轨道顺序"""
+        notes = [
+            Note(1000, "A", "轨道1"),
+            Note(2000, "B", "轨道3"),
+            Note(3000, "C", "轨道2"),
+        ]
+        custom_order = ["轨道3", "轨道1", "轨道2"]
+        used = get_used_note_types(notes, custom_order)
+        assert used == ["轨道3", "轨道1", "轨道2"]
 
     def test_assign_note_ids(self):
         notes = [
@@ -199,3 +210,23 @@ class TestAssMergeEngine:
     def test_returns_merge_plan_type(self):
         plan = compute_merge_plan([], [], {})
         assert isinstance(plan, MergePlan)
+
+    def test_does_not_mutate_input_dialogues(self):
+        """计算后输入列表中的原始 AssDialogue 对象不应被修改"""
+        d1 = _make_dialogue(1.0, 4.0, line_index=0)
+        d2 = _make_dialogue(5.0, 8.0, line_index=1)
+        original_d1_text = d1.text
+        original_d2_text = d2.text
+        original_d1_track = d1.track
+        original_d2_track = d2.track
+
+        dialogues = [d1, d2]
+        notes = [_make_note(2.0, "笔记A", index=1)]
+        plan = compute_merge_plan(dialogues, notes, {})
+        # 输入对象不应被修改
+        assert d1.text == original_d1_text
+        assert d2.text == original_d2_text
+        assert d1.track == original_d1_track
+        assert d2.track == original_d2_track
+        # 结果在 MergePlan 内部的新对象上
+        assert plan.dialogues[0].text == "笔记A"

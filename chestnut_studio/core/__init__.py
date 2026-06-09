@@ -3,11 +3,11 @@
 分层结构:
   model/     — 纯数据类（Note, Term, AssDialogue, MergePlan, VideoInfo）
   compute/   — 纯计算函数（note_processor, ass_merge_engine）
-  io/        — 文件/网络 I/O（规划中）
+  io/        — 文件/网络 I/O（note_repository, term_repository, ass_repository, ass_writer）
 
 各模块职责:
   note_manager.py  — NoteManager 编排器（CRUD + 导入导出编排）
-  ass_merge.py     — ASS+TXT 文件解析 + build_merge_plan 编排
+  ass_merge.py     — build_merge_plan 编排（解析 + 委托 compute）
   ffmpeg.py        — FFmpeg 子进程封装
   track_config.py  — 轨道颜色/数量配置（单源）
 """
