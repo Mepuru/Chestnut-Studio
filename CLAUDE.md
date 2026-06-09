@@ -7,7 +7,7 @@
 ## 项目概述
 
 Chestnut Studio 是一款视频笔记工具——边看视频边添加带时间戳的笔记。
-基于 PySide6 开发，当前版本 v2.3.1。
+基于 PySide6 开发，当前版本 v2.6.0。
 
 **核心特性**:
 - 视频播放 + 10 条彩色轨道（Ctrl+1~9/0 切换）
@@ -32,6 +32,42 @@ UI 层 (ui/)          → 依赖核心层和工具层，依赖 PySide6
 ```
 
 **红线**: 核心层绝不引入 PySide6 依赖。
+
+### 核心层内部子层（core/）
+
+```
+model/     → 纯数据类（dataclass），可被任意层引用
+compute/   → 纯计算函数（规划中），依赖 model/，零 I/O 零副作用
+io/        → 文件/网络 I/O（规划中），依赖 model/ + compute/
+manager/   → 编排器（轻量胶水），组合 model + compute + io
+```
+
+**子层依赖规则**:
+- `model/` 可被 `compute/`、`io/`、`manager/`、`ui/` 任意引用
+- `compute/`、`io/`、`manager/` 不可反向依赖
+- 当前过渡期：`ass_merge.py` 中的 `MergePlan` 暂带 I/O 方法（`write()`/`generate_report()`），后续拆分到 `io/`
+
+### 导入路径规范
+
+数据类统一从 `core.model` 导入，不从原始模块导入：
+
+```python
+# ✅ 正确
+from chestnut_studio.core.model.note import Note, Term
+from chestnut_studio.core.model.ass_merge import AssDialogue, MergePlan
+from chestnut_studio.core.model.ffmpeg import VideoInfo, FFmpegError
+
+# ❌ 错误 — 数据类已从原始模块移除
+from chestnut_studio.core.note_manager import Note   # Note 已移到 model/note.py
+from chestnut_studio.core.ass_merge import AssDialogue  # AssDialogue 已移到 model/ass_merge.py
+
+# ✅ 编排器/服务类仍从原始模块导入
+from chestnut_studio.core.note_manager import NoteManager
+from chestnut_studio.core.ass_merge import build_merge_plan
+from chestnut_studio.core.ffmpeg import FFmpeg
+```
+
+`core/__init__.py` 同时导出所有公开符号以保持 `from chestnut_studio.core import XXX` 兼容，但新代码应优先使用精确导入路径。
 
 ### 信号通信
 
@@ -61,10 +97,13 @@ self.note_panel.term_requested.connect(self._on_term_requested)
 | `ui/merge_dialog.py` | ASS+TXT 字幕合并对话框 |
 | `ui/debug_box.py` | 开发者百宝箱（崩溃/日志/性能测试） |
 | `ui/cards/player_card.py` | QMediaPlayer 视频播放封装 |
-| `core/note_manager.py` | 笔记 + 术语数据模型（Note/Term/NoteManager） |
+| `core/model/note.py` | Note / Term 纯数据类 |
+| `core/model/ass_merge.py` | AssDialogue / TxtNote / MergePlan 纯数据类（I/O 方法过渡期） |
+| `core/model/ffmpeg.py` | VideoInfo / FFmpegError 纯数据类 |
+| `core/note_manager.py` | NoteManager 编排器（CRUD + 导入导出编排） |
 | `core/ffmpeg.py` | FFmpeg 封装（视频信息解析） |
 | `core/track_config.py` | 轨道数量、颜色、NOTE_TYPES 唯一来源 |
-| `core/ass_merge.py` | ASS+TXT 字幕合并引擎（无 UI 依赖） |
+| `core/ass_merge.py` | ASS+TXT 字幕合并引擎（解析 + 匹配算法，无 UI 依赖） |
 | `resources.py` | 资源路径管理（支持 Nuitka 打包） |
 | `utils/theme.py` | 主题引擎：32 个 token + render_stylesheet() |
 | `utils/log_manager.py` | 线程安全日志管理器（handler 模式） |
@@ -256,3 +295,4 @@ EOF
 6. **QSS 使用 `{{token}}` 占位符** — `utils/theme.py` 渲染，不要硬编码颜色值到 QSS 中
 7. **内联 `setStyleSheet()` 仅用于动态值** — 轨道颜色（`get_track_color()`）、视频背景色（`get_theme()['bg_video']`）等无法通过 QSS 控制的场景才用
 8. **`@log_operation` 优先于手写 `logger.info()`** — UI 层用户操作审计统一用装饰器，减少冗余；核心层技术日志保留手动调用
+9. **数据类从 `core.model` 导入** — `Note`, `Term`, `AssDialogue`, `MergePlan`, `VideoInfo` 等纯数据类统一从 `core.model` 子包导入，不从原始模块（`note_manager.py` / `ass_merge.py` / `ffmpeg.py`）导入。编排器/服务类（`NoteManager` / `FFmpeg` / `build_merge_plan`）仍从原始模块导入。
