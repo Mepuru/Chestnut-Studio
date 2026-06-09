@@ -3,8 +3,8 @@
 视频播放器右侧的笔记列表，按类型分组显示。
 """
 
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QKeyEvent
+from PySide6.QtCore import QRect, QSize, Qt, Signal
+from PySide6.QtGui import QFontMetrics, QKeyEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -47,6 +47,7 @@ class NoteItemWidget(QWidget):
         super().__init__(parent)
         self.note = note
         self._note_id = note_id
+        self._text_label: QLabel | None = None
         self._setup_ui()
 
     def _setup_ui(self):
@@ -69,11 +70,32 @@ class NoteItemWidget(QWidget):
         layout.addWidget(time_label)
 
         # 笔记文本（可换行）
-        text_label = QLabel(self.note.text)
-        text_label.setObjectName("noteText")
-        text_label.setWordWrap(True)
-        text_label.setMinimumHeight(16)
-        layout.addWidget(text_label, 1)
+        self._text_label = QLabel(self.note.text)
+        self._text_label.setObjectName("noteText")
+        self._text_label.setWordWrap(True)
+        self._text_label.setMinimumHeight(16)
+        layout.addWidget(self._text_label, 1)
+
+    def calc_text_height(self, text_width: int) -> int:
+        """使用实际字体度量计算文本在指定宽度下的高度
+
+        Args:
+            text_width: 文本可用宽度（px）
+
+        Returns:
+            包含上下边距的总高度（px）
+        """
+        if not self.note.text.strip():
+            return 36
+        # 使用 text_label 的实际字体（QSS font-size: 9pt 已生效）
+        fm = QFontMetrics(self._text_label.font())
+        rect = fm.boundingRect(
+            QRect(0, 0, max(text_width, 50), 0),
+            Qt.AlignLeft | Qt.TextWordWrap,
+            self.note.text,
+        )
+        # 文本高度 + 上下 layout margin (6+6=12px)，最低 36px
+        return max(36, rect.height() + 12)
 
 
 class NotePanel(QWidget):
@@ -189,10 +211,9 @@ class NotePanel(QWidget):
         item.setData(Qt.UserRole, id(note))
         note_id = self._note_manager.get_note_id(note)
         widget = NoteItemWidget(note, note_id)
-        # 估算多行文本所需高度（初始值，resize 时会重新计算）
-        est_lines = max(1, (len(note.text) + 11) // 12)
-        h = max(36, 18 + est_lines * 18)
-        item.setSizeHint(QSize(0, h))
+        # 初始高度估算（resize 时会用实际宽度重新计算）
+        text_width = self._list.viewport().width() - 102
+        item.setSizeHint(QSize(0, widget.calc_text_height(text_width)))
         self._list.addItem(item)
         self._list.setItemWidget(item, widget)
 
@@ -233,16 +254,13 @@ class NotePanel(QWidget):
         self._recalc_item_heights()
 
     def _recalc_item_heights(self):
-        """根据当前列表宽度重新估算每条笔记的高度"""
-        available_width = self._list.viewport().width() - 102  # 减去序号+时间+边距
-        chars_per_line = max(8, available_width // 12)  # 中文字符约 12px
+        """根据当前列表宽度重新计算每条笔记的实际高度"""
+        text_width = self._list.viewport().width() - 102  # 减去序号+时间+边距
         for i in range(self._list.count()):
             item = self._list.item(i)
             widget = self._list.itemWidget(item)
             if isinstance(widget, NoteItemWidget):
-                est_lines = max(1, (len(widget.note.text) + chars_per_line - 1) // chars_per_line)
-                h = max(36, 18 + est_lines * 18)
-                item.setSizeHint(QSize(0, h))
+                item.setSizeHint(QSize(0, widget.calc_text_height(text_width)))
 
     def _on_item_clicked(self, item: QListWidgetItem):
         """双击笔记：跳转视频位置 + 载入输入框"""
