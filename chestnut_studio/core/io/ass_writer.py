@@ -43,7 +43,7 @@ def _collect_used_tracks(dialogues: list[AssDialogue]) -> list[str]:
 
 
 def generate_merge_report(plan: MergePlan) -> str:
-    """生成合并报告——三节：待处理 / 潜在风险 / 自动匹配"""
+    """生成合并报告——四节：无匹配文本 / 待处理 / 潜在风险 / 自动匹配"""
     total_ass = len(plan.dialogues)
     filled = sum(1 for d in plan.dialogues if d.text)
     empty = total_ass - filled
@@ -63,11 +63,27 @@ def generate_merge_report(plan: MergePlan) -> str:
     lines.append("#")
     lines.append(f"# ASS 行数: {total_ass} / TXT 笔记数: {plan.total_notes}")
     lines.append(f"# 自动匹配: {plan.auto_matched} / {plan.total_notes}（{pct:.1f}%）")
-    lines.append(f"# 潜在风险: {len(plan.risky)} 项 / 待处理: {len(plan.uncertain)} 项 / 空行: {empty}")
+    lines.append(f"# 无匹配: {len(plan.unmatched)} 条 / 待处理: {len(plan.uncertain)} 项 / 潜在风险: {len(plan.risky)} 项 / 空行: {empty}")
     lines.append("# 轨道颜色: " + color_summary)
     lines.append("# ---")
     lines.append("")
-    lines.append(f"# 第 1 节 — 待手动处理（{len(plan.uncertain)} 项）")
+    lines.append(f"# 第 1 节 — 无匹配文本（{len(plan.unmatched)} 条）")
+    lines.append("# 说明：以下 TXT 笔记的时间戳不在任何 ASS 字幕的时间范围内。")
+    lines.append("# 请检查：1) ASS 轴是否缺少对应时间段的行；2) TXT 笔记的时间戳是否写错。")
+    lines.append("")
+
+    if not plan.unmatched:
+        lines.append("# 无未匹配文本。")
+        lines.append("")
+    else:
+        for i, n in enumerate(plan.unmatched, 1):
+            lines.append(f"{i}. TXT #{n.index}  [{n.track}]  {n.text}")
+            lines.append(f"   时间戳: {n.time_s:.2f}s  — 不在任何 ASS 行范围内")
+            lines.append("")
+
+    lines.append("# ---")
+    lines.append("")
+    lines.append(f"# 第 2 节 — 待手动处理（{len(plan.uncertain)} 项）")
     lines.append("")
 
     if not plan.uncertain:
@@ -83,7 +99,7 @@ def generate_merge_report(plan: MergePlan) -> str:
 
     lines.append("# ---")
     lines.append("")
-    lines.append(f"# 第 2 节 — 潜在风险（{len(plan.risky)} 项）")
+    lines.append(f"# 第 3 节 — 潜在风险（{len(plan.risky)} 项）")
     lines.append("# 说明：以下条目在重叠时间段内自动分配，建议在 Aegisub 中复核。")
     lines.append("")
 
@@ -109,7 +125,7 @@ def generate_merge_report(plan: MergePlan) -> str:
     safe_items = [d for i, d in enumerate(plan.dialogues) if d.text and i not in safe_indices]
     lines.append("# ---")
     lines.append("")
-    lines.append(f"# 第 3 节 — 已自动匹配（{len(safe_items)} 条）")
+    lines.append(f"# 第 4 节 — 已自动匹配（{len(safe_items)} 条）")
     lines.append("")
 
     for i, d in enumerate(safe_items, 1):
@@ -180,10 +196,14 @@ def _repr_lines(plan: MergePlan) -> list[str]:
         result.append(_build_style_line(t, color))
 
     result.append("[Events]")
+
+    # 建立 line_index → AssDialogue 映射，避免每次线性查找
+    dialogue_map: dict[int, AssDialogue] = {d.line_index: d for d in plan.dialogues}
+
     for i in range(events_sec[0] + 1, len(raw)):
         line = raw[i]
         if line.startswith("Dialogue:"):
-            di = next((d for d in plan.dialogues if d.line_index == i), None)
+            di = dialogue_map.get(i)
             if di:
                 prefix = di.raw_before_text
                 if di.track:

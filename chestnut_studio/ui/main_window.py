@@ -247,8 +247,6 @@ class MainWindow(QMainWindow):
 
     def _show_about(self) -> None:
         """显示关于对话框"""
-        from chestnut_studio.utils.version import get_version
-
         ver = get_version()
         msg = QMessageBox(self)
         msg.setWindowTitle("关于 Chestnut Studio")
@@ -595,8 +593,6 @@ class MainWindow(QMainWindow):
     @log_operation("另存项目为")
     def _on_save_project_as(self) -> None:
         """选择路径保存项目文件"""
-        from pathlib import Path
-
         default_name = "project.chestnut"
         video_path = self.player_card.get_video_path()
         if video_path:

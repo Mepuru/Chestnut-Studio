@@ -8,6 +8,9 @@ from __future__ import annotations
 import re
 
 from chestnut_studio.core.model.ass_merge import AssDialogue, TxtNote
+from chestnut_studio.utils import get_logger
+
+_logger = get_logger("IO")
 
 
 def _nth_comma(s: str, n: int) -> int:
@@ -20,24 +23,24 @@ def _nth_comma(s: str, n: int) -> int:
     return idx
 
 
-def _parse_ass_time(s: str) -> float:
-    """h:mm:ss.xx → 秒，解析失败返回 0.0"""
+def _parse_ass_time(s: str) -> float | None:
+    """h:mm:ss.xx → 秒，解析失败返回 None"""
     try:
         parts = s.split(":")
         return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
     except (ValueError, IndexError):
-        return 0.0
+        return None
 
 
-def _parse_txt_time(s: str) -> float:
-    """mm:ss.xx 或 h:mm:ss.xx → 秒，解析失败返回 0.0"""
+def _parse_txt_time(s: str) -> float | None:
+    """mm:ss.xx 或 h:mm:ss.xx → 秒，解析失败返回 None"""
     try:
         parts = s.split(":")
         if len(parts) == 2:
             return int(parts[0]) * 60 + float(parts[1])
         return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
     except (ValueError, IndexError):
-        return 0.0
+        return None
 
 
 def _parse_track_colors(raw: str) -> dict[str, str]:
@@ -78,10 +81,14 @@ def read_ass(filepath: str) -> tuple[list[AssDialogue], list[str]]:
                 parts = prefix.split(",")
                 start_str = parts[1].strip()
                 end_str = parts[2].strip()
+                start_s = _parse_ass_time(start_str)
+                end_s = _parse_ass_time(end_str)
+                if start_s is None or end_s is None:
+                    continue
                 d = AssDialogue(
                     line_index=i,
-                    start_s=_parse_ass_time(start_str),
-                    end_s=_parse_ass_time(end_str),
+                    start_s=start_s,
+                    end_s=end_s,
                     start_str=start_str,
                     end_str=end_str,
                     style=parts[3].strip(),
@@ -106,9 +113,12 @@ def read_txt_notes(filepath: str) -> tuple[list[TxtNote], dict[str, str]]:
     for line in raw.split("\n"):
         line = line.strip()
         if not line or not re.match(r"#\d+\t", line):
+            if line and re.match(r"#\d", line):
+                _logger.warning(f"跳过疑似笔记行（缺少制表符）: {line[:80]}")
             continue
         parts = line.split("\t")
         if len(parts) < 4:
+            _logger.warning(f"跳过字段不足的笔记行: {line[:80]}")
             continue
 
         idx_str = parts[0][1:]
@@ -126,9 +136,8 @@ def read_txt_notes(filepath: str) -> tuple[list[TxtNote], dict[str, str]]:
         else:
             text = content_part
 
-        try:
-            t = _parse_txt_time(time_str)
-        except (ValueError, IndexError):
+        t = _parse_txt_time(time_str)
+        if t is None:
             continue
 
         notes.append(TxtNote(index=note_idx, time_s=t, track=track, text=text))

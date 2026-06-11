@@ -77,14 +77,13 @@ class TestNoteProcessor:
 
     def test_assign_note_ids(self):
         notes = [
-            Note(3000, "B"),
             Note(1000, "A"),
             Note(2000, "C"),
+            Note(3000, "B"),
         ]
         id_map = assign_note_ids(notes)
         assert len(id_map) == 3
-        # 按时间排序后分配 ID
-        # A:1000 → 1, C:2000 → 2, B:3000 → 3
+        # 已排序: A:1000 → 1, C:2000 → 2, B:3000 → 3
         a_note = next(n for n in notes if n.text == "A")
         b_note = next(n for n in notes if n.text == "B")
         c_note = next(n for n in notes if n.text == "C")
@@ -96,16 +95,15 @@ class TestNoteProcessor:
         notes = [Note(2000, "B"), Note(1000, "A")]
         original_order = list(notes)
         assign_note_ids(notes)
-        # 排序后输入不变（纯函数不应修改）
+        # 函数不应修改输入
         assert notes == original_order
 
     def test_assign_note_ids_empty(self):
         assert assign_note_ids([]) == {}
 
     def test_get_note_id(self):
-        notes = [Note(3000, "C"), Note(1000, "A"), Note(2000, "B")]
-        target = next(n for n in notes if n.text == "B")
-        # 排序后 B 是第 2 个（A=1, B=2, C=3）
+        notes = [Note(1000, "A"), Note(2000, "B"), Note(3000, "C")]
+        target = notes[1]  # B 在已排序列表中位置 2
         assert get_note_id(notes, target) == 2
 
     def test_get_note_id_not_found(self):

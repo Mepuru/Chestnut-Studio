@@ -5,7 +5,7 @@
 具体文件解析位于 core/io/ass_repository.py，纯计算位于 core/compute/ass_merge_engine.py。
 
 用法:
-    from chestnut_studio.core.ass_merge import build_merge_plan
+     from chestnut_studio.core.manager.ass_merge import build_merge_plan
     from chestnut_studio.core.io.ass_writer import generate_merge_report, write_output
 
     plan = build_merge_plan("input.ass", "notes.txt")

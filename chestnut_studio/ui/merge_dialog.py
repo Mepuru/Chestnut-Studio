@@ -170,11 +170,17 @@ class MergeDialog(QDialog):
         total = self._plan.total_notes
         auto = self._plan.auto_matched
         manual = len(self._plan.uncertain)
+        unmatched = len(self._plan.unmatched)
 
-        if manual == 0:
-            self._stats_label.setText(f"已匹配 {auto} / {total} — 全部确定")
-        else:
-            self._stats_label.setText(f"已匹配 {auto} / {total} — 待处理 {manual} 项")
+        parts: list[str] = []
+        parts.append(f"已匹配 {auto} / {total}")
+        if manual:
+            parts.append(f"待处理 {manual} 项")
+        if unmatched:
+            parts.append(f"⚠ 无匹配 {unmatched} 条")
+        if not manual and not unmatched:
+            parts.append("全部确定")
+        self._stats_label.setText(" — ".join(parts))
         self._stats_label.setVisible(True)
 
         self._report_view.setText(generate_merge_report(self._plan))
@@ -196,12 +202,17 @@ class MergeDialog(QDialog):
         try:
             ass_path, report_path = write_output(self._plan, out)
             logger.info(f"合并导出: {ass_path}, {report_path}")
+            parts = [
+                f"已匹配 {self._plan.auto_matched} / {self._plan.total_notes}",
+                f"待处理 {len(self._plan.uncertain)} 项",
+            ]
+            if self._plan.unmatched:
+                parts.append(f"无匹配 {len(self._plan.unmatched)} 条")
             QMessageBox.information(
                 self,
                 "导出成功",
                 f"字幕: {ass_path}\n报告: {report_path}\n\n"
-                f"已匹配 {self._plan.auto_matched} / {self._plan.total_notes}，"
-                f"待处理 {len(self._plan.uncertain)} 项",
+                + "，".join(parts),
             )
             self.accept()
         except Exception as e:

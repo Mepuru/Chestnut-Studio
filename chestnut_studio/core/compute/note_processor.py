@@ -38,23 +38,25 @@ def get_used_note_types(notes: list[Note], note_types: Sequence[str] | None = No
     return result
 
 
-def assign_note_ids(notes: list[Note]) -> dict[Note, int]:
-    """按时间排序分配序号，不修改输入列表
+def assign_note_ids(sorted_notes: list[Note]) -> dict[Note, int]:
+    """为已按时间排序的笔记分配序号，不修改输入列表
+
+    调用方需保证 sorted_notes 已按 timestamp_ms 排序。
 
     Returns:
         {Note对象: 序号} 映射，序号从 1 开始
     """
-    sorted_notes = sorted(notes, key=lambda n: n.timestamp_ms)
     return {note: i for i, note in enumerate(sorted_notes, 1)}
 
 
-def get_note_id(notes: list[Note], note: Note) -> int:
-    """获取指定笔记在当前排序下的序号，不修改输入列表
+def get_note_id(sorted_notes: list[Note], note: Note) -> int:
+    """获取指定笔记在已排序列表中的序号，不修改输入列表
+
+    调用方需保证 sorted_notes 已按 timestamp_ms 排序。
 
     Returns:
         序号（从 1 开始），未找到返回 0
     """
-    sorted_notes = sorted(notes, key=lambda n: n.timestamp_ms)
     for i, n in enumerate(sorted_notes, 1):
         if n is note:
             return i

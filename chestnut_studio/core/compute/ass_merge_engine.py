@@ -262,7 +262,20 @@ def compute_merge_plan(
     )
     auto_matched += additional_auto
 
-    # 5. 创建新 dialogue 对象写入结果（不修改输入列表中的原始对象）
+    # 5. 收集所有已消费的笔记索引，找出完全未匹配的笔记
+    consumed_indices: set[int] = set()
+    for st in state.values():
+        if st.note_idx > 0:
+            consumed_indices.add(st.note_idx)
+    for u in uncertain:
+        for n in u.notes:
+            consumed_indices.add(n.index)
+    for r in risky:
+        for n in r.notes:
+            consumed_indices.add(n.index)
+    unmatched = [n for n in notes if n.index not in consumed_indices]
+
+    # 6. 创建新 dialogue 对象写入结果（不修改输入列表中的原始对象）
     result_dialogues = [
         replace(d, text=state[di].text, track=state[di].track, src_note_idx=state[di].note_idx)
         for di, d in enumerate(dialogues)
@@ -277,6 +290,7 @@ def compute_merge_plan(
         auto_matched=auto_matched,
         uncertain=uncertain,
         risky=risky,
+        unmatched=unmatched,
         track_colors=track_colors,
         _raw_ass_lines=raw_ass_lines,
     )

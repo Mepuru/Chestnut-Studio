@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import bisect
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
@@ -60,8 +61,7 @@ class NoteManager:
         if note_type not in NOTE_TYPES:
             raise ValueError(f"笔记类型必须为 {NOTE_TYPES}，收到: {note_type}")
         note = Note(timestamp_ms=timestamp_ms, text=text, type=note_type)
-        self._notes.append(note)
-        self._notes.sort(key=lambda n: n.timestamp_ms)
+        bisect.insort(self._notes, note)
         self._logger.info(f"添加笔记: [{note_type}] {ms_to_time_str(timestamp_ms)} {text[:50]}")
         return note
 
@@ -141,12 +141,12 @@ class NoteManager:
 
     def assign_ids(self) -> dict[Note, int]:
         """按时间排序分配序号，返回 {Note对象: 序号} 映射"""
-        self._notes.sort(key=lambda n: n.timestamp_ms)
+        self._notes.sort()
         return assign_note_ids(self._notes)
 
     def get_note_id(self, note: Note) -> int:
         """获取笔记在当前排序下的序号"""
-        self._notes.sort(key=lambda n: n.timestamp_ms)
+        self._notes.sort()
         return compute_get_note_id(self._notes, note)
 
     def import_text(self, path: str | Path) -> int:
@@ -178,7 +178,7 @@ class NoteManager:
             self._notes.append(Note.from_dict(n))
         for t in data.get("terms", []):
             self._terms.append(Term.from_dict(t))
-        self._notes.sort(key=lambda n: n.timestamp_ms)
+        self._notes.sort()
 
     # ── 术语库 ──
 

@@ -50,10 +50,10 @@ class TestParseAssTime:
     def test_short_ms(self):
         assert _parse_ass_time("0:00:15.2") == 15.2
 
-    def test_malformed_returns_zero(self):
-        assert _parse_ass_time("") == 0.0
-        assert _parse_ass_time("invalid") == 0.0
-        assert _parse_ass_time("1:2") == 0.0
+    def test_malformed_returns_none(self):
+        assert _parse_ass_time("") is None
+        assert _parse_ass_time("invalid") is None
+        assert _parse_ass_time("1:2") is None
 
 
 class TestParseTxtTime:
@@ -66,9 +66,9 @@ class TestParseTxtTime:
     def test_zero(self):
         assert _parse_txt_time("00:00.00") == 0.0
 
-    def test_malformed_returns_zero(self):
-        assert _parse_txt_time("") == 0.0
-        assert _parse_txt_time("invalid") == 0.0
+    def test_malformed_returns_none(self):
+        assert _parse_txt_time("") is None
+        assert _parse_txt_time("invalid") is None
 
 
 class TestParseTrackColors:
@@ -404,7 +404,9 @@ class TestBuildMergePlan:
             assert "第 1 节" in report
             assert "第 2 节" in report
             assert "第 3 节" in report
+            assert "第 4 节" in report
             assert "Chestnut Studio" in report
+            assert "无未匹配文本" in report
         finally:
             Path(ass_path).unlink(missing_ok=True)
             Path(txt_path).unlink(missing_ok=True)
@@ -438,6 +440,125 @@ class TestBuildMergePlan:
             finally:
                 Path(ass_out).unlink(missing_ok=True)
                 Path(report_path).unlink(missing_ok=True)
+        finally:
+            Path(ass_path).unlink(missing_ok=True)
+            Path(txt_path).unlink(missing_ok=True)
+
+    # ══════════════════════════════════════════
+    # 无匹配文本测试
+    # ══════════════════════════════════════════
+
+    def test_txt_before_first_ass(self):
+        """TXT 时间戳在第一条 ASS 之前 → 无匹配"""
+        ass = _make_ass_with_dialogues([
+            ("0:00:01.00", "0:00:04.00"),
+            ("0:00:05.00", "0:00:08.00"),
+        ])
+        txt = _make_txt_with_notes([
+            ("轨道1", "00:00.50", "笔记太早"),
+        ])
+        with (
+            tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as fa,
+            tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as ft,
+        ):
+            fa.write(ass)
+            ft.write(txt)
+            ass_path, txt_path = fa.name, ft.name
+        try:
+            plan = build_merge_plan(ass_path, txt_path)
+            assert plan.total_notes == 1
+            assert plan.auto_matched == 0
+            assert len(plan.unmatched) == 1
+            assert plan.unmatched[0].text == "笔记太早"
+            assert plan.unmatched[0].time_s == 0.5
+        finally:
+            Path(ass_path).unlink(missing_ok=True)
+            Path(txt_path).unlink(missing_ok=True)
+
+    def test_txt_after_last_ass(self):
+        """TXT 时间戳在最后一条 ASS 之后 → 无匹配"""
+        ass = _make_ass_with_dialogues([
+            ("0:00:01.00", "0:00:04.00"),
+            ("0:00:05.00", "0:00:08.00"),
+        ])
+        txt = _make_txt_with_notes([
+            ("轨道1", "00:09.00", "笔记太晚"),
+        ])
+        with (
+            tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as fa,
+            tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as ft,
+        ):
+            fa.write(ass)
+            ft.write(txt)
+            ass_path, txt_path = fa.name, ft.name
+        try:
+            plan = build_merge_plan(ass_path, txt_path)
+            assert plan.total_notes == 1
+            assert plan.auto_matched == 0
+            assert len(plan.unmatched) == 1
+            assert plan.unmatched[0].text == "笔记太晚"
+        finally:
+            Path(ass_path).unlink(missing_ok=True)
+            Path(txt_path).unlink(missing_ok=True)
+
+    def test_txt_in_non_overlap_gap(self):
+        """TXT 时间戳在两条无重叠 ASS 的间隙中 → 无匹配"""
+        ass = _make_ass_with_dialogues([
+            ("0:00:01.00", "0:00:04.00"),
+            ("0:00:05.00", "0:00:08.00"),
+        ])
+        txt = _make_txt_with_notes([
+            ("轨道1", "00:04.50", "笔记在间隙"),
+        ])
+        with (
+            tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as fa,
+            tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as ft,
+        ):
+            fa.write(ass)
+            ft.write(txt)
+            ass_path, txt_path = fa.name, ft.name
+        try:
+            plan = build_merge_plan(ass_path, txt_path)
+            assert plan.total_notes == 1
+            assert plan.auto_matched == 0
+            assert len(plan.unmatched) == 1
+        finally:
+            Path(ass_path).unlink(missing_ok=True)
+            Path(txt_path).unlink(missing_ok=True)
+
+    def test_mixed_matched_and_unmatched(self):
+        """混合：部分匹配 + 部分无匹配"""
+        ass = _make_ass_with_dialogues([
+            ("0:00:01.00", "0:00:04.00"),
+            ("0:00:05.00", "0:00:08.00"),
+        ])
+        txt = _make_txt_with_notes([
+            ("轨道1", "00:00.50", "太早"),        # 无匹配
+            ("轨道1", "00:02.00", "正常"),        # 匹配
+            ("轨道1", "00:09.00", "太晚"),        # 无匹配
+        ])
+        with (
+            tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as fa,
+            tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as ft,
+        ):
+            fa.write(ass)
+            ft.write(txt)
+            ass_path, txt_path = fa.name, ft.name
+        try:
+            plan = build_merge_plan(ass_path, txt_path)
+            assert plan.total_notes == 3
+            assert plan.auto_matched == 1
+            assert len(plan.unmatched) == 2
+            unmatched_texts = [n.text for n in plan.unmatched]
+            assert "太早" in unmatched_texts
+            assert "太晚" in unmatched_texts
+            assert "正常" not in unmatched_texts
+            # 报告生成不应报错
+            report = generate_merge_report(plan)
+            assert "第 1 节" in report
+            assert "第 2 节" in report
+            assert "太早" in report
+            assert "太晚" in report
         finally:
             Path(ass_path).unlink(missing_ok=True)
             Path(txt_path).unlink(missing_ok=True)
