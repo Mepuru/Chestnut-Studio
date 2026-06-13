@@ -294,19 +294,23 @@ class NotePanel(QWidget):
         delete_action = menu.addAction("删除笔记 (Delete)")
         action = menu.exec(self._list.mapToGlobal(pos))
         if action == term_action:
-            self._on_term_requested()
+            self._on_term_requested(widget.note)
         elif action == delete_action:
             self._note_manager.remove(widget.note)
             self.refresh()
 
-    def _on_term_requested(self):
+    def _on_term_requested(self, note: Note | None = None):
         """选中笔记后打开术语录入"""
-        item = self._list.currentItem()
-        if not item:
-            return
-        widget = self._list.itemWidget(item)
-        if isinstance(widget, NoteItemWidget):
-            self.term_requested.emit(widget.note.text, f"#{self._note_manager.get_note_id(widget.note)}")
+        target = note
+        if target is None:
+            item = self._list.currentItem()
+            if not item:
+                return
+            widget = self._list.itemWidget(item)
+            if isinstance(widget, NoteItemWidget):
+                target = widget.note
+        if target is not None:
+            self.term_requested.emit(target.text, f"#{self._note_manager.get_note_id(target)}")
 
     def _delete_selected(self):
         """删除当前选中的笔记"""
