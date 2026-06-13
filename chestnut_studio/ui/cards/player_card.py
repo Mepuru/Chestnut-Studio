@@ -55,7 +55,7 @@ class PlayerCard(QWidget):
         layout.addWidget(self._video_widget, 1)
 
         # ── 空状态提示 ──
-        self._hint_label = QLabel("拖入视频文件 或 Ctrl+O 打开")
+        self._hint_label = QLabel("拖入视频文件 或 Ctrl+O 打开", self)
         self._hint_label.setObjectName("videoHint")
         self._hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._hint_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
