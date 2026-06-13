@@ -205,21 +205,23 @@ class NotePanel(QWidget):
             return
         self._empty_label.hide()
 
+        # 预计算所有笔记的序号（一次排序，批量分配）
+        id_map = self._note_manager.assign_ids()
+
         if self._sort_mode == "track":
-            self._refresh_by_track()
+            self._refresh_by_track(id_map)
         else:
-            self._refresh_by_time()
+            self._refresh_by_time(id_map)
         self._recalc_item_heights()
         if at_bottom:
             scroll_bar.setValue(scroll_bar.maximum())
         else:
             scroll_bar.setValue(scroll_pos)
 
-    def _add_note_item(self, note: Note):
+    def _add_note_item(self, note: Note, note_id: int):
         """添加一条笔记到列表"""
         item = QListWidgetItem()
         item.setData(Qt.ItemDataRole.UserRole, id(note))
-        note_id = self._note_manager.get_note_id(note)
         widget = NoteItemWidget(note, note_id)
         # 初始高度估算（resize 时会用实际宽度重新计算）
         text_width = self._list.viewport().width() - 102
@@ -227,12 +229,12 @@ class NotePanel(QWidget):
         self._list.addItem(item)
         self._list.setItemWidget(item, widget)
 
-    def _refresh_by_time(self):
+    def _refresh_by_time(self, id_map: dict[Note, int]):
         """按时间排序（不分组）"""
         for note in self._note_manager.get_all():
-            self._add_note_item(note)
+            self._add_note_item(note, id_map[note])
 
-    def _refresh_by_track(self):
+    def _refresh_by_track(self, id_map: dict[Note, int]):
         """按轨道分组排序"""
         for note_type in NOTE_TYPES:
             notes = self._note_manager.get_by_type(note_type)
@@ -256,7 +258,7 @@ class NotePanel(QWidget):
             self._list.setItemWidget(group_item, group_widget)
 
             for note in notes:
-                self._add_note_item(note)
+                self._add_note_item(note, id_map[note])
 
     def resizeEvent(self, event: QResizeEvent):
         """窗口大小变化时重新计算笔记高度"""

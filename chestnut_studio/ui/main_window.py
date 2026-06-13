@@ -544,9 +544,10 @@ class MainWindow(QMainWindow):
 
     def _gather_session_state(self) -> SessionState:
         """从各个组件收集当前状态"""
+        state_data = self._note_manager.to_dict()
         return SessionState(
-            notes=self._note_manager.to_dict()["notes"],
-            terms=self._note_manager.to_dict()["terms"],
+            notes=state_data["notes"],
+            terms=state_data["terms"],
             video_path=self.player_card.get_video_path(),
             video_position=self.player_card.get_position(),
             volume=self.player_card._volume,
