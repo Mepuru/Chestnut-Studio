@@ -562,3 +562,59 @@ class TestBuildMergePlan:
         finally:
             Path(ass_path).unlink(missing_ok=True)
             Path(txt_path).unlink(missing_ok=True)
+
+
+# ══════════════════════════════════════════
+# 回退路径测试
+# ══════════════════════════════════════════
+
+
+def _make_minimal_ass_with_dialogues(dialogues: list[tuple[str, str]]) -> str:
+    """生成无 [V4+ Styles]/[Events] 节的 ASS — 触发 _repr_lines 回退路径"""
+    lines = [
+        "[Script Info]",
+        "; minimal test file without section headers",
+    ]
+    for start, end in dialogues:
+        lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,Line")
+    return "\n".join(lines)
+
+
+class TestReprLinesFallback:
+    """_repr_lines 回退路径测试（ASS 缺少 [V4+ Styles] 或 [Events] 节）"""
+
+    def test_fallback_no_events_section(self):
+        """ASS 无 [Events] 节 → 走回退路径"""
+        ass = _make_minimal_ass_with_dialogues([
+            ("0:00:01.00", "0:00:04.00"),
+            ("0:00:05.00", "0:00:08.00"),
+        ])
+        txt = _make_txt_with_notes([
+            ("轨道1", "00:02.00", "笔记A"),
+            ("轨道1", "00:06.00", "笔记B"),
+        ])
+        with (
+            tempfile.NamedTemporaryFile(mode="w", suffix=".ass", delete=False, encoding="utf-8") as fa,
+            tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as ft,
+        ):
+            fa.write(ass)
+            ft.write(txt)
+            ass_path, txt_path = fa.name, ft.name
+        try:
+            plan = build_merge_plan(ass_path, txt_path)
+            out_path = ass_path.replace(".ass", "M_test.ass")
+            ass_out, report_path = write_output(plan, out_path)
+            try:
+                output = Path(ass_out).read_text(encoding="utf-8")
+                # 回退路径下 merged 文本应写入对应 Dialogue 行
+                assert "笔记A" in output
+                assert "笔记B" in output
+                # Dialogue 行末尾的 ",Line" 应已被替换为笔记文本
+                assert ",Line" not in output
+                assert Path(report_path).exists()
+            finally:
+                Path(ass_out).unlink(missing_ok=True)
+                Path(report_path).unlink(missing_ok=True)
+        finally:
+            Path(ass_path).unlink(missing_ok=True)
+            Path(txt_path).unlink(missing_ok=True)
