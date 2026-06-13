@@ -89,6 +89,9 @@ class InputBar(QWidget):
     def get_current_track_type(self) -> str:
         return NOTE_TYPES[self._current_track_idx]
 
+    def get_current_track_idx(self) -> int:
+        return self._current_track_idx
+
     def load_for_edit(self, note_type: str, text: str):
         """载入笔记到输入框方便修改"""
         if note_type in NOTE_TYPES:

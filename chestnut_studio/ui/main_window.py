@@ -550,10 +550,10 @@ class MainWindow(QMainWindow):
             terms=state_data["terms"],
             video_path=self.player_card.get_video_path(),
             video_position=self.player_card.get_position(),
-            volume=self.player_card._volume,
-            playback_rate=self.player_card._playback_rate,
-            sort_mode=self.note_panel._sort_mode,
-            current_track=self.input_bar._current_track_idx,
+            volume=self.player_card.get_volume(),
+            playback_rate=self.player_card.get_playback_rate(),
+            sort_mode=self.note_panel.get_sort_mode(),
+            current_track=self.input_bar.get_current_track_idx(),
         )
 
     def _apply_session_state(self, state: SessionState) -> None:
