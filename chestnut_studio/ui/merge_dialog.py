@@ -36,6 +36,7 @@ class MergeDialog(QDialog):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._plan = None
+        self._output_manually_set = False
         self._setup_ui()
 
     def _make_file_row(self, label: str, path_ref: QLabel, btn_callback: Callable[[], None]) -> QWidget:
@@ -132,8 +133,11 @@ class MergeDialog(QDialog):
         path, _ = QFileDialog.getSaveFileName(self, "保存合并后的 ASS", "", self.ASS_FILTER)
         if path:
             self._out_path.setText(path)
+            self._output_manually_set = True
 
     def _auto_output(self):
+        if self._output_manually_set:
+            return
         ass = self._ass_path.text()
         if ass and ass != "（未选择）":
             from datetime import datetime
