@@ -82,11 +82,11 @@ class PlayerCard(QWidget):
         self._hint_label.setGeometry(0, 0, self.width(), max(video_height, 0))
 
     def _setup_player(self) -> None:
-        """初始化 QMediaPlayer"""
-        self._audio_output = QAudioOutput()
+        """初始化 QMediaPlayer（绑定父对象确保 Qt 自动清理）"""
+        self._audio_output = QAudioOutput(self)
         self._audio_output.setVolume(self._volume / 100.0)
 
-        self._player = QMediaPlayer()
+        self._player = QMediaPlayer(self)
         self._player.setAudioOutput(self._audio_output)
         self._player.setVideoOutput(self._video_widget)
 
@@ -140,8 +140,11 @@ class PlayerCard(QWidget):
         self._controls.set_volume(value)
 
     def set_playback_rate(self, rate: float):
-        self._playback_rate = max(0.1, min(2.0, rate))
-        self._player.setPlaybackRate(self._playback_rate)
+        clamped = max(0.1, min(2.0, rate))
+        if clamped == self._playback_rate:
+            return
+        self._playback_rate = clamped
+        self._player.setPlaybackRate(clamped)
         self._controls.set_rate(rate)
 
     def get_position(self) -> int:
