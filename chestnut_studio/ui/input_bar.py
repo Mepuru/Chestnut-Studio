@@ -96,7 +96,9 @@ class InputBar(QWidget):
         """载入笔记到输入框方便修改"""
         if note_type in NOTE_TYPES:
             self._current_track_idx = NOTE_TYPES.index(note_type)
-            self._update_badge()
+        else:
+            self._current_track_idx = 0
+        self._update_badge()
         self._input.setText(text)
         self._input.setFocus()
         self._input.selectAll()
