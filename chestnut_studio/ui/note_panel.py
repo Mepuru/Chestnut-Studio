@@ -67,7 +67,7 @@ class NoteItemWidget(QWidget):
         # 时间戳标签（按轨道区分颜色）
         time_label = QLabel(ms_to_time_str(self.note.timestamp_ms))
         time_label.setObjectName("noteTime")
-        time_label.setFixedWidth(52)
+        time_label.setFixedWidth(80)
         color = get_track_color(NOTE_TYPES.index(self.note.type) + 1)
         time_label.setStyleSheet(f"color: {color};")
         layout.addWidget(time_label)
@@ -252,7 +252,7 @@ class NotePanel(QWidget):
         item.setData(Qt.ItemDataRole.UserRole, id(note))
         widget = NoteItemWidget(note, note_id)
         # 初始高度估算（resize 时会用实际宽度重新计算）
-        text_width = self._list.viewport().width() - 102
+        text_width = self._list.viewport().width() - 130
         item.setSizeHint(QSize(0, widget.calc_text_height(text_width)))
         self._list.addItem(item)
         self._list.setItemWidget(item, widget)
@@ -297,7 +297,7 @@ class NotePanel(QWidget):
 
     def _recalc_item_heights(self):
         """根据当前列表宽度重新计算每条笔记的实际高度"""
-        text_width = self._list.viewport().width() - 102  # 减去序号+时间+边距
+        text_width = self._list.viewport().width() - 130  # 减去序号+时间+边距
         for i in range(self._list.count()):
             item = self._list.item(i)
             widget = self._list.itemWidget(item)

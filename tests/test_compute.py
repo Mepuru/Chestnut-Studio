@@ -265,3 +265,84 @@ class TestAssMergeEngine:
         assert d2.track == original_d2_track
         # 结果在 MergePlan 内部的新对象上
         assert plan.dialogues[0].text == "笔记A"
+
+    def test_chain_overlap_notes_correctly_matched(self):
+        """三链重叠中每条独占区内的笔记正确匹配"""
+        dialogues = [
+            _make_dialogue(0.0, 5.0, line_index=0),
+            _make_dialogue(3.0, 8.0, line_index=1),
+            _make_dialogue(6.0, 10.0, line_index=2),
+        ]
+        notes = [
+            _make_note(1.0, "A独占", track="轨道1", index=1),
+            _make_note(5.5, "B独占", track="轨道1", index=2),
+            _make_note(9.0, "C独占", track="轨道1", index=3),
+        ]
+        plan = compute_merge_plan(dialogues, notes, {"轨道1": "#3b82f6"})
+        assert plan.auto_matched == 3
+        assert len(plan.uncertain) == 0
+        assert len(plan.risky) == 0
+        assert len(plan.unmatched) == 0
+        assert plan.dialogues[0].text == "A独占"
+        assert plan.dialogues[1].text == "B独占"
+        assert plan.dialogues[2].text == "C独占"
+
+    def test_chain_5_overlap_notes_correctly_matched(self):
+        """五链重叠中各独占区笔记正确自动匹配"""
+        dialogues = [
+            _make_dialogue(0.0, 5.0, line_index=0),
+            _make_dialogue(3.0, 8.0, line_index=1),
+            _make_dialogue(6.0, 11.0, line_index=2),
+            _make_dialogue(9.0, 14.0, line_index=3),
+            _make_dialogue(12.0, 17.0, line_index=4),
+        ]
+        notes = [
+            _make_note(1.0, "A独占", track="轨道1", index=1),
+            _make_note(5.5, "B独占", track="轨道1", index=2),
+            _make_note(8.5, "C独占", track="轨道1", index=3),
+            _make_note(11.5, "D独占", track="轨道1", index=4),
+            _make_note(15.0, "E独占", track="轨道1", index=5),
+        ]
+        plan = compute_merge_plan(dialogues, notes, {"轨道1": "#3b82f6"})
+        assert plan.auto_matched == 5
+        assert len(plan.uncertain) == 0
+        assert len(plan.risky) == 0
+        assert len(plan.unmatched) == 0
+        assert plan.dialogues[0].text == "A独占"
+        assert plan.dialogues[1].text == "B独占"
+        assert plan.dialogues[2].text == "C独占"
+        assert plan.dialogues[3].text == "D独占"
+        assert plan.dialogues[4].text == "E独占"
+
+    def test_chain_5_overlap_notes_not_leaked_into_exclusive(self):
+        """五链重叠中重叠区笔记不覆写已独占匹配的 dialogue"""
+        dialogues = [
+            _make_dialogue(0.0, 5.0, line_index=0),
+            _make_dialogue(3.0, 8.0, line_index=1),
+            _make_dialogue(6.0, 11.0, line_index=2),
+            _make_dialogue(9.0, 14.0, line_index=3),
+            _make_dialogue(12.0, 17.0, line_index=4),
+        ]
+        notes = [
+            _make_note(1.0, "A独占", track="轨道1", index=1),
+            _make_note(4.0, "A-B重叠", track="轨道1", index=2),
+            _make_note(5.5, "B独占", track="轨道1", index=3),
+            _make_note(7.0, "B-C重叠", track="轨道1", index=4),
+            _make_note(8.5, "C独占", track="轨道1", index=5),
+            _make_note(10.0, "C-D重叠", track="轨道1", index=6),
+            _make_note(11.5, "D独占", track="轨道1", index=7),
+            _make_note(13.0, "D-E重叠", track="轨道1", index=8),
+            _make_note(15.0, "E独占", track="轨道1", index=9),
+        ]
+        plan = compute_merge_plan(dialogues, notes, {"轨道1": "#3b82f6"})
+        # 独占区 5 条自动匹配；两侧均已独占总 4 条 → uncertain，不覆写
+        assert plan.auto_matched == 5
+        assert len(plan.uncertain) == 4
+        assert len(plan.risky) == 0
+        assert len(plan.unmatched) == 0
+        # 独占区笔记不被覆写
+        assert plan.dialogues[0].text == "A独占"
+        assert plan.dialogues[1].text == "B独占"
+        assert plan.dialogues[2].text == "C独占"
+        assert plan.dialogues[3].text == "D独占"
+        assert plan.dialogues[4].text == "E独占"

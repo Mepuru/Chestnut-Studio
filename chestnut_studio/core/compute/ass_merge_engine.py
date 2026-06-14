@@ -3,11 +3,15 @@
 核心匹配算法，无文件 I/O。输入已解析的 ASS Dialogues 和 TXT Notes，
 输出合并计划。不修改输入参数，所有中间状态使用局部变量。
 
-**原则**: 只有 100% 确定的匹配才自动填入——即恰好 1 条 TXT 落在某条 ASS 的独占时间区内。
+**算法**: Sweep-line 扫描线。将 ASS 起止和 TXT 笔记按时间排序后单遍扫描：
+  1. 当前只有 1 条 ASS 激活 → 该区域的笔记 100% 属于它
+  2. 当前有 2+ 条 ASS 激活 → 收集到重叠区，后续用冲突感知分配
+  3. 没有 ASS 激活 → 笔记标记为未匹配
+  重叠区内先做 Voronoi 近邻分配，已被独占占用的轴自动跳过。
 """
 
-from dataclasses import dataclass, field, replace
-from typing import NamedTuple
+from dataclasses import replace
+from enum import IntEnum, auto
 
 from chestnut_studio.core.model.ass_merge import (
     AssDialogue,
@@ -17,202 +21,12 @@ from chestnut_studio.core.model.ass_merge import (
 )
 
 
-@dataclass
-class _ExclusiveState:
-    """独占区中间状态（仅在 compute_merge_plan 内部使用）"""
+class _EventKind(IntEnum):
+    """事件类型枚举——排序时 start 优先于 note 优先于 end"""
 
-    end: float = 0.0
-    notes: list[TxtNote] = field(default_factory=lambda: [])
-    text: str = ""
-    track: str = ""
-    note_idx: int = 0
-
-
-class _OverlapPair(NamedTuple):
-    """单一重叠对"""
-
-    a_idx: int
-    b_idx: int
-    zone_start: float
-    zone_end: float
-
-
-def _detect_overlap_pairs(dialogues: list[AssDialogue]) -> list[_OverlapPair]:
-    """检测连续 ASS Dialogue 之间的时间重叠对"""
-    pairs: list[_OverlapPair] = []
-    for di in range(len(dialogues) - 1):
-        a, b = dialogues[di], dialogues[di + 1]
-        if a.end_s > b.start_s + 0.05:  # > 50ms 视为有效重叠
-            pairs.append(
-                _OverlapPair(
-                    a_idx=di,
-                    b_idx=di + 1,
-                    zone_start=b.start_s,
-                    zone_end=min(a.end_s, b.end_s),
-                )
-            )
-    return pairs
-
-
-def _mark_exclusive_zones(
-    dialogues: list[AssDialogue], overlap_pairs: list[_OverlapPair], state: dict[int, _ExclusiveState]
-) -> None:
-    """标记每条 ASS 的独占区结束点（写入 state）
-
-    重叠区中:
-      - 先出现的 A: 独占区 = [A.start, overlap_start)，overlap 部分被截掉
-      - 后出现的 B: 独占区 = [B.start, B.start)（零长度），全文在重叠区内
-    """
-    for di, d in enumerate(dialogues):
-        state[di].end = d.end_s
-
-    for op in overlap_pairs:
-        state[op.a_idx].end = op.zone_start
-        b = dialogues[op.b_idx]
-        state[op.b_idx].end = b.start_s  # B 的独占区为零长度
-
-
-def _collect_exclusive_notes(
-    dialogues: list[AssDialogue], notes: list[TxtNote], state: dict[int, _ExclusiveState]
-) -> None:
-    """将笔记分配到独占区（写入 state）"""
-    for note in notes:
-        for di, d in enumerate(dialogues):
-            excl_end = state[di].end
-            if d.start_s <= note.time_s < excl_end:
-                state[di].notes.append(note)
-                break
-
-
-def _resolve_exclusive_matches(
-    dialogues: list[AssDialogue], state: dict[int, _ExclusiveState]
-) -> tuple[int, list[UncertainMatch], set[int]]:
-    """独占区匹配：恰好 1 条 → 自动匹配，多条 → 入不确定列表
-
-    Returns:
-        (auto_matched, uncertain, matched_note_indices)
-    """
-    uncertain: list[UncertainMatch] = []
-    auto_matched = 0
-
-    for di, d in enumerate(dialogues):
-        zone_notes = state[di].notes
-        if not zone_notes:
-            continue
-
-        if len(zone_notes) == 1:
-            note = zone_notes[0]
-            state[di].text = note.text
-            state[di].track = note.track
-            state[di].note_idx = note.index
-            auto_matched += 1
-        else:
-            uncertain.append(
-                UncertainMatch(
-                    ass_idx=di,
-                    ass_start=d.start_str,
-                    ass_end=d.end_str,
-                    notes=zone_notes,
-                    reason=f"同一条 ASS 时间窗口内有 {len(zone_notes)} 条 TXT 笔记",
-                )
-            )
-
-    matched_note_indices: set[int] = set()
-    for st in state.values():
-        for n in st.notes:
-            matched_note_indices.add(n.index)
-
-    return auto_matched, uncertain, matched_note_indices
-
-
-def _resolve_overlap_notes(
-    dialogues: list[AssDialogue],
-    notes: list[TxtNote],
-    overlap_pairs: list[_OverlapPair],
-    matched_note_indices: set[int],
-    uncertain: list[UncertainMatch],
-    state: dict[int, _ExclusiveState],
-) -> tuple[list[UncertainMatch], int]:
-    """处理重叠区未匹配的 TXT 笔记
-
-    Returns:
-        (risky, additional_auto_matched)
-    """
-    risky: list[UncertainMatch] = []
-    additional_auto = 0
-
-    overlap_notes = [n for n in notes if n.index not in matched_note_indices]
-
-    for op in overlap_pairs:
-        zone_notes: list[TxtNote] = []
-        remaining: list[TxtNote] = []
-        for note in overlap_notes:
-            if op.zone_start <= note.time_s <= op.zone_end:
-                zone_notes.append(note)
-            else:
-                remaining.append(note)
-        overlap_notes = remaining
-
-        if not zone_notes:
-            continue
-
-        a = dialogues[op.a_idx]
-        b = dialogues[op.b_idx]
-
-        # 收集哪些 ASS 行可能被这些 TXT 匹配
-        involved: list[int] = []
-        seen: set[int] = set()
-        for note in zone_notes:
-            for di, d in enumerate(dialogues):
-                if d.start_s <= note.time_s <= d.end_s and di not in seen:
-                    seen.add(di)
-                    involved.append(di)
-
-        if len(involved) == 1:
-            uncertain.append(
-                UncertainMatch(
-                    ass_idx=involved[0],
-                    ass_start=dialogues[involved[0]].start_str,
-                    ass_end=dialogues[involved[0]].end_str,
-                    notes=zone_notes,
-                    reason=f"重叠区内 {len(zone_notes)} 条 TXT 落在同一条 ASS 窗口",
-                )
-            )
-        elif len(involved) >= 2:
-            if len(zone_notes) == 1:
-                note = zone_notes[0]
-                is_a = abs(note.time_s - a.start_s) <= abs(note.time_s - b.start_s)
-                target_idx = op.a_idx if is_a else op.b_idx
-                state[target_idx].text = note.text
-                state[target_idx].track = note.track
-                state[target_idx].note_idx = note.index
-                additional_auto += 1
-                risky.append(
-                    UncertainMatch(
-                        ass_idx=target_idx,
-                        ass_start=a.start_str if is_a else b.start_str,
-                        ass_end=a.end_str if is_a else b.end_str,
-                        notes=[note],
-                        reason="重叠区——按时间就近分配到 %s" % ("A 轴" if is_a else "B 轴"),
-                    )
-                )
-            else:
-                for ai in involved:
-                    ass_notes: list[TxtNote] = [
-                        n for n in zone_notes if dialogues[ai].start_s <= n.time_s <= dialogues[ai].end_s
-                    ]
-                    if ass_notes:
-                        uncertain.append(
-                            UncertainMatch(
-                                ass_idx=ai,
-                                ass_start=dialogues[ai].start_str,
-                                ass_end=dialogues[ai].end_str,
-                                notes=ass_notes,
-                                reason="时间重叠——多条 ASS 竞争该时间段",
-                            )
-                        )
-
-    return risky, additional_auto
+    DIALOG_START = auto()
+    NOTE = auto()
+    DIALOG_END = auto()
 
 
 def compute_merge_plan(
@@ -226,8 +40,6 @@ def compute_merge_plan(
     """从已解析的 ASS dialogues 和 TXT notes 构建合并计划
 
     纯计算函数：不修改输入参数，无 I/O 操作，结果由输入完全决定。
-    使用 dataclasses.replace() 创建新的 AssDialogue 对象，
-    输入列表中的原始对象不会被修改。
 
     Args:
         dialogues: 已解析的 ASS Dialogue 列表（不会被修改）
@@ -238,46 +50,117 @@ def compute_merge_plan(
         raw_ass_lines: 原始 ASS 行（仅用于 MergePlan 记录）
 
     Returns:
-        包含匹配结果的 MergePlan（内部 dialogues 为新建对象，不影响输入）
+        包含匹配结果的 MergePlan
     """
     if raw_ass_lines is None:
         raw_ass_lines = []
 
-    # 初始化每个 dialogue 的独占区状态
-    state: dict[int, _ExclusiveState] = {di: _ExclusiveState() for di in range(len(dialogues))}
+    # ── 1. 构建扫描线事件 ──
+    events: list[tuple[float, _EventKind, int | TxtNote]] = []
+    for di, d in enumerate(dialogues):
+        events.append((d.start_s, _EventKind.DIALOG_START, di))
+        events.append((d.end_s, _EventKind.DIALOG_END, di))
+    for note in notes:
+        events.append((note.time_s, _EventKind.NOTE, note))
+    # DIALOG_START(1) < NOTE(2) < DIALOG_END(3)：同一时刻，start 先于 note，note 先于 end
+    events.sort(key=lambda x: (x[0], x[1].value))
 
-    # 1. 检测重叠对
-    overlap_pairs = _detect_overlap_pairs(dialogues)
+    # ── 2. 单遍扫描 ──
+    # 结果容器
+    assignments: dict[int, TxtNote] = {}  # di → note（独占区自动匹配）
+    overlap_regions: list[list[TxtNote]] = []  # 每个重叠区的笔记桶
+    overlap_active_sets: list[set[int]] = []  # 对应每个桶的激活 dialogue 集合
+    uncertain: list[UncertainMatch] = []
+    unmatched_notes: list[TxtNote] = []
 
-    # 2. 标记独占区
-    _mark_exclusive_zones(dialogues, overlap_pairs, state)
+    active: set[int] = set()
+    current_region_notes: list[TxtNote] = []
 
-    # 3. 独占区收集 + 匹配
-    _collect_exclusive_notes(dialogues, notes, state)
-    auto_matched, uncertain, matched_note_indices = _resolve_exclusive_matches(dialogues, state)
+    def _flush_region():
+        """结束当前区域：把收集到的笔记转入对应的结果桶"""
+        nonlocal current_region_notes
+        if not current_region_notes:
+            return
+        if len(active) == 1:
+            di = next(iter(active))
+            if len(current_region_notes) == 1:
+                # 独占区恰好 1 条 → 100% 确定
+                assignments[di] = current_region_notes[0]
+            else:
+                # 独占区 2+ 条 → 无法确定，全部 uncertain
+                for note in current_region_notes:
+                    _add_to_uncertain([di], note, uncertain, dialogues)
+        elif len(active) >= 2:
+            overlap_regions.append(current_region_notes)
+            overlap_active_sets.append(active.copy())
+        else:
+            unmatched_notes.extend(current_region_notes)
+        current_region_notes = []
 
-    # 4. 处理重叠区
-    risky, additional_auto = _resolve_overlap_notes(
-        dialogues, notes, overlap_pairs, matched_note_indices, uncertain, state
-    )
-    auto_matched += additional_auto
+    for _time, kind, data in events:
+        if kind is _EventKind.DIALOG_START:
+            _flush_region()
+            active.add(data)  # type: ignore[arg-type]
+        elif kind is _EventKind.DIALOG_END:
+            _flush_region()
+            active.discard(data)  # type: ignore[arg-type]
+        else:
+            current_region_notes.append(data)  # type: ignore[arg-type]
 
-    # 5. 收集所有已消费的笔记索引，找出完全未匹配的笔记
-    consumed_indices: set[int] = set()
-    for st in state.values():
-        if st.note_idx > 0:
-            consumed_indices.add(st.note_idx)
+    # 扫尾
+    _flush_region()
+
+    # ── 3. 处理重叠区（冲突感知分配） ──
+    risky: list[UncertainMatch] = []
+
+    for region_notes, active_set in zip(overlap_regions, overlap_active_sets):
+        for note in region_notes:
+            candidates = [
+                di for di in active_set if dialogues[di].start_s <= note.time_s <= dialogues[di].end_s
+            ]
+            if not candidates:
+                unmatched_notes.append(note)
+                continue
+
+            free = [di for di in candidates if di not in assignments]
+
+            if not free:
+                _add_to_uncertain(candidates, note, uncertain, dialogues)
+                continue
+
+            chosen = min(free, key=lambda di: abs(note.time_s - dialogues[di].start_s))
+            assignments[chosen] = note
+            risky.append(
+                UncertainMatch(
+                    ass_idx=chosen,
+                    ass_start=dialogues[chosen].start_str,
+                    ass_end=dialogues[chosen].end_str,
+                    notes=[note],
+                    reason="重叠区——Voronoi 分配到最邻近轴",
+                )
+            )
+
+    # ── 5. 统计 ──
+    auto_matched = len(assignments)
+    consumed: set[int] = set()
+    for note in assignments.values():
+        consumed.add(note.index)
     for u in uncertain:
         for n in u.notes:
-            consumed_indices.add(n.index)
+            consumed.add(n.index)
     for r in risky:
         for n in r.notes:
-            consumed_indices.add(n.index)
-    unmatched = [n for n in notes if n.index not in consumed_indices]
+            consumed.add(n.index)
+    unmatched = [n for n in notes if n.index not in consumed]
 
-    # 6. 创建新 dialogue 对象写入结果（不修改输入列表中的原始对象）
+    # ── 6. 构建结果 ──
     result_dialogues = [
-        replace(d, text=state[di].text, track=state[di].track, src_note_idx=state[di].note_idx)
+        replace(
+            d,
+            text=assignments[di].text if di in assignments else "",
+            track=assignments[di].track if di in assignments else "",
+            src_note_idx=assignments[di].index if di in assignments else 0,
+        )
         for di, d in enumerate(dialogues)
     ]
 
@@ -293,4 +176,25 @@ def compute_merge_plan(
         unmatched=unmatched,
         track_colors=track_colors,
         _raw_ass_lines=raw_ass_lines,
+    )
+
+
+def _add_to_uncertain(
+    candidates: list[int], note: TxtNote, uncertain: list[UncertainMatch], dialogues: list[AssDialogue]
+) -> None:
+    """将笔记追加到 uncertain 列表（合并或新建条目）"""
+    for entry in uncertain:
+        if entry.ass_idx in candidates:
+            entry.notes.append(note)
+            return
+    # 没有对应条目的，新建一个
+    first = candidates[0]
+    uncertain.append(
+        UncertainMatch(
+            ass_idx=first,
+            ass_start=dialogues[first].start_str,
+            ass_end=dialogues[first].end_str,
+            notes=[note],
+            reason="重叠区——所有候选轴均已占满",
+        )
     )
