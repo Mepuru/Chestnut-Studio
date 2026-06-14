@@ -9,6 +9,7 @@ from chestnut_studio.core.compute.note_processor import (
     filter_notes_by_type,
     get_note_id,
     get_used_note_types,
+    search_notes,
 )
 from chestnut_studio.core.model.ass_merge import AssDialogue, MergePlan, TxtNote
 from chestnut_studio.core.model.note import Note
@@ -113,6 +114,43 @@ class TestNoteProcessor:
 
     def test_get_note_id_empty(self):
         assert get_note_id([], Note(1000, "A")) == 0
+
+    # ── search_notes ──
+
+    def test_search_notes_match(self):
+        notes = [
+            Note(1000, "Hello World"),
+            Note(2000, "Goodbye World"),
+            Note(3000, "Foo Bar"),
+        ]
+        result = search_notes(notes, "world")
+        assert len(result) == 2
+        assert all("world" in n.text.lower() for n in result)
+
+    def test_search_notes_empty_query(self):
+        notes = [Note(1000, "Hello"), Note(2000, "World")]
+        result = search_notes(notes, "")
+        assert result is notes
+        result = search_notes(notes, "   ")
+        assert result is notes
+
+    def test_search_notes_no_match(self):
+        notes = [Note(1000, "Hello"), Note(2000, "World")]
+        assert search_notes(notes, "xyz") == []
+
+    def test_search_notes_case_insensitive(self):
+        notes = [Note(1000, "HELLO"), Note(2000, "hello"), Note(3000, "World")]
+        result = search_notes(notes, "hello")
+        assert len(result) == 2
+
+    def test_search_notes_does_not_mutate_input(self):
+        notes = [Note(1000, "Hello"), Note(2000, "World")]
+        original_len = len(notes)
+        search_notes(notes, "hello")
+        assert len(notes) == original_len
+
+    def test_search_notes_empty_list(self):
+        assert search_notes([], "test") == []
 
 
 # ══════════════════════════════════════════

@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMenu,
@@ -115,6 +116,8 @@ class NotePanel(QWidget):
         super().__init__(parent)
         self._note_manager = note_manager
         self._sort_mode = "time"  # "time" | "track"
+        self._search_query: str = ""
+        self._last_search_state: str = ""
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -159,6 +162,14 @@ class NotePanel(QWidget):
 
         layout.addWidget(title_bar)
 
+        # ── 搜索栏 ──
+        self._search_input = QLineEdit()
+        self._search_input.setObjectName("noteSearch")
+        self._search_input.setPlaceholderText("筛选笔记...")
+        self._search_input.setClearButtonEnabled(True)
+        self._search_input.textChanged.connect(self._on_search_changed)
+        layout.addWidget(self._search_input)
+
         # ── 笔记列表 ──
         self._list = _NoteListWidget()
         self._list.setObjectName("noteList")
@@ -195,15 +206,29 @@ class NotePanel(QWidget):
         self._sort_btn.setText("轨道" if self._sort_mode == "time" else "时间")
         self.refresh()
 
+    def _on_search_changed(self, text: str):
+        """搜索文本变化时重新过滤笔记"""
+        self._search_query = text
+        self.refresh()
+
     def refresh(self):
         """刷新笔记列表显示"""
         scroll_bar = self._list.verticalScrollBar()
         scroll_pos = scroll_bar.value() if self._list.count() else 0
         at_bottom = scroll_pos >= scroll_bar.maximum() - 5 if self._list.count() else False
+        search_changed = self._search_query != self._last_search_state
+        self._last_search_state = self._search_query
         self._list.clear()
-        self._count_label.setText(str(self._note_manager.count()))
 
-        if self._note_manager.count() == 0:
+        total = self._note_manager.count()
+        if self._search_query.strip():
+            filtered_notes = self._note_manager.search(self._search_query)
+            self._count_label.setText(f"{len(filtered_notes)} / {total}")
+        else:
+            filtered_notes = None
+            self._count_label.setText(str(total))
+
+        if total == 0:
             self._empty_label.show()
             return
         self._empty_label.hide()
@@ -212,14 +237,14 @@ class NotePanel(QWidget):
         id_map = self._note_manager.assign_ids()
 
         if self._sort_mode == "track":
-            self._refresh_by_track(id_map)
+            self._refresh_by_track(id_map, filtered_notes)
         else:
-            self._refresh_by_time(id_map)
+            self._refresh_by_time(id_map, filtered_notes)
         self._recalc_item_heights()
-        if at_bottom:
+        if at_bottom and not search_changed:
             scroll_bar.setValue(scroll_bar.maximum())
         else:
-            scroll_bar.setValue(scroll_pos)
+            scroll_bar.setValue(min(scroll_pos, scroll_bar.maximum()))
 
     def _add_note_item(self, note: Note, note_id: int):
         """添加一条笔记到列表"""
@@ -232,15 +257,17 @@ class NotePanel(QWidget):
         self._list.addItem(item)
         self._list.setItemWidget(item, widget)
 
-    def _refresh_by_time(self, id_map: dict[Note, int]):
+    def _refresh_by_time(self, id_map: dict[Note, int], filtered: list[Note] | None = None):
         """按时间排序（不分组）"""
-        for note in self._note_manager.get_all():
+        notes = filtered if filtered is not None else self._note_manager.get_all()
+        for note in notes:
             self._add_note_item(note, id_map[note])
 
-    def _refresh_by_track(self, id_map: dict[Note, int]):
+    def _refresh_by_track(self, id_map: dict[Note, int], filtered: list[Note] | None = None):
         """按轨道分组排序"""
+        notes_pool = filtered if filtered is not None else self._note_manager.get_all()
         for note_type in NOTE_TYPES:
-            notes = self._note_manager.get_by_type(note_type)
+            notes = [n for n in notes_pool if n.type == note_type]
             if not notes:
                 continue
 

@@ -21,6 +21,9 @@ from chestnut_studio.core.compute.note_processor import (
 from chestnut_studio.core.compute.note_processor import (
     get_note_id as compute_get_note_id,
 )
+from chestnut_studio.core.compute.note_processor import (
+    search_notes as compute_search_notes,
+)
 from chestnut_studio.core.io.note_repository import (
     read_notes_text,
     write_notes_text,
@@ -88,6 +91,9 @@ class NoteManager:
 
     def get_used_types(self) -> list[str]:
         return get_used_note_types(self._notes, NOTE_TYPES)
+
+    def search(self, query: str) -> list[Note]:
+        return compute_search_notes(self._notes, query)
 
     def count(self) -> int:
         return len(self._notes)

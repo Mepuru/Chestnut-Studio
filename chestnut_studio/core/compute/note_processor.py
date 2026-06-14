@@ -49,6 +49,23 @@ def assign_note_ids(sorted_notes: list[Note]) -> dict[Note, int]:
     return {note: i for i, note in enumerate(sorted_notes, 1)}
 
 
+def search_notes(notes: list[Note], query: str) -> list[Note]:
+    """按文本内容过滤笔记，大小写不敏感子串匹配
+
+    Args:
+        notes: 笔记列表
+        query: 搜索关键词（空字符串或空白返回全量）
+
+    Returns:
+        匹配的笔记列表
+    """
+    q = query.strip()
+    if not q:
+        return notes
+    q_lower = q.lower()
+    return [n for n in notes if q_lower in n.text.lower()]
+
+
 def get_note_id(sorted_notes: list[Note], note: Note) -> int:
     """获取指定笔记在已排序列表中的序号，不修改输入列表
 

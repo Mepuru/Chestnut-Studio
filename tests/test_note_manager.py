@@ -174,6 +174,28 @@ class TestNoteManager:
         finally:
             Path(path).unlink(missing_ok=True)
 
+    def test_search(self):
+        mgr = NoteManager()
+        mgr.add(1000, "Hello World", "轨道1")
+        mgr.add(2000, "Goodbye World", "轨道2")
+        mgr.add(3000, "Foo Bar", "轨道1")
+        result = mgr.search("world")
+        assert len(result) == 2
+        assert all("world" in n.text.lower() for n in result)
+
+    def test_search_empty_query(self):
+        mgr = NoteManager()
+        mgr.add(1000, "Hello")
+        result = mgr.search("")
+        assert len(result) == 1
+        result = mgr.search("   ")
+        assert len(result) == 1
+
+    def test_search_no_match(self):
+        mgr = NoteManager()
+        mgr.add(1000, "Hello")
+        assert mgr.search("xyz") == []
+
     def test_import_text(self):
         mgr = NoteManager()
         content = "轨道1\t00:15.20\t| 你好\n轨道2\t01:00.00\t| 再见\n"
